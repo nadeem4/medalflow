@@ -7,6 +7,7 @@ The `core.monitoring` sub-package provides comprehensive metrics collection, per
 ## Purpose
 
 This monitoring infrastructure enables:
+
 - **ETL Operation Tracking**: Monitor success rates, duration, and row counts for all medallion layer operations
 - **Performance Monitoring**: Track CPU, memory, disk I/O, and network usage
 - **DataFrame Engine Metrics**: Compare performance across Pandas and Polars engines
