@@ -30,7 +30,8 @@ class OperationDAGBuilder:
         dependencies: Dependency information for each operation
         dag: The dependency DAG being built
         operation_map: Maps operation IDs to operations
-        table_to_operation: Maps output tables to operations that create them
+        table_to_operation: Maps each output table to every operation that
+            writes it, in declaration order
     """
     
     def __init__(
@@ -56,7 +57,9 @@ class OperationDAGBuilder:
         
         # Create operation tracking maps
         self.operation_map: Dict[str, BaseOperation] = {}
-        self.table_to_operation: Dict[str, str] = {}
+        # A table can have more than one writer (e.g. CREATE TABLE then INSERT).
+        # Keep every writer: a reader of the table depends on all of them.
+        self.table_to_operation: Dict[str, List[str]] = {}
         
         # Initialize operation identifiers
         self._initialize_operation_ids()
@@ -114,7 +117,9 @@ class OperationDAGBuilder:
             dep_info = self.dependencies[op]
             if dep_info.writes_to:
                 # Map the output table to this operation
-                self.table_to_operation[dep_info.writes_to] = op._dag_id
+                self.table_to_operation.setdefault(dep_info.writes_to, []).append(
+                    op._dag_id
+                )
                 self.logger.debug(
                     "dag.register_table_mapping",
                     extra=sanitize_extras(
@@ -135,10 +140,13 @@ class OperationDAGBuilder:
             
             dep_info = self.dependencies[op]
             
-            # Find dependencies based on tables this operation reads
+            # Find dependencies based on tables this operation reads.
+            # `reads_from` and the mapping keys are both fully-qualified
+            # lowercase "schema.table" names, so matching is global and works
+            # across layers: silver SQL reading bronze.customers resolves to the
+            # bronze operation that writes it.
             for source_table in dep_info.reads_from:
-                if source_table in self.table_to_operation:
-                    dep_op_id = self.table_to_operation[source_table]
+                for dep_op_id in self.table_to_operation.get(source_table, []):
                     if dep_op_id != op_id:  # Avoid self-dependencies
                         operation_dependencies.append(dep_op_id)
                         self.logger.debug(
