@@ -473,7 +473,7 @@ class _BaseSequencer(ABC):
             try:
                 operation = OperationBuilder.create_operation(
                     query_type=metadata.type,
-                    schema=metadata.schema_name ,
+                    schema_name=metadata.schema_name,
                     object_name=metadata.table_name,
                     engine_hint=metadata.preferred_engine,
                     logging_context = { "method": method_name, "class": self.__class__.__name__ , "source": self._get_method_source(method_name), 'name': self.get_obj_name(), "layer": self.get_layer_name()} ,

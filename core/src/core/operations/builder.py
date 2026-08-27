@@ -109,15 +109,10 @@ class OperationBuilder:
         operation_class = cls._registry.get(query_type)
         
         if operation_class is None:
-            # Fallback to ExecuteSQL for unknown types
-            logger.warning(
-                f"No operation registered for QueryType.{query_type.value}, "
-                f"falling back to ExecuteSQL"
+            raise ValueError(
+                f"No operation class registered for query type "
+                f"'{query_type.value}'. Register one in OperationBuilder._registry."
             )
-            operation_class = ExecuteSQL
-            # Ensure sql parameter exists for ExecuteSQL
-            if "sql" not in kwargs:
-                kwargs["sql"] = ""
         
         # Create operation instance
         try:
@@ -179,12 +174,10 @@ class OperationBuilder:
         # Get operation class from registry
         operation_class = cls._registry.get(query_type)
         if not operation_class:
-            logger.warning(
-                f"No operation class registered for {query_type}, using ExecuteSQL"
+            raise ValueError(
+                f"No operation class registered for query type "
+                f"'{query_type.value}'. Register one in OperationBuilder._registry."
             )
-            operation_class = ExecuteSQL
-            if "sql" not in operation_dict:
-                operation_dict["sql"] = ""
         
         # Handle nested metadata if present
         if 'metadata' in operation_dict and operation_dict['metadata']:
@@ -206,12 +199,10 @@ class OperationBuilder:
 
         if ctx_dict:
             ctx = ExecutionRequestContext.model_validate(ctx_dict)
-            operation.attach_context(
-                ctx,
-                stage=str(stage) if stage is not None else None,
-                position=position,
-            )
-        elif stage is not None:
+            operation.attach_context(ctx)
+        if stage is not None:
             operation.logging_context.setdefault("stage", stage)
+        if position is not None:
+            operation.logging_context.setdefault("position", position)
 
         return operation
