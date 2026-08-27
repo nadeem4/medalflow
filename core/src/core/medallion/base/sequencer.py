@@ -412,6 +412,11 @@ class _BaseSequencer(ABC):
         
         Returns:
             List[BaseOperation]: List of operation instances in execution order
+
+        Raises:
+            ValueError: If the model's queries cannot be built. Authoring
+                mistakes fail loudly at plan time rather than degrading to an
+                empty plan.
         """
         try:
             discovered_methods = self._discover_methods()
@@ -420,17 +425,22 @@ class _BaseSequencer(ABC):
             
             return queries
         except Exception as e:
+            model_name = self.get_obj_name()
             self.logger.error(
                 "sequencer.get_queries_failed",
                 extra=sanitize_extras(
                     {
                         "error": str(e),
                         "sequencer": self.__class__.__name__,
+                        "model": model_name,
                     }
                 ),
                 exc_info=True,
             )
-            return []
+            raise ValueError(
+                f"Failed to build queries for model '{model_name}' "
+                f"({self.__class__.__name__}): {e}"
+            ) from e
     
     def _get_queries(self, discovered_methods: List[DiscoveredMethod]) -> List[BaseOperation]:
         """Internal hook to extract operations from discovered methods.
