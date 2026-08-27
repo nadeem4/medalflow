@@ -106,6 +106,11 @@ class MetricsCollector:
         self.logger = get_logger(__name__)
         self._metrics: List[ETLMetrics] = []
         self._performance_metrics: List[PerformanceMetrics] = []
+        self._environment = (
+            getattr(self.settings, "app_env", None)
+            or getattr(self.settings, "ds_env", None)
+            or "unknown"
+        )
         
         # Initialize OpenTelemetry meter
         observability = getattr(self.settings, "observability", None)
@@ -242,13 +247,13 @@ class MetricsCollector:
         if metrics.cpu_percent > 80:
             self.logger.warning(
                 "High CPU usage detected",
-                cpu_percent=metrics.cpu_percent
+                extra={"cpu_percent": metrics.cpu_percent},
             )
         
         if metrics.memory_mb > 1024 * 8:  # 8GB
             self.logger.warning(
                 "High memory usage detected",
-                memory_mb=metrics.memory_mb
+                extra={"memory_mb": metrics.memory_mb},
             )
     
     def _active_operations_callback(self, options: CallbackOptions) -> Iterable[Observation]:
@@ -262,7 +267,7 @@ class MetricsCollector:
         
         yield Observation(
             active,
-            {"environment": self.settings.data_source.environment}
+            {"environment": self._environment}
         )
     
     def _success_rate_callback(self, options: CallbackOptions) -> Iterable[Observation]:
@@ -279,7 +284,7 @@ class MetricsCollector:
         
         yield Observation(
             success_rate,
-            {"environment": self.settings.data_source.environment}
+            {"environment": self._environment}
         )
     
     def _cpu_usage_callback(self, options: CallbackOptions) -> Iterable[Observation]:
@@ -288,7 +293,7 @@ class MetricsCollector:
             latest = self._performance_metrics[-1]
             yield Observation(
                 latest.cpu_percent,
-                {"environment": self.settings.data_source.environment}
+                {"environment": self._environment}
             )
     
     def _memory_usage_callback(self, options: CallbackOptions) -> Iterable[Observation]:
@@ -297,7 +302,7 @@ class MetricsCollector:
             latest = self._performance_metrics[-1]
             yield Observation(
                 latest.memory_mb,
-                {"environment": self.settings.data_source.environment}
+                {"environment": self._environment}
             )
     
     def get_metrics_summary(self, time_window: timedelta = timedelta(hours=1)) -> Dict[str, Any]:

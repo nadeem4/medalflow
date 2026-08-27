@@ -58,7 +58,7 @@ def create_secret_provider(
     use_mock = force_mock or is_test_mode()
     
     # If not forcing mock and we have KeyVault settings, check if it's configured
-    if not use_mock and keyvault_settings and keyvault_settings.is_configured():
+    if not use_mock and keyvault_settings and keyvault_settings.is_configured:
         return KeyVaultSecrets(keyvault_settings)
     
     # Default to mock provider

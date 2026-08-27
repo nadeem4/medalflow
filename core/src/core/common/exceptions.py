@@ -115,10 +115,12 @@ class CTEError(Exception):
         logger = get_logger(__name__)
         logger.error(
             message,
-            error_code=error_code.value,
-            details=details,
-            is_retryable=is_retryable,
-            exc_info=cause is not None
+            extra={
+                "error_code": error_code.value,
+                "details": self.details,
+                "is_retryable": is_retryable,
+            },
+            exc_info=cause is not None,
         )
         
     def __str__(self) -> str:
@@ -517,7 +519,6 @@ def resource_not_found_error(
         details=details,
         **{k: v for k, v in kwargs.items() if k != 'details'}
     )
-
 
 
 

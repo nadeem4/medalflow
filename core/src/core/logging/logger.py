@@ -15,6 +15,8 @@ from typing import Any, Dict, Optional, Set
 
 from opentelemetry import trace
 
+from core.__version__ import __version__
+from core.logging.filters import set_logging_context
 
 
 
@@ -73,12 +75,29 @@ class CustomJsonFormatter(logging.Formatter):
         return json.dumps(log_record, default=str)
 
 
-def setup_logging(level: str = "INFO") -> None:
+def setup_logging(
+    level: str = "INFO",
+    *,
+    service_name: str = "medalflow",
+    service_version: Optional[str] = None,
+    environment: Optional[str] = None,
+    static_fields: Optional[Dict[str, Any]] = None,
+) -> None:
     """Configure structured logging backed by ``logging.config.dictConfig``.
 
     Args:
         level: Base log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+        service_name: Logical service name for log enrichment.
+        service_version: Service version override (defaults to package version).
+        environment: Deployment environment label (dev/staging/prod).
+        static_fields: Additional static fields to attach to all log records.
     """
+    set_logging_context(
+        environment=environment,
+        service_name=service_name,
+        service_version=service_version or __version__,
+        extra=static_fields,
+    )
     config_dict: Dict[str, Any] = {
         "version": 1,
         "disable_existing_loggers": False,
