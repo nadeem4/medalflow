@@ -231,3 +231,54 @@ def test_plan_contains_the_bronze_to_silver_edge(plan):
 
 def test_plan_validates(plan):
     assert ExecutionPlanBuilder().validate_plan(plan) is True
+
+
+# --- generated SQL ---------------------------------------------------------
+
+
+@pytest.fixture
+def query_builder(offline_settings):
+    from core.query_builder.factory import QueryBuilderFactory
+
+    return QueryBuilderFactory.create()
+
+
+def test_the_configured_builder_is_synapse_serverless(query_builder):
+    assert type(query_builder).__name__ == "SynapseServerlessQueryBuilder"
+
+
+def test_generated_sql_for_the_silver_model(query_builder):
+    from sample_project.silver.customers import DimCustomer
+
+    operation = CreateTable(
+        operation_type=QueryType.CREATE_TABLE,
+        schema_name="silver",
+        object_name="DimCustomer",
+        select_query=DimCustomer.build_dim_customer(DimCustomer),
+        recreate=True,
+    )
+
+    assert query_builder.build_query(operation) == (
+        "IF EXISTS (SELECT * FROM sys.external_tables "
+        "WHERE object_id = OBJECT_ID('[silver].[fin_DimCustomer]'))\n"
+        "    DROP EXTERNAL TABLE [silver].[fin_DimCustomer];\n"
+        "CREATE EXTERNAL TABLE [silver].[fin_DimCustomer]\n"
+        "WITH (\n"
+        "    DATA_SOURCE = ds_fin_proc,\n"
+        "    LOCATION = 'silver/DimCustomer',\n"
+        "    FILE_FORMAT = parquet_file_format\n"
+        ")\n"
+        "AS SELECT CustomerId, Name FROM bronze.Customers"
+    )
+
+
+def test_generated_sql_quotes_and_prefixes_the_bronze_source(query_builder):
+    from core.operations import Select
+
+    operation = Select(
+        operation_type=QueryType.SELECT,
+        schema_name="bronze",
+        object_name="Customers",
+    )
+
+    assert query_builder.build_query(operation) == "SELECT * FROM [bronze].[fin_Customers]"
