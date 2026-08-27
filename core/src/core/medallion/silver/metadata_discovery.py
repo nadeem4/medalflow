@@ -181,12 +181,20 @@ class SilverMetadataDiscovery:
                                 f"[{metadata.model_name}] in {metadata.module_path}"
                             )
                     except Exception as e:
-                        self.logger.warning(f"Failed to extract metadata from {cls.__name__}: {e}")
-                        error_count += 1
-                        
+                        self.logger.error(f"Failed to extract metadata from {cls.__name__}: {e}")
+                        raise ValueError(
+                            f"Failed to read silver metadata from "
+                            f"{module.__name__}.{cls.__name__}: {e}"
+                        ) from e
+
+            except ValueError:
+                raise
             except Exception as e:
-                self.logger.warning(f"Failed to process module {module.__name__}: {e}")
-                error_count += 1
+                self.logger.error(f"Failed to process module {module.__name__}: {e}")
+                raise ValueError(
+                    f"Failed to process silver model module "
+                    f"'{module.__name__}': {e}"
+                ) from e
         
         self.logger.info(
             f"Discovery complete: {discovered_count} transformations found, "
@@ -348,8 +356,10 @@ class SilverMetadataDiscovery:
                 )
             
         except Exception as e:
+            # Surfaced to the caller: a model whose metadata cannot be read is
+            # an authoring error, not a reason to drop it from the plan.
             self.logger.error(f"Failed to extract metadata from {cls.__name__}: {e}")
-            return None
+            raise
     
     def _extract_model_from_group(self, group_file_name: str) -> str:
         """Extract model name from group_file_name.
