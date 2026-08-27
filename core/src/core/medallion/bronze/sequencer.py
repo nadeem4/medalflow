@@ -103,7 +103,7 @@ class BronzeSequencer(_BaseSequencer):
         # Create CREATE TABLE operation (CTAS)
         create_op = CreateTable(
             operation_type=QueryType.CREATE_TABLE,
-            schema="bronze",
+            schema_name="bronze",
             object_name=table.table_name,  
             select_query=select_sql,
             recreate=True,
@@ -127,7 +127,7 @@ class BronzeSequencer(_BaseSequencer):
         
         return Select(
             operation_type=QueryType.SELECT,
-            schema=self.source_schema,
+            schema_name=self.source_schema,
             object_name=table.table_name,
             columns=["*"],
             where_clause=where_clause
