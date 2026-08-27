@@ -1,6 +1,6 @@
 """Simple Azure Data Lake Storage client."""
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional
 import pandas as pd
 from azure.storage.filedatalake import DataLakeServiceClient
 from azure.identity import DefaultAzureCredential
@@ -84,7 +84,7 @@ class DatalakeClient:
             Dictionary with authentication options for pandas
         """
         if self.config.auth_method == DataLakeAuthMethod.ACCESS_KEY:
-            return {"account_key": self.config.access_key()}
+            return {"account_key": self.config.access_key}
         else:
             return {"anon": False, "use_azure_identity": True}
 
@@ -122,14 +122,16 @@ class DatalakeClient:
             path=self._get_full_path(path),
         ),
     )
-    def upload(self, data: Union[pd.DataFrame, bytes, str], path: str, **kwargs):
+    def upload(self, data: pd.DataFrame, path: str, **kwargs) -> None:
         """Upload data to the lake.
         
         Args:
-            data: DataFrame, bytes, or string to upload
+            data: DataFrame to upload
             path: Target path in the lake
             **kwargs: Additional arguments passed to pandas write functions
         """
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("upload expects a pandas DataFrame")
         abfs_path = self._get_abfs_path(path)
         storage_options = self._get_storage_options()
         
@@ -153,7 +155,7 @@ class DatalakeClient:
             path=path if path.startswith('abfs://') else self._get_full_path(path),
         ),
     )
-    def read(self, path: str, **kwargs) -> Union[pd.DataFrame, bytes]:
+    def read(self, path: str, **kwargs) -> pd.DataFrame:
         """Read file from the lake.
         
         Args:
@@ -161,7 +163,7 @@ class DatalakeClient:
             **kwargs: Additional arguments passed to pandas read functions
             
         Returns:
-            DataFrame for parquet/csv/json files, bytes for others
+            DataFrame for parquet/csv/json files
         """
         # Check if it's already an ABFS path
         if path.startswith('abfs://'):
@@ -177,6 +179,7 @@ class DatalakeClient:
                 return pd.read_csv(abfs_path, storage_options=storage_options, **kwargs)
             elif path.endswith('.json'):
                 return pd.read_json(abfs_path, storage_options=storage_options, **kwargs)
+            raise ValueError(f"Unsupported file format for path: {path}")
         except Exception as e:
             logger.error(f"Failed to read DataFrame from {self.lake_type.value}: {path}", exc_info=True)
             raise CTEError(f"Failed to read {path}: {e}") from e

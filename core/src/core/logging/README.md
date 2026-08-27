@@ -25,8 +25,11 @@ The `core.logging` package supplies a structured logging foundation for the Meda
 from core.logging import get_logger
 
 logger = get_logger(__name__)
-logger.info("Processing started", table="customers", rows=1000)
-logger.error("Processing failed", error_code="E001", details="Connection timeout")
+logger.info("Processing started", extra={"table": "customers", "rows": 1000})
+logger.error(
+    "Processing failed",
+    extra={"error_code": "E001", "details": "Connection timeout"},
+)
 ```
 
 ### Configuring logging
@@ -51,7 +54,7 @@ Additional handlers can be added by the host application after calling `setup_lo
 
 ```python
 from core.logging import get_logger
-from core.logging.filters import , set_request_context
+from core.logging.filters import set_request_context
 
 logger = get_logger(__name__)
 
@@ -85,7 +88,7 @@ logger.info("User action performed")
 ## Tips
 
 - Use `get_logger(__name__)` for module-level loggers
-- Enrich logs with keyword arguments instead of string interpolation
+- Enrich logs with `extra` fields instead of string interpolation
 - Set request context at the beginning of request/execution scopes
 - If you need additional sinks, attach handlers to the root logger after invoking `setup_logging`
 - Avoid logging secrets; include measurable values (counts, durations, sizes)

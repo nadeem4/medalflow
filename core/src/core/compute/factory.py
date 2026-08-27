@@ -151,8 +151,10 @@ class _PlatformFactory:
         
         logger.info(
             "Created platform",
-            platform=platform_type.value,
-            environment=environment.value
+            extra={
+                "platform": platform_type.value,
+                "environment": environment.value,
+            },
         )
         return platform
 

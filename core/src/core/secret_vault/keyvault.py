@@ -44,7 +44,7 @@ class KeyVaultSecrets:
         Returns:
             SecretClient instance or None if not configured
         """
-        if self._secret_client is None and self.kv_settings.is_configured():
+        if self._secret_client is None and self.kv_settings.is_configured:
             from azure.keyvault.secrets import SecretClient
             from azure.identity import DefaultAzureCredential, ClientSecretCredential
             
@@ -78,7 +78,7 @@ class KeyVaultSecrets:
         Raises:
             ValueError: If secret retrieval fails and no default provided
         """
-        if not self.kv_settings.is_configured():
+        if not self.kv_settings.is_configured:
             return SecretStr(default) if default else None
         
         try:
