@@ -89,7 +89,7 @@ class SilverTransformationSequencer(_BaseSequencer):
         """
         table_name = metadata.table_name
         enum_name = metadata.filter
-        from query_builder.factory import get_query_builder
+        from core.query_builder.factory import get_query_builder
 
         query_builder = get_query_builder()
 
@@ -117,9 +117,9 @@ class SilverTransformationSequencer(_BaseSequencer):
         """
         if (metadata.table_name and  metadata.table_name.endswith('Detail') and  metadata.schema_name == 'temp'):
             self.logger.info(
-                f"Applying silver transformation to Detail table",
-                table=metadata.table_name,
-                schema=metadata.schema_name
+                "Applying silver transformation to Detail table %s.%s",
+                metadata.schema_name,
+                metadata.table_name,
             )
             transformed_metadata = deepcopy(metadata)
             transformed_metadata.schema_name = 'silver'

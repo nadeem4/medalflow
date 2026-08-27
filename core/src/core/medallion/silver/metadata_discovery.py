@@ -222,16 +222,16 @@ class SilverMetadataDiscovery:
         
         return result
     
-    def get_transformation_by_sp(self, sp_names: str) -> Optional[TransformationMetadata]:
-        """Get specific transformation by stored procedure name.
+    def get_transformation_by_sp(self, sp_names: str) -> List[TransformationMetadata]:
+        """Get transformations by stored procedure name.
         
         Uses cache for improved performance when available.
         
         Args:
-            sp_name: Stored procedure name
+            sp_names: Comma-separated stored procedure names
             
         Returns:
-            Transformation metadata or None if not found
+            Every transformation whose sp_name matches, empty if none do
         """
 
         sp_names = [ name.strip().lower() for name in sp_names.strip().split(',')]
@@ -386,27 +386,6 @@ class SilverMetadataDiscovery:
             # Clear all silver metadata
             cleared = self._cache_manager.clear("silver:metadata:*")
             self.logger.info(f"Cleared {cleared} silver metadata cache entries")
-    
-    def warm_cache(self) -> None:
-        """Pre-populate cache by running discovery.
-        
-        This method forces a fresh discovery and caches all results,
-        useful for warming the cache after application startup.
-        """
-        self.logger.info("Warming silver metadata cache...")
-        
-        # Force a fresh discovery
-        transformations = self.discover_all_transformations(force_refresh=True)
-        
-        if self._cache_manager:
-            # Pre-cache model-specific data
-            models = self.get_all_models()
-            for model in models:
-                self.get_transformations_by_model(model)
-            
-            self.logger.info(f"Cache warmed with {len(transformations)} transformations across {len(models)} models")
-        else:
-            self.logger.info(f"Discovered {len(transformations)} transformations (cache manager not available)")
     
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache statistics for silver metadata.
