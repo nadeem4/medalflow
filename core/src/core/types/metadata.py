@@ -266,11 +266,16 @@ class SQLDependencies(CTEBaseModel):
     SQL queries - which tables are read from and which table is written to.
     Used by the SQL dependency analyzer to understand data flow.
     
+    Both fields use one shape: fully-qualified, lowercase ``"schema.table"``
+    strings (bare ``"table"`` when the SQL leaves it unqualified). Matching is
+    global, so a silver model reading ``bronze.customers`` resolves against the
+    bronze operation that writes it.
+
     Attributes:
-        reads_from: Set of source table names that the query reads from
-        writes_to: Target table name for DML operations (None for SELECT queries)
+        reads_from: Set of qualified source tables the query reads from
+        writes_to: Qualified target table for DML operations (None for SELECT)
     """
-    reads_from: Dict[str, Set] = Field(default_factory=dict)
+    reads_from: Set[str] = Field(default_factory=set)
     writes_to: Optional[str] = None
 
 

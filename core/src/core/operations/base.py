@@ -52,6 +52,19 @@ class BaseOperation(CTEBaseModel):
         description="Observability context for this operation",
     )
     
+    def __hash__(self) -> int:
+        """Hash operations by identity.
+
+        Pydantic defines ``__eq__``, which makes a model unhashable unless it is
+        frozen — and these are mutable (``validate_assignment``). But the
+        dependency pipeline keys operations directly:
+        ``SQLDependencyAnalyzer.analyze_operations`` returns
+        ``Dict[BaseOperation, SQLDependencies]`` and ``OperationDAGBuilder``
+        looks operations up in it. Each operation in a plan is a distinct
+        object, so identity is the intended key.
+        """
+        return id(self)
+
     @field_validator('schema_name', 'object_name')
     @classmethod
     def validate_sql_identifier(cls, v: str, info) -> str:

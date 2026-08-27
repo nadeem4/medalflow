@@ -119,29 +119,26 @@ class SQLDependencyAnalyzer:
             writes_to=writes_to
         )
     
-    def _extract_source_tables_sqlglot(self, ast: 'exp.Expression', ctes: Set[str]) -> Dict[str, Set]:
+    def _extract_source_tables_sqlglot(self, ast: 'exp.Expression', ctes: Set[str]) -> Set[str]:
         """Extract all source tables from SQLGlot AST.
         
         Args:
             ast: SQLGlot expression tree
-            cte_names: Set of CTE names to exclude
+            ctes: Set of CTE names to exclude
             
         Returns:
-            Set of fully qualified table names
+            Set of fully qualified, lowercase table names
         """
-        tables: Dict[str, Set] = {}
+        tables: Set[str] = set()
 
         # Find all table references
         for table in ast.find_all(exp.Table):
             if table:
-                table_parts = self._table_parts(table)
-                full_table_name = f"{ '.'.join([val for val in table_parts.values() if val])}"
+                full_table_name = self._qualified_name(self._table_parts(table))
                 if self._is_cte(full_table_name, ctes):
                     continue
 
-                if table_parts['schema'] not in tables:
-                    tables[table_parts['schema']] = set()
-                tables[table_parts['schema']].add(table_parts['table'])
+                tables.add(full_table_name)
         return tables
 
     
@@ -155,8 +152,7 @@ class SQLDependencyAnalyzer:
             Fully qualified target table name or None
         """
         if isinstance(ast.this, exp.Table):
-            table_parts = self._table_parts(ast.this)
-            return f"{ '.'.join([val for val in table_parts.values() if val])}"
+            return self._qualified_name(self._table_parts(ast.this))
         return None
     
     def _extract_ctes_sqlglot(self, ast: 'exp.Expression') -> Set[str]:
@@ -168,7 +164,7 @@ class SQLDependencyAnalyzer:
         Returns:
             List of CTE names defined in the query
         """
-        return Set([cte.alias for cte in ast.find_all(exp.CTE) if hasattr(cte, 'alias') and cte.alias])
+        return {cte.alias.lower() for cte in ast.find_all(exp.CTE) if getattr(cte, 'alias', None)}
         
 
     
@@ -203,6 +199,16 @@ class SQLDependencyAnalyzer:
             String representation of the table name (without alias)
         """
         return {'database': table.catalog, 'schema': table.db, 'table': table.name}
+
+    @staticmethod
+    def _qualified_name(table_parts: dict) -> str:
+        """Join table parts into one lowercase ``[database.]schema.table`` name.
+
+        This is the single naming convention for both ``reads_from`` and
+        ``writes_to``; the DAG builder matches operations on exactly these
+        strings, so producers must not diverge from it.
+        """
+        return '.'.join(part for part in table_parts.values() if part).lower()
     
     def analyze_operations(self, operations: List[BaseOperation]) -> Dict[BaseOperation, SQLDependencies]:
         """Analyze dependencies for a list of database operations.
@@ -266,7 +272,7 @@ class SQLDependencyAnalyzer:
                 # Use fully qualified name as fallback for write operations
                 operation_dependencies[operation] = SQLDependencies(
                     reads_from=set(),
-                    writes_to=f"{query_builder.fully_qualified_name(schema=operation.schema, object_name=operation.object_name)}" if operation.operation_type in [
+                    writes_to=f"{operation.schema_name}.{operation.object_name}".lower() if operation.operation_type in [
                         QueryType.CREATE_TABLE,
                         QueryType.INSERT,
                         QueryType.UPDATE,
