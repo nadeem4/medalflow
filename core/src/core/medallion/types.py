@@ -112,13 +112,14 @@ class ExecutionPlan(CTEBaseModel):
     
     Attributes:
         sequencer_name: Name of the sequencer class that generated this plan
-        metadata: Class-level metadata from layer decorators
-        lineage: Complete lineage information for the plan
+        metadata: Class-level metadata from layer decorators, or the
+            orchestrator's plain dict when a plan spans several sequencers
+        lineage: Complete lineage information for the plan, when collected
         total_queries: Total number of queries in the plan
     """
     sequencer_name: str
-    metadata: ClassMetadata  
-    lineage: LineageInfo
+    metadata: Optional[Union[ClassMetadata, Dict[str, Any]]] = None
+    lineage: Optional[LineageInfo] = None
     total_queries: int
     stages: List[ExecutionStage]  
     dependency_graph: Dict[str, List[str]]

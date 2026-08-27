@@ -64,13 +64,13 @@ class ExecutionPlanBuilder:
         for stage_dict in stages:
             operations = []
             for query_dict in stage_dict.get('parallel_queries', []):
-                # Operation is directly provided
-                operation = query_dict['operation']
-                # Add any additional metadata as attributes
-                for key, value in query_dict.items():
-                    if key not in ['operation', 'id'] and not hasattr(operation, key):
-                        setattr(operation, key, value)
-                operations.append(operation)
+                # Operation is directly provided. The stage dict also carries
+                # 'id', 'dependencies' and 'layer', but those are DAG bookkeeping
+                # and are not fields on the operation model — assigning them
+                # raised ValidationError ("Object has no attribute
+                # 'dependencies'"), so the plan is built from the operation
+                # as-is.
+                operations.append(query_dict['operation'])
             
             execution_stages.append(ExecutionStage(
                 stage=stage_dict['stage'],
@@ -121,8 +121,13 @@ class ExecutionPlanBuilder:
         if execution_plan.total_queries < 0:
             raise ValueError(f"Invalid total_queries: {execution_plan.total_queries}")
         
-        # Get all operations using the helper method
-        all_operations = execution_plan.get_all_operations()
+        # get_all_operations() groups operations by stage, so flatten before
+        # counting — len() of the grouped result is the stage count.
+        all_operations = [
+            operation
+            for stage_operations in execution_plan.get_all_operations()
+            for operation in stage_operations
+        ]
         actual_count = len(all_operations)
         
         # Validate query count
@@ -134,8 +139,11 @@ class ExecutionPlanBuilder:
         
         # Validate each operation has required fields
         for operation in all_operations:
-            # For BaseOperation, we check schema and object_name instead of SQL
-            if not operation.schema or not operation.object_name:
+            # For BaseOperation, we check schema_name and object_name instead of
+            # SQL. Note `operation.schema` resolves to pydantic's deprecated
+            # BaseModel.schema() classmethod, which is always truthy, so this
+            # check silently never fired.
+            if not operation.schema_name or not operation.object_name:
                 method_name = getattr(operation, 'method', 'unknown')
                 raise ValueError(f"Operation missing required fields: {method_name}")
         
