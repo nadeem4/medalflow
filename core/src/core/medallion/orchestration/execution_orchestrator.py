@@ -152,14 +152,19 @@ class ExecutionPlanOrchestrator:
                 operations.extend(sequencer.get_queries())
                 all_metadata[seq_name] = sequencer._get_class_metadata()
             except Exception as e:
-                self.logger.warning(
+                # Fail the whole plan. Skipping the sequencer would quietly
+                # shrink the plan to whichever models happened to work, which
+                # is the silent degradation this phase removes.
+                self.logger.error(
                     "orchestrator.sequencer_get_queries_failed",
                     extra=sanitize_extras(
                         {"sequencer": seq_name, "error": str(e)},
                     ),
                     exc_info=True,
                 )
-                continue
+                raise ValueError(
+                    f"Cannot build execution plan: sequencer '{seq_name}' failed: {e}"
+                ) from e
 
 
         self.logger.info(
