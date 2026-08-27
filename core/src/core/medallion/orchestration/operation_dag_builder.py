@@ -227,7 +227,7 @@ class OperationDAGBuilder:
                     'operation': operation,
                     'id': node_id,
                     'dependencies': self.dag.get_dependencies(node_id),
-                    'layer': operation.schema,
+                    'layer': operation.schema_name,
                     'logging_context': operation.logging_context,
                     'operation_type': operation.operation_type
                 }
