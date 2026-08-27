@@ -4,22 +4,49 @@ This module provides decorators for configuring Bronze layer ETL processes
 with metadata that controls execution behavior and data flow.
 """
 
+from typing import Callable, List, Optional, Type
 
-def bronze_metadata(*args, **kwargs):
-    """Decorator for Bronze layer class metadata.
-    
-    Configures Bronze layer sequencer classes with metadata that defines
-    execution properties and orchestration behavior.
-    
+from core.types.metadata import BronzeMetadata
+
+
+def bronze_metadata(
+    source_system: str,
+    ingestion_mode: str = "incremental",
+    description: Optional[str] = None,
+    tags: Optional[List[str]] = None
+) -> Callable[[Type], Type]:
+    """Decorator for Bronze layer sequencer classes.
+
+    Attaches a :class:`~core.types.metadata.BronzeMetadata` instance to the
+    decorated class as ``_bronze_metadata``, mirroring ``gold_metadata`` and
+    ``silver_metadata``.
+
     Args:
-        *args: Positional arguments for Bronze metadata configuration
-        **kwargs: Keyword arguments for Bronze metadata configuration
-    
+        source_system: Name of the system the raw data is ingested from.
+        ingestion_mode: How the source is read — "incremental", "full" or
+            "append". Defaults to "incremental".
+        description: Optional human-readable description of the source.
+        tags: Optional list of tags for cataloguing and filtering.
+
     Returns:
-        Decorated class with Bronze metadata attached
+        Class decorator that attaches the metadata and returns the class.
+
+    Example:
+        >>> @bronze_metadata(source_system="d365", ingestion_mode="full")
+        ... class Customers:
+        ...     pass
+        >>> Customers._bronze_metadata.source_system
+        'd365'
     """
-    pass
+    def decorator(cls: Type) -> Type:
+        metadata = BronzeMetadata(
+            source_system=source_system,
+            ingestion_mode=ingestion_mode,
+            description=description,
+            tags=tags or []
+        )
 
+        cls._bronze_metadata = metadata
+        return cls
 
-# Alias for consistency with existing patterns
-BronzeMetadata = type('BronzeMetadata', (), {})  # Empty class for type hints
+    return decorator

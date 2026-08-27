@@ -273,10 +273,13 @@ class SilverMetadataDiscovery:
             try:
                 self.logger.debug(f"Importing module: {modname}")
                 module = importlib.import_module(modname)
-                yield module
             except Exception as e:
-                self.logger.debug(f"Could not import {modname}: {e}")
-                continue
+                self.logger.error(f"Could not import {modname}: {e}")
+                raise ValueError(
+                    f"Failed to import silver model module '{modname}': {e}"
+                ) from e
+
+            yield module
     
     def _extract_transformation_classes(self, module) -> List[Type]:
         """Extract all transformation classes from a module.
