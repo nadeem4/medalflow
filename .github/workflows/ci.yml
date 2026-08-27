@@ -101,9 +101,16 @@ jobs:
       # breakage. Phase 3 moves pyodbc behind the `[azure]` extra and this goes.
       - name: Install pyodbc (declared optional, imported unconditionally)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq unixodbc-dev
-          poetry run pip install pyodbc
+          # Prefer a wheel. Only fall back to a source build — which needs ODBC
+          # headers — when pip cannot find one for this interpreter. The runner
+          # ships a packages.microsoft.com apt repo that intermittently returns
+          # 403 and fails `apt-get update`, so it is dropped before updating.
+          if ! poetry run pip install pyodbc; then
+            sudo rm -f /etc/apt/sources.list.d/microsoft*.list                        /etc/apt/sources.list.d/azure*.list
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq unixodbc-dev
+            poetry run pip install pyodbc
+          fi
 
       # Blocking as of Phase 1: the orphaned processor/validator stubs are gone,
       # so the package imports and the suite runs.
@@ -132,9 +139,16 @@ jobs:
 
       - name: Install pyodbc (declared optional, imported unconditionally)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq unixodbc-dev
-          poetry run pip install pyodbc
+          # Prefer a wheel. Only fall back to a source build — which needs ODBC
+          # headers — when pip cannot find one for this interpreter. The runner
+          # ships a packages.microsoft.com apt repo that intermittently returns
+          # 403 and fails `apt-get update`, so it is dropped before updating.
+          if ! poetry run pip install pyodbc; then
+            sudo rm -f /etc/apt/sources.list.d/microsoft*.list                        /etc/apt/sources.list.d/azure*.list
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq unixodbc-dev
+            poetry run pip install pyodbc
+          fi
 
       # Blocking as of Phase 1. Phase 2 renames the imports to `medalflow`.
       - name: Import smoke test
