@@ -105,26 +105,10 @@ jobs:
           sudo apt-get install -y -qq unixodbc-dev
           poetry run pip install pyodbc
 
-      # Advisory until Phase 1. The single existing test transitively imports
-      # `core/__init__.py`, which fails on the same missing
-      # `core.medallion.base.processor` module as the import smoke test below.
-      - name: pytest (advisory until Phase 1)
-        id: pytest
-        continue-on-error: true
+      # Blocking as of Phase 1: the orphaned processor/validator stubs are gone,
+      # so the package imports and the suite runs.
+      - name: pytest
         run: poetry run pytest
-
-      - name: Report test status
-        run: |
-          if [ "${{ steps.pytest.outcome }}" = "failure" ]; then
-            echo "::warning title=EXPECTED FAILURE UNTIL PHASE 1::pytest fails because core/__init__.py imports the deleted core.medallion.base.processor module."
-            {
-              echo "### ⛔ EXPECTED FAILURE UNTIL PHASE 1 (Python ${{ matrix.python-version }})"
-              echo "The only test imports \`core.logging.filters\`, which imports \`core.__version__\` and so pulls in the broken package root."
-              echo "Phase 1 removes \`continue-on-error\` from this step."
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::notice title=pytest is green::Remove continue-on-error from the pytest step to make it blocking."
-          fi
 
   import-smoke:
     name: import-smoke
@@ -152,22 +136,6 @@ jobs:
           sudo apt-get install -y -qq unixodbc-dev
           poetry run pip install pyodbc
 
-      # Phase 1 makes this blocking; Phase 2 renames the imports to `medalflow`.
+      # Blocking as of Phase 1. Phase 2 renames the imports to `medalflow`.
       - name: Import smoke test
-        id: smoke
-        continue-on-error: true
         run: PYTHONPATH=src poetry run python -c "import core; import core.medallion; import core.api"
-
-      - name: Report import smoke result
-        run: |
-          if [ "${{ steps.smoke.outcome }}" = "failure" ]; then
-            echo "::warning title=EXPECTED FAILURE UNTIL PHASE 1::import core.medallion fails — 8 processor/validator stubs import the deleted core.medallion.base.processor / base.validator modules."
-            {
-              echo "### ⛔ EXPECTED FAILURE UNTIL PHASE 1"
-              echo "\`import core.medallion\` raises \`ModuleNotFoundError: No module named 'core.medallion.base.processor'\`."
-              echo "This job is intentionally non-blocking so CI stays honest about the breakage."
-              echo "Phase 1 removes \`continue-on-error\`; Phase 2 renames the imports to \`medalflow\`."
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::notice title=Import smoke PASSED::Remove continue-on-error from this step to make it blocking."
-          fi

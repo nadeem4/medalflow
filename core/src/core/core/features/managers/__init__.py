@@ -8,6 +8,5 @@ cross-cutting functionality across the application.
 # Each manager registers itself when imported
 from . import cache
 from . import client_config
-from . import configuration
 from . import powerbi
 from . import stats
