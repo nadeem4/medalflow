@@ -29,8 +29,12 @@ jobs:
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
+      # --no-root: `poetry install` cannot install the project itself because
+      # core/pyproject.toml declares `readme = "README.md"` while README.md lives at
+      # the repo root. Source is reached via `pythonpath = ["src"]` (pytest) and
+      # PYTHONPATH=src (smoke test) instead. Phase 6 fixes the packaging metadata.
       - name: Install dependencies
-        run: poetry install --with dev
+        run: poetry install --with dev --no-root
 
       # Blocking gate. These rules catch real breakage (syntax errors, undefined
       # or redefined names) and pass on the codebase as it stands today, so any
@@ -83,8 +87,12 @@ jobs:
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
+      # --no-root: `poetry install` cannot install the project itself because
+      # core/pyproject.toml declares `readme = "README.md"` while README.md lives at
+      # the repo root. Source is reached via `pythonpath = ["src"]` (pytest) and
+      # PYTHONPATH=src (smoke test) instead. Phase 6 fixes the packaging metadata.
       - name: Install dependencies
-        run: poetry install --with dev
+        run: poetry install --with dev --no-root
 
       # pyodbc is declared `optional = true` in pyproject but imported
       # unconditionally at src/core/compute/engines/base.py:11, and no extra
@@ -131,8 +139,12 @@ jobs:
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
+      # --no-root: `poetry install` cannot install the project itself because
+      # core/pyproject.toml declares `readme = "README.md"` while README.md lives at
+      # the repo root. Source is reached via `pythonpath = ["src"]` (pytest) and
+      # PYTHONPATH=src (smoke test) instead. Phase 6 fixes the packaging metadata.
       - name: Install dependencies
-        run: poetry install --with dev
+        run: poetry install --with dev --no-root
 
       - name: Install pyodbc (declared optional, imported unconditionally)
         run: |
@@ -144,7 +156,7 @@ jobs:
       - name: Import smoke test
         id: smoke
         continue-on-error: true
-        run: poetry run python -c "import core; import core.medallion; import core.api"
+        run: PYTHONPATH=src poetry run python -c "import core; import core.medallion; import core.api"
 
       - name: Report import smoke result
         run: |
