@@ -24,6 +24,7 @@ from medalflow.operations import (
 )
 from medalflow.operations.columns import ColumnDefinition
 from medalflow.settings import _Settings
+from medalflow.types import RawSQL
 
 
 class BaseQueryBuilder(ABC):
@@ -364,6 +365,34 @@ class BaseQueryBuilder(ABC):
         """
         return ", ".join(self.quote_identifier(col) for col in columns)
 
+    def format_order_by(self, order_by: list[str]) -> str:
+        """Format an ORDER BY list.
+
+        Each entry is a column name, optionally followed by ASC or DESC. The
+        column is quoted like any other identifier; anything else in the entry
+        is rejected rather than passed through.
+
+        Args:
+            order_by: List of entries like "Name" or "CreatedAt DESC"
+
+        Returns:
+            Comma-separated ORDER BY list with quoted columns
+        """
+        formatted = []
+        for entry in order_by:
+            parts = entry.split()
+            if len(parts) == 1:
+                formatted.append(self.quote_identifier(parts[0], "order by column"))
+            elif len(parts) == 2 and parts[1].upper() in ("ASC", "DESC"):
+                column = self.quote_identifier(parts[0], "order by column")
+                formatted.append(f"{column} {parts[1].upper()}")
+            else:
+                raise ValueError(
+                    f"Invalid ORDER BY entry: {entry!r}. "
+                    "Expected a column name optionally followed by ASC or DESC."
+                )
+        return ", ".join(formatted)
+
     def format_value_list(self, values: list[Any]) -> str:
         """Format a list of values for SQL.
 
@@ -388,8 +417,12 @@ class BaseQueryBuilder(ABC):
     def format_set_clause(self, columns: dict[str, Any]) -> str:
         """Format SET clause for UPDATE.
 
+        Values are escaped as string literals. Only a value explicitly wrapped
+        in ``RawSQL`` is inlined verbatim -- there is no way to tell an
+        expression from a surname like ``O'Brien-Smith`` by inspection.
+
         Args:
-            columns: Dictionary of column -> value/expression
+            columns: Dictionary of column -> value or RawSQL expression
 
         Returns:
             SET clause like "col1 = val1, col2 = val2"
@@ -399,12 +432,10 @@ class BaseQueryBuilder(ABC):
             col_quoted = self.quote_identifier(col)
             if value is None:
                 assignments.append(f"{col_quoted} = NULL")
+            elif isinstance(value, RawSQL):
+                assignments.append(f"{col_quoted} = {value}")
             elif isinstance(value, str):
-                # Check if it's an expression (contains SQL keywords/functions)
-                if self._is_expression(value):
-                    assignments.append(f"{col_quoted} = {value}")
-                else:
-                    assignments.append(f"{col_quoted} = {self.quote_string(value)}")
+                assignments.append(f"{col_quoted} = {self.quote_string(value)}")
             elif isinstance(value, bool):
                 assignments.append(f"{col_quoted} = {1 if value else 0}")
             else:
@@ -462,63 +493,12 @@ class BaseQueryBuilder(ABC):
         if len(identifier) > 128:
             raise ValueError(f"{identifier_type} name too long: {identifier}")
 
-        # Check for valid characters (alphanumeric, underscore, dash)
-        # This regex allows letters, numbers, underscores, and hyphens
+        # Letters, numbers, underscores and hyphens only. This whitelist is the
+        # whole defence: a denylist of ";DROP", "--" and friends used to follow
+        # it, but every one of those patterns needed a character the whitelist
+        # already rejects, so none of them was ever reachable.
         if not re.match(r"^[a-zA-Z][a-zA-Z0-9_\-]*$", identifier):
             raise ValueError(f"Invalid {identifier_type} name: {identifier}")
-
-        # Check for SQL injection patterns
-        dangerous_patterns = [
-            r";\s*DROP",
-            r";\s*DELETE",
-            r";\s*UPDATE",
-            r";\s*INSERT",
-            r"--",
-            r"/\*",
-            r"\*/",
-            r"UNION\s+SELECT",
-            r"OR\s+1\s*=\s*1",
-            r"OR\s+'1'\s*=\s*'1'",
-        ]
-
-        identifier_upper = identifier.upper()
-        for pattern in dangerous_patterns:
-            if re.search(pattern, identifier_upper):
-                raise ValueError(f"Potentially dangerous {identifier_type} name: {identifier}")
-
-    def _is_expression(self, value: str) -> bool:
-        """Check if a string value is a SQL expression.
-
-        Args:
-            value: String value to check
-
-        Returns:
-            True if value appears to be a SQL expression
-        """
-        # Common SQL functions and keywords that indicate an expression
-        expression_patterns = [
-            r"\bGETDATE\b",
-            r"\bNOW\b",
-            r"\bCURRENT_TIMESTAMP\b",
-            r"\bCAST\b",
-            r"\bCONVERT\b",
-            r"\bCASE\b",
-            r"\bWHEN\b",
-            r"\bCOALESCE\b",
-            r"\bISNULL\b",
-            r"\bNULLIF\b",
-            r"\+",  # Arithmetic operators
-            r"\-",
-            r"\*",
-            r"/",
-            r"\(",  # Function calls
-        ]
-
-        value_upper = value.upper()
-        for pattern in expression_patterns:
-            if re.search(pattern, value_upper, re.IGNORECASE):
-                return True
-        return False
 
     def build_select_all(self, schema: str, object_name: str) -> str:
         """Build SELECT * query with proper table naming.

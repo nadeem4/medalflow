@@ -21,7 +21,7 @@ settings in tests/conftest.py, so nothing touches Azure.
 """
 
 import pytest
-from medalflow.operations import CreateTable, Select
+from medalflow.operations import CreateTable, ExecuteSQL, Select
 from medalflow.operations.columns import ColumnDefinition
 from medalflow.types import RawSQL
 from pydantic import ValidationError
@@ -196,6 +196,18 @@ def test_raw_sql_where_clause_is_inlined_verbatim(query_builder):
     assert query_builder.build_query(operation) == (
         "SELECT * FROM [bronze].[fin_Customers] WHERE Name = 'O''Brien' AND Amount > 0"
     )
+
+
+def test_raw_sql_is_accepted_by_required_sql_fields():
+    """These fields carried `min_length=1`, which pydantic cannot apply to RawSQL."""
+    operation = ExecuteSQL(schema_name="bronze", object_name="Customers", sql=RawSQL("SELECT 1"))
+    assert str(operation.sql) == "SELECT 1"
+
+
+def test_empty_sql_fragment_is_still_rejected():
+    """`min_length` moved into the fragment check; emptiness must still fail."""
+    with pytest.raises(ValidationError):
+        ExecuteSQL(schema_name="bronze", object_name="Customers", sql="")
 
 
 def test_raw_sql_survives_a_model_dump_round_trip():

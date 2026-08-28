@@ -7,9 +7,19 @@ for SQL operations throughout the system.
 """
 
 import re
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from medalflow.types import RawSQL, SQLFragment
+
+#: A bare `data_type` is emitted straight into the column list, so it is held
+#: to the shape of a type name: an identifier, optionally followed by a size
+#: or precision -- `INT`, `NVARCHAR(MAX)`, `DECIMAL(18,2)`. Anything richer
+#: (`ARRAY<STRING>`, `STRUCT<...>`) must say `RawSQL` and own the risk.
+_SQL_TYPE_NAME = re.compile(
+    r"^[A-Za-z][A-Za-z0-9_]*\s*(\(\s*(MAX|\d+(\s*,\s*\d+)?)\s*\))?$", re.IGNORECASE
+)
 
 
 class ColumnDefinition(BaseModel):
@@ -65,16 +75,15 @@ class ColumnDefinition(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str = Field(..., min_length=1, max_length=128)
-    data_type: str = Field(
+    data_type: Union[str, RawSQL] = Field(
         ...,
-        min_length=1,
         description="Platform-specific SQL data type (e.g., 'NVARCHAR(60)', 'INT', 'DECIMAL(10,2)')",
     )
     nullable: bool = Field(default=True)
     default_value: Optional[Any] = Field(default=None)
     primary_key: bool = Field(default=False)
     unique: bool = Field(default=False)
-    check_constraint: Optional[str] = Field(default=None)
+    check_constraint: Optional[SQLFragment] = Field(default=None)
     collation: Optional[str] = Field(default=None)
     computed_expression: Optional[str] = Field(default=None)
 
@@ -92,6 +101,19 @@ class ColumnDefinition(BaseModel):
                 f"Must start with letter or underscore, and contain only alphanumeric or underscore."
             )
 
+        return v
+
+    @field_validator("data_type")
+    @classmethod
+    def validate_data_type(cls, v: Union[str, RawSQL]) -> Union[str, RawSQL]:
+        """Hold a bare string to the shape of a SQL type name."""
+        if isinstance(v, RawSQL):
+            return v
+        if not _SQL_TYPE_NAME.match(v.strip()):
+            raise ValueError(
+                f"Invalid data type: {v!r}. Expected a type name such as "
+                "'INT' or 'DECIMAL(18,2)'; wrap anything richer in RawSQL(...)."
+            )
         return v
 
     @model_validator(mode="after")
