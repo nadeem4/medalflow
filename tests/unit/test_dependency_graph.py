@@ -26,13 +26,13 @@ from medalflow.types.metadata import SQLDependencies
 
 
 @pytest.fixture
-def analyzer():
-    """Analyzer bound to the T-SQL dialect without booting live settings (D6)."""
-    instance = SQLDependencyAnalyzer.__new__(SQLDependencyAnalyzer)
-    instance.settings = None
-    instance.dialect = "tsql"
-    instance.table_prefix = ""
-    return instance
+def analyzer(offline_settings):
+    """The real analyzer on the real settings, booted offline (D6).
+
+    Hand-building this with `__new__` is how the prefix mismatch stayed
+    invisible: a stub with `table_prefix = ""` cannot reproduce it.
+    """
+    return SQLDependencyAnalyzer(offline_settings)
 
 
 # --- task 4: extraction actually runs -------------------------------------
