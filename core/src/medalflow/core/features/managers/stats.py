@@ -2,12 +2,16 @@
 
 This module provides the StatsManager plugin for managing database
 statistics configuration and operations across all application layers.
+
+The DataFrame this manager reshapes arrives from an injected loader
+(``set_csv_loader``), so pandas is only ever a type name here and is imported
+lazily.
 """
 
-import logging
-from typing import Any, Callable, Optional
+from __future__ import annotations
 
-import pandas as pd
+import logging
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from medalflow.core.features import get_feature_manager
 from medalflow.core.features.base import FeatureManager
@@ -16,6 +20,9 @@ from medalflow.protocols.features import CacheProtocol, StatsProtocol
 from medalflow.settings import get_settings
 
 from ...types import StatsConfiguration
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +111,7 @@ class StatsManager(StatsProtocol, FeatureManager):
         settings = get_settings()
         return settings.stats.stats_csv_path
 
-    def get_stats_config(self, schema: str) -> Optional["StatsConfiguration"]:
+    def get_stats_config(self, schema: str) -> Optional[StatsConfiguration]:
         """Get processed stats configuration for a schema.
 
         Args:
@@ -134,7 +141,7 @@ class StatsManager(StatsProtocol, FeatureManager):
             return config.get_table_columns(table_name.lower())
         return None
 
-    def _process_stats(self, schema: str) -> Optional["StatsConfiguration"]:
+    def _process_stats(self, schema: str) -> Optional[StatsConfiguration]:
         """Process raw CSV into StatsConfiguration.
 
         Args:

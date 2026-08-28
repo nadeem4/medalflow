@@ -18,6 +18,7 @@ class ErrorCode(Enum):
 
     # Configuration errors (1xxx)
     FEATURE_DISABLED = "CONFIG_004"
+    MISSING_DEPENDENCY = "CONFIG_005"
 
     # Connection errors (3xxx)
     CONNECTION_ERROR = "CONNECTION_001"

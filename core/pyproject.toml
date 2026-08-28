@@ -3,7 +3,12 @@ name = "medalflow"
 version = "0.1.0.dev0"
 description = "Declare medallion (Bronze/Silver/Gold) data models as Python classes; MedalFlow extracts dependencies from your SQL and compiles them into a staged execution plan."
 authors = ["nadeem4.nk13@gmail.com"]
-readme = "README.md"
+# The one README lives at the repository root, one level up. Pointing at it
+# from here is what makes `pip install .` work from `core/` at all -- without
+# it poetry-core aborts metadata generation on "Readme path does not exist",
+# and the `bare-install` CI job has nothing to install. Phase 6 finishes the
+# packaging metadata.
+readme = "../README.md"
 license = "MIT"
 homepage = "https://github.com/nadeem4/medalflow.git"
 repository = "https://github.com/nadeem4/medalflow.git"
@@ -21,19 +26,42 @@ packages = [{include = "medalflow", from = "src"}]
 python = "^3.9"
 pydantic = {extras = ["dotenv"], version = "^2.5.0"}
 pydantic-settings = "^2.1.0"
-pandas = "^2.0.0"
 sqlalchemy = "^2.0.0"
-azure-identity = "^1.15.0"
-azure-keyvault-secrets = "^4.7.0"
-azure-storage-file-datalake = "^12.14.0"
-# adlfs backs the `abfs://` URLs pandas is handed in datalake/client.py, and
-# pyarrow is named explicitly as the parquet engine there. Both were imported
-# at runtime without ever being declared.
-adlfs = ">=2023.10.0"
-pyarrow = ">=14.0.0"
 opentelemetry-api = "^1.22.0"
 sqlglot = "^23.0.0"
+
+# --- The `azure` extra --------------------------------------------------
+# Everything below is reachable only through the compute and storage seams
+# (medalflow.compute.engines.base, medalflow.datalake.client). Core planning --
+# medallion, DAG building, SQL dependency analysis -- never touches it, so a
+# bare `pip install medalflow` leaves it out and the `bare-install` CI job
+# keeps it that way. Every import site is function-local and guarded by
+# medalflow.common.optional_deps.require_module, which names this extra.
+#
+# pandas is here for the same reason as the SDKs: its only callers are
+# DatalakeClient's read/upload paths (over `abfs://`, hence adlfs and pyarrow)
+# and BaseSQLEngine.fetch_dataframe (which needs pyodbc anyway).
+pandas = {version = "^2.0.0", optional = true}
+azure-identity = {version = "^1.15.0", optional = true}
+azure-keyvault-secrets = {version = "^4.7.0", optional = true}
+azure-storage-file-datalake = {version = "^12.14.0", optional = true}
+adlfs = {version = ">=2023.10.0", optional = true}
+pyarrow = {version = ">=14.0.0", optional = true}
 pyodbc = {version = "^5.0.0", optional = true}
+
+# Without this section `optional = true` makes a dependency uninstallable by
+# any means: pyodbc was declared optional with no extra to expose it, so CI
+# hand-installed it with a literal `pip install pyodbc`.
+[tool.poetry.extras]
+azure = [
+    "pandas",
+    "azure-identity",
+    "azure-keyvault-secrets",
+    "azure-storage-file-datalake",
+    "adlfs",
+    "pyarrow",
+    "pyodbc",
+]
 
 [tool.poetry.group.dev.dependencies]
 # Essential testing tools

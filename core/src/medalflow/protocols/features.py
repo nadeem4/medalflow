@@ -2,11 +2,18 @@
 
 This module defines protocols for feature managers used throughout
 the MedalFlow framework.
+
+Like every Layer 0 module this one has no runtime dependencies: the single
+``pd.DataFrame`` reference is a lazy annotation, so importing it does not
+import pandas.
 """
 
-from typing import Any, Callable, Optional, Protocol, runtime_checkable
+from __future__ import annotations
 
-import pandas as pd
+from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 @runtime_checkable

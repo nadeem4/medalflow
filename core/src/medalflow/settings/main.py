@@ -190,8 +190,11 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
             self.attach_secrets(secret_provider)
             self.propagate_secrets(self.compute, self.datalake)
 
-    def _create_secret_provider(self) -> Optional["SecretProvider"]:
+    def _create_secret_provider(self) -> "SecretProvider":
         """Create the secret provider named by the configuration.
+
+        Never returns None: a settings object without a provider is a settings
+        object whose ``SecretField`` descriptors all read empty.
 
         Returns:
             A KeyVault provider if Key Vault is configured, a mock provider in
@@ -204,8 +207,15 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
                 logger.debug("Creating KeyVault secret provider")
                 return KeyVaultSecrets(settings=self.keyvault)
             except Exception as e:
-                logger.warning(f"Failed to create KeyVault provider: {e}")
-                return None
+                # Was `return None`, the last route to a provider-less settings
+                # object. The environment provider needs nothing installed, so
+                # falling back to it beats having no provider at all.
+                logger.warning(
+                    "Failed to create KeyVault provider (%s); falling back to %s* variables",
+                    e,
+                    ENV_PREFIX,
+                )
+                return EnvSecretProvider()
 
         elif self.test_mode:
             logger.info("Using mock secret provider for test mode")

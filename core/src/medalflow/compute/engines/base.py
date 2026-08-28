@@ -1,22 +1,31 @@
+"""SQLAlchemy-backed SQL execution.
+
+``pyodbc`` (the DBAPI driver) and ``pandas`` (the DataFrame fetch path) are
+imported inside the two methods that need them: both ship with the optional
+``azure`` extra, and importing this module must not require it. SQLAlchemy
+itself is a hard dependency and stays at module scope.
+"""
+
 import time
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Optional
-
-if TYPE_CHECKING:
-    from medalflow.settings import ComputeSettings
 from urllib import parse
 
-import pandas as pd
-import pyodbc
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.pool import QueuePool
 
 from medalflow.common.exceptions import CTEError, connection_error, query_execution_error
+from medalflow.common.optional_deps import require_module
 from medalflow.constants.compute import ComputeEnvironment
 from medalflow.logging import get_logger
 from medalflow.utils.decorators import retry_with_backoff as retry
 from medalflow.utils.decorators import traced
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from medalflow.settings import ComputeSettings
 
 logger = get_logger(__name__)
 
@@ -99,13 +108,15 @@ class BaseSQLEngine:
             Engine: Configured SQLAlchemy engine
 
         Raises:
+            CTEError: If pyodbc is not installed, or if engine creation fails
             ValueError: If no ODBC connection string is configured
-            ConnectionError: If engine creation fails
         """
-        try:
-            # Disable pyodbc pooling as SQLAlchemy handles it
-            pyodbc.pooling = False
+        # Outside the try: a missing driver is not a connection failure, and
+        # wrapping it would bury the install instruction under one.
+        # Disable pyodbc pooling as SQLAlchemy handles it.
+        require_module("pyodbc").pooling = False
 
+        try:
             # Get ODBC connection string from settings
             odbc_str = self.settings.get_odbc_string(self.environment)
             if not odbc_str:
@@ -251,8 +262,9 @@ class BaseSQLEngine:
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
     def fetch_dataframe(
         self, query: str, telemetry: Optional[dict[str, str]] = None
-    ) -> pd.DataFrame:
+    ) -> "pd.DataFrame":
         """Execute query and return results as pandas DataFrame."""
+        pd = require_module("pandas")
         start_time = time.time()
         payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))

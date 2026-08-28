@@ -2,6 +2,11 @@
 
 Simple Azure Data Lake Storage client for MedalFlow.
 
+Requires the optional cloud dependencies: `pip install 'medalflow[azure]'`. Importing this
+module works without them -- the Azure SDKs and pandas are pulled in by the methods that use
+them, and calling one without the extra installed raises a MedalFlow error naming the
+install command.
+
 ## Usage
 
 ```python

@@ -5,9 +5,8 @@ such as operation results, job configurations, and execution metadata.
 Operations themselves have been moved to the operations module.
 """
 
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
-import pandas as pd
 from pydantic import Field
 
 from medalflow.constants.compute import EngineType
@@ -45,7 +44,11 @@ class OperationResult(CTEBaseModel):
 
     # Optional details
     rows_affected: Optional[int] = Field(default=None, ge=0)
-    data: Optional[Union[pd.DataFrame, list[dict[str, Any]], Any]] = Field(
+    # Annotated `Any`, not a union ending in `Any`. The old
+    # `Union[pd.DataFrame, list[dict], Any]` validated identically -- the
+    # trailing `Any` accepted everything the earlier members would have -- but
+    # naming pandas here dragged it into every import of the compute package.
+    data: Optional[Any] = Field(
         default=None, description="Query result data - DataFrame, list of dicts, or scalar value"
     )
     error_message: Optional[str] = Field(default=None)

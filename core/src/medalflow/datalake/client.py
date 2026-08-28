@@ -4,20 +4,29 @@
 :class:`medalflow.protocols.StorageClient` -- the ``delete`` / ``read_csv``
 pair the framework actually calls. Everything else on this class is a
 convenience for application code.
-"""
-from typing import Optional
 
-import pandas as pd
-from azure.identity import DefaultAzureCredential
-from azure.storage.filedatalake import DataLakeServiceClient
+The Azure SDKs and pandas ship with the optional ``azure`` extra, so they are
+imported inside the methods that use them rather than at module scope:
+``compute/platforms/synapse.py`` imports this module transitively from
+``import medalflow``, and a bare install must not need the cloud stack to get
+that far. Constructing a client is likewise SDK-free -- the service client is
+built on first I/O.
+"""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
 
 from medalflow.common.exceptions import CTEError
+from medalflow.common.optional_deps import require_module
 from medalflow.constants.datalake import DataLakeAuthMethod, LakeType
 from medalflow.logging import get_logger
 from medalflow.settings import get_settings
 from medalflow.utils.decorators import traced
 
 from .types import FileInfo
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = get_logger(__name__)
 
@@ -65,9 +74,12 @@ class DatalakeClient:
                 if self.config.auth_method == DataLakeAuthMethod.ACCESS_KEY:
                     credential = self.config.access_key
                 else:
-                    credential = DefaultAzureCredential()
+                    credential = require_module("azure.identity").DefaultAzureCredential()
 
                 # Create service client
+                DataLakeServiceClient = require_module(
+                    "azure.storage.filedatalake"
+                ).DataLakeServiceClient
                 self._service_client = DataLakeServiceClient(
                     account_url=f"https://{self.config.account_name}.dfs.core.windows.net",
                     credential=credential,
@@ -148,6 +160,7 @@ class DatalakeClient:
             path: Target path in the lake
             **kwargs: Additional arguments passed to pandas write functions
         """
+        pd = require_module("pandas")
         if not isinstance(data, pd.DataFrame):
             raise TypeError("upload expects a pandas DataFrame")
         abfs_path = self._get_abfs_path(path)
@@ -187,6 +200,7 @@ class DatalakeClient:
         Returns:
             DataFrame for parquet/csv/json files
         """
+        pd = require_module("pandas")
         # Check if it's already an ABFS path
         if path.startswith("abfs://"):
             abfs_path = path
