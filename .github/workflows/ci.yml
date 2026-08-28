@@ -8,10 +8,6 @@ on:
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: core
-
 env:
   POETRY_VERSION: "2.4.1"
 
@@ -24,17 +20,13 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
-      # --no-root: source is reached via `pythonpath = ["src"]` (pytest) and
-      # PYTHONPATH=src (smoke test), so the project itself does not need
-      # installing here. The `bare-install` job below is the one that installs
-      # it. Phase 6 finishes the packaging metadata.
       - name: Install dependencies
-        run: poetry install --with dev --no-root
+        run: poetry install --with dev
 
       # Blocking as of Phase 2. `src` and `tests` are clean under the full ruff
       # config and under black, so any new violation fails the build. The former
@@ -52,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.11"]
+        python-version: ["3.13"]
     steps:
       - uses: actions/checkout@v4
 
@@ -63,12 +55,8 @@ jobs:
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
-      # --no-root: source is reached via `pythonpath = ["src"]` (pytest) and
-      # PYTHONPATH=src (smoke test), so the project itself does not need
-      # installing here. The `bare-install` job below is the one that installs
-      # it. Phase 6 finishes the packaging metadata.
       - name: Install dependencies
-        run: poetry install --with dev --no-root --extras azure
+        run: poetry install --with dev --extras azure
 
       # Blocking as of Phase 1: the orphaned processor/validator stubs are gone,
       # so the package imports and the suite runs.
@@ -83,21 +71,18 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
-      # --no-root: source is reached via `pythonpath = ["src"]` (pytest) and
-      # PYTHONPATH=src (smoke test), so the project itself does not need
-      # installing here. The `bare-install` job below is the one that installs
-      # it. Phase 6 finishes the packaging metadata.
       - name: Install dependencies
-        run: poetry install --with dev --no-root --extras azure
+        run: poetry install --with dev --extras azure
 
-      # Blocking as of Phase 1. Renamed to `medalflow` in Phase 2.
+      # No PYTHONPATH: `poetry install` above installs the root project, so
+      # this imports the installed distribution rather than the source tree.
       - name: Import smoke test
-        run: PYTHONPATH=src poetry run python -c "import medalflow; import medalflow.medallion; import medalflow.api"
+        run: poetry run python -c "import medalflow; import medalflow.medallion; import medalflow.api"
 
   # The guardrail behind the cloud-agnostic claim. `pip install .` with no
   # extras is exactly what `pip install medalflow` gives a user: pydantic,
@@ -116,7 +101,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       # No Poetry, no extras, no dev group, no PYTHONPATH: the installed
       # distribution is what gets imported below.
