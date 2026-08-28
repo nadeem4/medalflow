@@ -12,8 +12,8 @@ implemented minimally, mirroring `gold_metadata`.
 
 import pytest
 
-from core.medallion.bronze.decorators import bronze_metadata
-from core.types.metadata import BronzeMetadata
+from medalflow.medallion.bronze.decorators import bronze_metadata
+from medalflow.types.metadata import BronzeMetadata
 
 
 def test_decorated_class_carries_bronze_metadata():
@@ -60,7 +60,7 @@ def test_decorator_returns_the_same_class_object():
 
 
 def test_module_does_not_shadow_the_real_metadata_model():
-    import core.medallion.bronze.decorators as decorators
+    import medalflow.medallion.bronze.decorators as decorators
 
     shadow = getattr(decorators, "BronzeMetadata", None)
     assert shadow is None or shadow is BronzeMetadata

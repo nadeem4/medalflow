@@ -13,13 +13,13 @@ from typing import List
 
 import pytest
 
-from core.constants.sql import QueryType
-from core.medallion.silver.metadata_discovery import (
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.silver.metadata_discovery import (
     SilverMetadataDiscovery,
     TransformationMetadata,
 )
-from core.medallion.silver.sequencer import SilverTransformationSequencer
-from core.types.metadata import QueryMetadata
+from medalflow.medallion.silver.sequencer import SilverTransformationSequencer
+from medalflow.types.metadata import QueryMetadata
 
 
 # --- api seam: sequencer_class must be instantiated ------------------------
@@ -41,7 +41,7 @@ class _FakePlan:
 
 @pytest.fixture
 def api_module(monkeypatch):
-    from core.api import medallion as api
+    from medalflow.api import medallion as api
 
     created = {}
 
@@ -65,7 +65,7 @@ def api_module(monkeypatch):
     # SilverTransformationSequencer.__init__ resolves live settings of its own;
     # this test is about the seam instantiating sequencer_class at all, so keep
     # that construction offline (D6).
-    from core.medallion.silver import sequencer as silver_sequencer
+    from medalflow.medallion.silver import sequencer as silver_sequencer
 
     monkeypatch.setattr(
         silver_sequencer.SilverTransformationSequencer,
@@ -151,7 +151,7 @@ def test_enum_query_uses_the_core_query_builder_module(monkeypatch):
         def fully_qualified_name(self, schema, object_name):
             return "[bronze].[Enumeration]"
 
-    import core.query_builder.factory as factory
+    import medalflow.query_builder.factory as factory
 
     monkeypatch.setattr(factory, "create_query_builder", lambda: _Builder())
 

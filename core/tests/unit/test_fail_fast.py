@@ -18,8 +18,8 @@ import textwrap
 
 import pytest
 
-from core.medallion.base.sequencer import _BaseSequencer
-from core.medallion.silver.metadata_discovery import SilverMetadataDiscovery
+from medalflow.medallion.base.sequencer import _BaseSequencer
+from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 
 
 class _ExplodingSequencer(_BaseSequencer):

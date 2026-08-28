@@ -1,8 +1,8 @@
 """Silver model reading another silver model — the silver -> silver edge."""
 
-from core.constants.sql import QueryType
-from core.medallion.base.decorators import query_metadata
-from core.medallion.silver import SilverTransformationSequencer, silver_metadata
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.base.decorators import query_metadata
+from medalflow.medallion.silver import SilverTransformationSequencer, silver_metadata
 
 
 @silver_metadata(

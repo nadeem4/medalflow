@@ -44,7 +44,7 @@ OFFLINE_ENV = {
 @pytest.fixture
 def offline_settings(monkeypatch):
     """Boot real settings from placeholder env vars, then reset the singleton."""
-    from core.settings import main as settings_main
+    from medalflow.settings import main as settings_main
 
     for key, value in OFFLINE_ENV.items():
         monkeypatch.setenv(key, value)

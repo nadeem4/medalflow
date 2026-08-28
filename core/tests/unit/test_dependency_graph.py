@@ -19,11 +19,11 @@ Both are now settled on one shape: flat sets of fully-qualified lowercase
 
 import pytest
 
-from core.constants.sql import QueryType
-from core.medallion.orchestration.operation_dag_builder import OperationDAGBuilder
-from core.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
-from core.operations import Select
-from core.types.metadata import SQLDependencies
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.orchestration.operation_dag_builder import OperationDAGBuilder
+from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
+from medalflow.operations import Select
+from medalflow.types.metadata import SQLDependencies
 
 
 @pytest.fixture

@@ -8,9 +8,9 @@ between them by parsing that SQL, builds one cross-layer DAG, and compiles it in
 execution plan with observability built in.
 
 ```python
-from core.constants.sql import QueryType
-from core.medallion.base.decorators import query_metadata
-from core.medallion.silver import SilverTransformationSequencer, silver_metadata
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.base.decorators import query_metadata
+from medalflow.medallion.silver import SilverTransformationSequencer, silver_metadata
 
 
 @silver_metadata(
@@ -34,8 +34,8 @@ declare dependencies by hand, and you never write orchestration code.
 ## Status: pre-release, under active repair
 
 This project is **not yet published to PyPI** and the API is not stable. It is being brought
-to a `v0.1.0` release through a phased remediation plan; expect breaking changes, including a
-package rename from `core` to `medalflow`.
+to a `v0.1.0` release through a phased remediation plan; expect breaking changes. The
+package has been renamed from `core` to `medalflow`; update imports accordingly.
 
 Be aware of what is and is not proven today:
 
