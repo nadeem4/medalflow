@@ -170,13 +170,6 @@ def plan(orchestrator, analyzer):
     dependencies = {
         operation: analyzer.extract_dependencies(operation.select_query) for operation in operations
     }
-    # A CREATE TABLE writes the table it is named for; the analyzer only sees
-    # the SELECT body, which is what a real query builder would also emit.
-    for operation in operations:
-        dependencies[operation].writes_to = (
-            f"{operation.schema_name}.{operation.object_name}".lower()
-        )
-
     class _Analyzer:
         def analyze_operations(self, _operations):
             return dependencies
