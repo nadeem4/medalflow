@@ -1,7 +1,7 @@
-from typing import Dict, List, Any, Optional
+from typing import List, Optional
 
 from core.medallion.base.sequencer import _BaseSequencer
-from core.constants.medallion import ExecutionMode, Layer
+from core.constants.medallion import Layer
 from core.settings import get_settings
 from core.types.metadata import DiscoveredMethod
 from core.operations import BaseOperation
@@ -39,14 +39,6 @@ class GoldSequencer(_BaseSequencer):
             '_gold_metadata' - the attribute name for class metadata
         """
         return '_gold_metadata'
-    
-    def _requires_class_metadata(self) -> bool:
-        """Gold sequencer requires class-level metadata.
-        
-        Returns:
-            True - Gold sequencer must have @gold_metadata decorator
-        """
-        return True
     
     def _get_queries(self, discovered_methods: List[DiscoveredMethod]) -> List[BaseOperation]:
         """Filter operations based on selected table names.

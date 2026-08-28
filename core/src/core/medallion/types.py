@@ -4,8 +4,8 @@ This module contains all type definitions for the medallion architecture,
 including execution plans, DAGs, lineage tracking, and database metadata.
 """
 
-from collections import defaultdict, deque
-from typing import Any, Dict, List, Set, Optional, Union
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -198,18 +198,6 @@ class DependencyDAG(BaseModel):
         if node not in self.adjacency_list:
             self.adjacency_list[node] = []
     
-    def add_edge(self, from_node: str, to_node: str) -> None:
-        """Add an edge (dependency) between two nodes.
-        
-        Args:
-            from_node: The node that has a dependency
-            to_node: The node that is depended upon
-        """
-        if from_node not in self.adjacency_list:
-            self.adjacency_list[from_node] = []
-        if to_node not in self.adjacency_list[from_node]:
-            self.adjacency_list[from_node].append(to_node)
-    
     def add_edges(self, from_node: str, to_nodes: List[str]) -> None:
         """Add multiple edges (dependencies) for a node.
         
@@ -234,26 +222,6 @@ class DependencyDAG(BaseModel):
         """
         return self.adjacency_list.get(node, [])
     
-    def get_all_dependencies(self, node: str) -> Set[str]:
-        """Get all dependencies (direct and transitive) for a node.
-        
-        Args:
-            node: The node to get all dependencies for
-            
-        Returns:
-            Set of all nodes that this node depends on (directly or indirectly)
-        """
-        all_deps = set()
-        to_process = deque(self.get_dependencies(node))
-        
-        while to_process:
-            dep = to_process.popleft()
-            if dep not in all_deps:
-                all_deps.add(dep)
-                to_process.extend(self.get_dependencies(dep))
-        
-        return all_deps
-    
     def get_dependents(self, node: str) -> List[str]:
         """Get all nodes that directly depend on this node.
         
@@ -268,34 +236,6 @@ class DependencyDAG(BaseModel):
             if node in deps:
                 dependents.append(n)
         return dependents
-    
-    def get_all_dependents(self, node: str) -> Set[str]:
-        """Get all dependents (direct and transitive) for a node.
-        
-        Args:
-            node: The node to get all dependents for
-            
-        Returns:
-            Set of all nodes that depend on this node (directly or indirectly)
-        """
-        all_dependents = set()
-        to_process = deque(self.get_dependents(node))
-        
-        while to_process:
-            dep = to_process.popleft()
-            if dep not in all_dependents:
-                all_dependents.add(dep)
-                to_process.extend(self.get_dependents(dep))
-        
-        return all_dependents
-    
-    def get_all_nodes(self) -> Set[str]:
-        """Get all nodes in the DAG.
-        
-        Returns:
-            Set of all node names in the DAG
-        """
-        return set(self.adjacency_list.keys())
     
     def has_cycles(self) -> bool:
         """Check if the DAG has cycles using DFS.
@@ -327,43 +267,6 @@ class DependencyDAG(BaseModel):
                     return True
         
         return False
-    
-    def topological_sort(self) -> List[str]:
-        """Return nodes in topological order using Kahn's algorithm.
-        
-        Returns:
-            List of node names in topological order
-            
-        Raises:
-            ValueError: If the graph contains cycles
-        """
-        if self.has_cycles():
-            raise ValueError("Cannot perform topological sort on a graph with cycles")
-        
-        # Calculate in-degrees
-        in_degree = defaultdict(int)
-        for node in self.adjacency_list:
-            in_degree[node] = 0
-        
-        for node, deps in self.adjacency_list.items():
-            for dep in deps:
-                in_degree[node] += 1
-        
-        # Find nodes with no dependencies
-        queue = deque([node for node in self.adjacency_list if in_degree[node] == 0])
-        result = []
-        
-        while queue:
-            node = queue.popleft()
-            result.append(node)
-            
-            # Remove this node from dependencies
-            for dependent in self.get_dependents(node):
-                in_degree[dependent] -= 1
-                if in_degree[dependent] == 0:
-                    queue.append(dependent)
-        
-        return result
     
     def get_execution_stages(self) -> List[List[str]]:
         """Get execution stages where each stage contains nodes that can run in parallel.
@@ -407,37 +310,6 @@ class DependencyDAG(BaseModel):
         
         return stages
     
-    def is_reachable(self, from_node: str, to_node: str) -> bool:
-        """Check if one node is reachable from another.
-        
-        Args:
-            from_node: Starting node
-            to_node: Target node
-            
-        Returns:
-            True if to_node is reachable from from_node
-        """
-        return to_node in self.get_all_dependencies(from_node)
-    
-    def get_subgraph(self, nodes: Set[str]) -> 'DependencyDAG':
-        """Get a subgraph containing only the specified nodes.
-        
-        Args:
-            nodes: Set of nodes to include in the subgraph
-            
-        Returns:
-            New DependencyDAG containing only the specified nodes
-        """
-        subgraph = DependencyDAG()
-        for node in nodes:
-            if node in self.adjacency_list:
-                deps = [d for d in self.adjacency_list[node] if d in nodes]
-                if deps:
-                    subgraph.adjacency_list[node] = deps
-                else:
-                    subgraph.add_node(node)
-        return subgraph
-    
     def get_adjacency_list(self) -> Dict[str, List[str]]:
         """Get a copy of the adjacency list for external use.
         
@@ -446,63 +318,6 @@ class DependencyDAG(BaseModel):
         """
         return dict(self.adjacency_list)
     
-    def get_reverse_graph(self) -> Dict[str, List[str]]:
-        """Get the reverse graph (dependents mapping).
-        
-        This creates a mapping from each node to all nodes that depend on it,
-        essentially reversing the direction of edges in the graph.
-        
-        Returns:
-            Dictionary mapping each node to its list of dependents
-        """
-        reverse = defaultdict(list)
-        for node, deps in self.adjacency_list.items():
-            for dep in deps:
-                reverse[dep].append(node)
-        return dict(reverse)
-    
-    def get_in_degrees(self) -> Dict[str, int]:
-        """Calculate in-degrees for all nodes.
-        
-        The in-degree of a node is the number of edges pointing to it,
-        which represents how many dependencies it has.
-        
-        Returns:
-            Dictionary mapping each node to its in-degree count
-        """
-        in_degree = {node: 0 for node in self.adjacency_list}
-        for node, deps in self.adjacency_list.items():
-            for dep in deps:
-                if dep not in in_degree:
-                    in_degree[dep] = 0
-            in_degree[node] = len(deps)
-        return in_degree
-    
-    def remove_node(self, node: str) -> None:
-        """Remove a node and all its edges from the DAG.
-        
-        Args:
-            node: The node to remove from the graph
-        """
-        # Remove the node itself
-        if node in self.adjacency_list:
-            del self.adjacency_list[node]
-        
-        # Remove edges pointing to this node
-        for deps in self.adjacency_list.values():
-            if node in deps:
-                deps.remove(node)
-    
-    def remove_edge(self, from_node: str, to_node: str) -> None:
-        """Remove a specific edge from the DAG.
-        
-        Args:
-            from_node: The source node of the edge
-            to_node: The destination node of the edge
-        """
-        if from_node in self.adjacency_list:
-            if to_node in self.adjacency_list[from_node]:
-                self.adjacency_list[from_node].remove(to_node)
 
 
 # Export all medallion types

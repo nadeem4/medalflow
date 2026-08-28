@@ -6,10 +6,10 @@ This module contains all metadata classes including layer-specific metadata
 
 from typing import Any, Dict, List, NamedTuple, Optional, Set, Union
 
-from pydantic import ConfigDict, Field, field_serializer, model_validator
+from pydantic import Field, field_serializer, model_validator
 
 from core.types.base import CTEBaseModel
-from core.constants.medallion import ExecutionMode, SnapshotFrequency
+from core.constants.medallion import SnapshotFrequency
 from core.constants.sql import QueryType
 from core.constants.compute import EngineType
 
@@ -213,10 +213,6 @@ class QueryMetadata(CTEBaseModel):
             the table being modified.
         schema_name: Database schema containing the target table. If empty,
             uses the default schema for the connection.
-        execution_type: [DEPRECATED - Ignored] Previously controlled execution strategy.
-            Now all dependencies are automatically determined from SQL analysis.
-        order: [DEPRECATED - Ignored] Previously controlled execution priority.
-            Now execution order is determined by actual data dependencies.
         preferred_engine: Engine preference for query execution.
             Valid values: "sql", "spark", "auto". Defaults to "sql".
         unique_idx: List of column names forming the natural/business key for dimensions.
@@ -231,8 +227,6 @@ class QueryMetadata(CTEBaseModel):
     type: QueryType
     table_name: str = ""
     schema_name: str = ""
-    execution_type: ExecutionMode = ExecutionMode.SEQUENTIAL  # Deprecated - ignored
-    order: float = 0.0  # Deprecated - ignored
     preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
     unique_idx: Optional[List[str]] = None  # Dimension natural key columns
     filter: Optional[str] = None  # Enum name for auto-generation

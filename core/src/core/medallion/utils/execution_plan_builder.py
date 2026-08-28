@@ -11,7 +11,6 @@ from core.medallion.types import (
     LineageInfo,
     ExecutionPlan
 )
-from core.operations.dml import Select
 from core.logging import get_logger
 from core.observability.context import sanitize_extras
 
