@@ -91,7 +91,10 @@ ignore_missing_imports = true
 minversion = "7.0"
 addopts = "-ra -q --strict-markers"
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "." so shared helpers in tests/conftest.py are importable regardless of how
+# pytest is invoked: `python -m pytest` puts CWD on sys.path, the `pytest`
+# console script (what CI runs) does not.
+pythonpath = ["src", "."]
 
 [tool.coverage.run]
 source = ["src/medalflow"]
