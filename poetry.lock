@@ -3040,4 +3040,4 @@ azure = ["adlfs", "azure-identity", "azure-keyvault-secrets", "azure-storage-fil
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13"
-content-hash = "b3f275de321c4a039e4f226c2268b340ab71e764590120631d25f8a903c57e53"
+content-hash = "05dec5b49fcc9178f2293ca9a933ecceb989ee935fcc5d6be799a3ec71b88fd3"
