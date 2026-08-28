@@ -11,24 +11,18 @@ Key Features:
 """
 
 import time
-from typing import Dict, Optional
+from typing import Optional
 
-import pandas as pd
-
-from medalflow.constants.compute import EngineType
-from medalflow.constants.sql import QueryType
 from medalflow.compute.engines.synapse import SynapseSQLEngine
 from medalflow.compute.platforms.base import _BasePlatform
-from medalflow.query_builder.synapse import SynapseServerlessQueryBuilder
 from medalflow.compute.types import OperationResult
-from medalflow.operations import (
-    BaseOperation, Delete, Update, Insert, DropTable, CreateTable
-)
+from medalflow.constants.compute import EngineType
+from medalflow.constants.sql import QueryType
 from medalflow.datalake import get_processed_datalake_client
-from medalflow.datalake.client import DatalakeClient
-from medalflow.settings import SynapseSettings, ComputeEnvironment, get_settings
-from medalflow.query_builder import create_query_builder
 from medalflow.logging import get_logger
+from medalflow.operations import BaseOperation, CreateTable
+from medalflow.query_builder import create_query_builder
+from medalflow.settings import ComputeEnvironment, SynapseSettings
 
 logger = get_logger(__name__)
 
@@ -86,7 +80,7 @@ class SynapsePlatform(_BasePlatform):
     def execute_operation(
         self,
         operation: BaseOperation,
-        telemetry: Optional[Dict[str, str]] = None,
+        telemetry: Optional[dict[str, str]] = None,
     ) -> OperationResult:
         """Execute a database operation with Synapse-specific handling.
         

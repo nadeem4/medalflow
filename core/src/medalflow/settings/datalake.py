@@ -1,14 +1,13 @@
-from typing import Optional, Union, Any, ClassVar
-from functools import cached_property
+from typing import ClassVar, Optional, Union
 
-from pydantic import Field, SecretStr, model_validator, PrivateAttr
+from pydantic import Field, model_validator
 from pydantic_settings import SettingsConfigDict
 
-from .base import CTEBaseSettings
+from medalflow.constants.datalake import DataLakeAuthMethod, LakeType
 from medalflow.core.descriptors import SecretField
-from medalflow.constants.datalake import LakeType, DataLakeAuthMethod
 from medalflow.protocols import SecretProvider
 
+from .base import CTEBaseSettings
 
 
 class BaseDataLakeConfig(CTEBaseSettings):

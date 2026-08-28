@@ -8,10 +8,12 @@ This module consolidates all operation creation logic in the operations
 package (Layer 1), making it available to all higher layers.
 """
 
-from typing import Any, Dict, Optional, Type
+from typing import Any, Optional
 
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
+from medalflow.logging import get_logger
+from medalflow.observability.context import ExecutionRequestContext
 from medalflow.operations.base import BaseOperation
 from medalflow.operations.copy import Copy, ExecuteSQL
 from medalflow.operations.ddl import (
@@ -29,9 +31,7 @@ from medalflow.operations.dml import (
 )
 from medalflow.operations.statistics import CreateStatistics
 from medalflow.operations.views import CreateOrAlterView, DropView
-from medalflow.logging import get_logger
 from medalflow.types import QueryMetadata
-from medalflow.observability.context import ExecutionRequestContext
 
 logger = get_logger(__name__)
 
@@ -55,7 +55,7 @@ class OperationBuilder:
     """
     
     # Registry mapping QueryType to Operation class
-    _registry: Dict[QueryType, Type[BaseOperation]] = {
+    _registry: dict[QueryType, type[BaseOperation]] = {
         QueryType.SELECT: Select,
         QueryType.INSERT: Insert,
         QueryType.UPDATE: Update,

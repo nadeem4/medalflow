@@ -4,13 +4,13 @@ This module provides the OperationDAGBuilder class that builds
 dependency graphs from collections of database operations.
 """
 
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from medalflow.logging import get_logger
-from medalflow.observability.context import sanitize_extras
 from medalflow.medallion.types import DependencyDAG, ExecutionStage
-from medalflow.types.metadata import SQLDependencies
+from medalflow.observability.context import sanitize_extras
 from medalflow.operations import BaseOperation
+from medalflow.types.metadata import SQLDependencies
 
 if TYPE_CHECKING:
     from medalflow.settings import _Settings
@@ -36,8 +36,8 @@ class OperationDAGBuilder:
     
     def __init__(
         self,
-        operations: List[BaseOperation],
-        dependencies: Dict[BaseOperation, SQLDependencies],
+        operations: list[BaseOperation],
+        dependencies: dict[BaseOperation, SQLDependencies],
         settings: "_Settings"
     ):
         """Initialize the operation DAG builder.
@@ -56,10 +56,10 @@ class OperationDAGBuilder:
         self.dag = DependencyDAG()
         
         # Create operation tracking maps
-        self.operation_map: Dict[str, BaseOperation] = {}
+        self.operation_map: dict[str, BaseOperation] = {}
         # A table can have more than one writer (e.g. CREATE TABLE then INSERT).
         # Keep every writer: a reader of the table depends on all of them.
-        self.table_to_operation: Dict[str, List[str]] = {}
+        self.table_to_operation: dict[str, list[str]] = {}
         
         # Initialize operation identifiers
         self._initialize_operation_ids()
@@ -189,7 +189,7 @@ class OperationDAGBuilder:
             extra=sanitize_extras({"node_count": len(adjacency_list)}),
         )
     
-    def create_execution_stages(self) -> List[ExecutionStage]:
+    def create_execution_stages(self) -> list[ExecutionStage]:
         """Create execution stages from the DAG.
         
         Uses topological sorting to group operations into stages where:

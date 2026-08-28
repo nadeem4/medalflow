@@ -8,8 +8,8 @@ Components:
     - ExecutionPlanBuilder: Execution plan generation
 """
 
-from .sql_dependency_analyzer import SQLDependencyAnalyzer
 from .execution_plan_builder import ExecutionPlanBuilder
+from .sql_dependency_analyzer import SQLDependencyAnalyzer
 
 __all__ = [
     "SQLDependencyAnalyzer",

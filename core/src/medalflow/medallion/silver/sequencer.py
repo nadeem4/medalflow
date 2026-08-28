@@ -1,13 +1,13 @@
-from typing import Optional, Tuple
+from copy import deepcopy
+from typing import Optional
 
 import sqlglot
 from sqlglot import exp
 
-from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.constants.medallion import Layer
-from medalflow.types.metadata import QueryMetadata
+from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.settings import get_settings
-from copy import deepcopy  
+from medalflow.types.metadata import QueryMetadata
 
 
 class SilverTransformationSequencer(_BaseSequencer):
@@ -101,7 +101,7 @@ class SilverTransformationSequencer(_BaseSequencer):
             FROM {enum_table} 
             WHERE Enum = '{enum_name}'"""
     
-    def _transform_query_result(self, sql: str, metadata: QueryMetadata) -> Tuple[str, QueryMetadata]:
+    def _transform_query_result(self, sql: str, metadata: QueryMetadata) -> tuple[str, QueryMetadata]:
         """Transform Detail tables in temp schema to Silver format.
         
         Automatically applies silver layer transformations (null handling and default row)
@@ -200,7 +200,7 @@ class SilverTransformationSequencer(_BaseSequencer):
         
         return transformed_query
     
-    def _get_null_handling(self, col_name: str, source_expr: exp.Expression) -> Tuple[str, str]:
+    def _get_null_handling(self, col_name: str, source_expr: exp.Expression) -> tuple[str, str]:
         """
         Determine null handling and default value for a column.
         

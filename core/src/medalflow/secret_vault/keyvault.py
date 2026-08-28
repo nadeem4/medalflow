@@ -4,12 +4,14 @@ This module provides the KeyVaultSecrets class which implements the
 SecretProvider protocol for retrieving secrets from Azure Key Vault.
 """
 
-from typing import Optional, TYPE_CHECKING
 import time
+from typing import TYPE_CHECKING, Optional
+
 from pydantic import SecretStr
 
 if TYPE_CHECKING:
     from azure.keyvault.secrets import SecretClient
+
     from medalflow.settings.keyvault import KeyVaultSettings
 
 
@@ -45,8 +47,8 @@ class KeyVaultSecrets:
             SecretClient instance or None if not configured
         """
         if self._secret_client is None and self.kv_settings.is_configured:
+            from azure.identity import ClientSecretCredential, DefaultAzureCredential
             from azure.keyvault.secrets import SecretClient
-            from azure.identity import DefaultAzureCredential, ClientSecretCredential
             
             # Use client credentials if provided
             if self.kv_settings.client_id and self.kv_settings.client_secret and self.kv_settings.tenant_id:
@@ -93,7 +95,7 @@ class KeyVaultSecrets:
                     else:
                         break
                         
-                except Exception as e:
+                except Exception:
                     if attempt < max_retries - 1:
                         time.sleep(retry_delay)
                         continue

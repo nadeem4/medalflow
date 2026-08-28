@@ -24,18 +24,16 @@ Example:
     }
 """
 
-import re
-from typing import Dict, List, Set, Optional, Any, TYPE_CHECKING
-from enum import Enum
+from typing import TYPE_CHECKING, Optional
+
 import sqlglot
 from sqlglot import exp
-from sqlglot.errors import ParseError
 
+from medalflow.constants.sql import QueryType
 from medalflow.logging import get_logger
 from medalflow.observability.context import sanitize_extras
-from medalflow.types.metadata import SQLDependencies
 from medalflow.operations import BaseOperation
-from medalflow.constants.sql import QueryType
+from medalflow.types.metadata import SQLDependencies
 
 if TYPE_CHECKING:
     from medalflow.settings import _Settings
@@ -119,7 +117,7 @@ class SQLDependencyAnalyzer:
             writes_to=writes_to
         )
     
-    def _extract_source_tables_sqlglot(self, ast: 'exp.Expression', ctes: Set[str]) -> Set[str]:
+    def _extract_source_tables_sqlglot(self, ast: 'exp.Expression', ctes: set[str]) -> set[str]:
         """Extract all source tables from SQLGlot AST.
         
         Args:
@@ -129,7 +127,7 @@ class SQLDependencyAnalyzer:
         Returns:
             Set of fully qualified, lowercase table names
         """
-        tables: Set[str] = set()
+        tables: set[str] = set()
 
         # Find all table references
         for table in ast.find_all(exp.Table):
@@ -155,7 +153,7 @@ class SQLDependencyAnalyzer:
             return self._qualified_name(self._table_parts(ast.this))
         return None
     
-    def _extract_ctes_sqlglot(self, ast: 'exp.Expression') -> Set[str]:
+    def _extract_ctes_sqlglot(self, ast: 'exp.Expression') -> set[str]:
         """Extract CTE names from SQLGlot AST.
         
         Args:
@@ -169,7 +167,7 @@ class SQLDependencyAnalyzer:
 
     
     
-    def _is_cte(self, table_name: str, cte_names: Set[str]) -> bool:
+    def _is_cte(self, table_name: str, cte_names: set[str]) -> bool:
         """Check if table name is a CTE or temporary construct.
         
         Args:
@@ -210,7 +208,7 @@ class SQLDependencyAnalyzer:
         """
         return '.'.join(part for part in table_parts.values() if part).lower()
     
-    def analyze_operations(self, operations: List[BaseOperation]) -> Dict[BaseOperation, SQLDependencies]:
+    def analyze_operations(self, operations: list[BaseOperation]) -> dict[BaseOperation, SQLDependencies]:
         """Analyze dependencies for a list of database operations.
         
         This method extracts SQL from operations and analyzes their

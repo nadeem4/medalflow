@@ -5,7 +5,7 @@ partition paths in the data lake.
 """
 
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional
 
 from medalflow.constants.medallion import SnapshotFrequency
 
@@ -80,7 +80,7 @@ def get_partition_path(
     return f"{base_path}/{path_suffix}"
 
 
-def parse_snapshot_path(path: str) -> Dict[str, str]:
+def parse_snapshot_path(path: str) -> dict[str, str]:
     """Parse snapshot path to extract date components.
     
     Args:

@@ -4,17 +4,18 @@ This module provides the StatsManager plugin for managing database
 statistics configuration and operations across all application layers.
 """
 
-from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
 import logging
+from typing import Any, Callable, Optional
+
 import pandas as pd
 
+from medalflow.core.features import get_feature_manager
 from medalflow.core.features.base import FeatureManager
 from medalflow.core.features.registry import register_feature
-from medalflow.core.features import get_feature_manager
+from medalflow.protocols.features import CacheProtocol, StatsProtocol
 from medalflow.settings import get_settings
-from medalflow.protocols.features import StatsProtocol, CacheProtocol
-from ...types import StatsConfiguration
 
+from ...types import StatsConfiguration
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ class StatsManager(StatsProtocol, FeatureManager):
         self._csv_loader = loader
         logger.debug("CSV loader injected into StatsManager")
     
-    def initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def initialize(self, config: Optional[dict[str, Any]] = None) -> None:
         """Initialize stats manager.
         
         Sets up the manager for operation.
@@ -121,7 +122,7 @@ class StatsManager(StatsProtocol, FeatureManager):
             )
         return self._process_stats(schema)
     
-    def get_stats_columns(self, table_name: str, layer: str = "bronze") -> Optional[List[str]]:
+    def get_stats_columns(self, table_name: str, layer: str = "bronze") -> Optional[list[str]]:
         """Get statistics columns for a specific table.
         
         Args:

@@ -6,7 +6,7 @@ connection settings.
 """
 
 import logging
-from typing import Any, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -57,7 +57,7 @@ class SynapseSQLEngine(BaseSQLEngine):
         conn.execute(text("SET ANSI_PADDING ON"))
         conn.execute(text("SET ANSI_WARNINGS ON"))
     
-    def get_connection_info(self) -> Dict[str, Any]:
+    def get_connection_info(self) -> dict[str, Any]:
         """Get Synapse-specific connection information.
         
         Returns:

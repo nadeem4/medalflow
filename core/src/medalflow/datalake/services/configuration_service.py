@@ -6,10 +6,9 @@ data loading capabilities into feature managers via dependency injection.
 
 import logging
 
-from medalflow.datalake import get_internal_datalake_client
 from medalflow.core.features import get_feature_manager
+from medalflow.datalake import get_internal_datalake_client
 from medalflow.logging import get_logger
-
 
 logger = logging.getLogger(__name__)
 

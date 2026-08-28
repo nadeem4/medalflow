@@ -19,7 +19,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery

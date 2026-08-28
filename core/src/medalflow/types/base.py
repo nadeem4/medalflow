@@ -1,6 +1,7 @@
 """Base model class for all medalflow models with serialization support."""
 
-from typing import Any, Dict
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -18,7 +19,7 @@ class CTEBaseModel(BaseModel):
         validate_assignment=True
     )
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert model to dictionary for serialization.
         
         Recursively converts nested CTEBaseModel instances to dictionaries.

@@ -2,6 +2,7 @@ from pydantic import Field
 from pydantic_settings import SettingsConfigDict
 
 from medalflow.common.exceptions import feature_not_enabled_error
+
 from .base import CTEBaseSettings
 
 

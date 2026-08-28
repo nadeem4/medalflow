@@ -1,16 +1,17 @@
 """Simple Azure Data Lake Storage client."""
-from dataclasses import dataclass
-from typing import List, Optional
-import pandas as pd
-from azure.storage.filedatalake import DataLakeServiceClient
-from azure.identity import DefaultAzureCredential
+from typing import Optional
 
-from medalflow.settings import get_settings
-from .types import FileInfo
-from medalflow.constants.datalake import LakeType, DataLakeAuthMethod
+import pandas as pd
+from azure.identity import DefaultAzureCredential
+from azure.storage.filedatalake import DataLakeServiceClient
+
 from medalflow.common.exceptions import CTEError
+from medalflow.constants.datalake import DataLakeAuthMethod, LakeType
 from medalflow.logging import get_logger
+from medalflow.settings import get_settings
 from medalflow.utils.decorators import traced
+
+from .types import FileInfo
 
 logger = get_logger(__name__)
 
@@ -250,7 +251,7 @@ class DatalakeClient:
             recursive=recursive,
         ),
     )
-    def list_files(self, directory: str = "", recursive: bool = False) -> List[FileInfo]:
+    def list_files(self, directory: str = "", recursive: bool = False) -> list[FileInfo]:
         """List files in directory.
         
         Args:

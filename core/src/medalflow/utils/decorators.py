@@ -3,12 +3,10 @@
 import asyncio
 import functools
 import time
-from typing import Any, Callable, Dict, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Optional, TypeVar
 
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
-
-
 
 F = TypeVar('F', bound=Callable[..., Any])
 T = TypeVar('T')
@@ -29,8 +27,8 @@ def traced(
     span_name: Optional[str] = None,
     *,
     kind: SpanKind = SpanKind.INTERNAL,
-    attributes: Optional[Dict[str, Any]] = None,
-    attribute_getter: Optional[Callable[..., Optional[Dict[str, Any]]]] = None,
+    attributes: Optional[dict[str, Any]] = None,
+    attribute_getter: Optional[Callable[..., Optional[dict[str, Any]]]] = None,
 ) -> Callable[[F], F]:
     """Instrument a function with an OpenTelemetry span.
 
@@ -44,8 +42,8 @@ def traced(
     def decorator(func: F) -> F:
         is_coroutine = asyncio.iscoroutinefunction(func)
 
-        def _collect_attributes(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dict[str, Any]:
-            collected: Dict[str, Any] = {}
+        def _collect_attributes(args: tuple[Any, ...], kwargs: dict[str, Any]) -> dict[str, Any]:
+            collected: dict[str, Any] = {}
             if attributes:
                 collected.update({k: v for k, v in attributes.items() if v is not None})
 
@@ -106,7 +104,7 @@ def traced(
 
 def _should_retry_exception(
     exc: Exception,
-    retry_on: Optional[Tuple[Type[Exception], ...]],
+    retry_on: Optional[tuple[type[Exception], ...]],
     retry_condition: Optional[Callable[[Exception], bool]],
 ) -> bool:
     """Decide whether an exception is eligible for another retry attempt.
@@ -139,7 +137,7 @@ def retry_with_backoff(
     initial_delay: float = 1.0,
     max_delay: float = 60.0,
     exponential_base: float = 2.0,
-    retry_on: Optional[Tuple[Type[Exception], ...]] = None,
+    retry_on: Optional[tuple[type[Exception], ...]] = None,
     retry_condition: Optional[Callable[[Exception], bool]] = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for retrying operations with exponential backoff.

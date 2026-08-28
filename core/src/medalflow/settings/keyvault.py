@@ -6,6 +6,7 @@ secret_vault package for better separation of concerns.
 """
 
 from typing import Optional
+
 from pydantic import Field, SecretStr
 from pydantic_settings import SettingsConfigDict
 

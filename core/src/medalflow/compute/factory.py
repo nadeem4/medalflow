@@ -5,10 +5,10 @@ Builds the compute platform named by ``settings.compute.compute_type``.
 
 from typing import TYPE_CHECKING
 
-from medalflow.constants import ComputeType
-from medalflow.constants.compute import ComputeEnvironment
 from medalflow.compute.platforms.base import _BasePlatform
 from medalflow.compute.platforms.synapse import SynapsePlatform
+from medalflow.constants import ComputeType
+from medalflow.constants.compute import ComputeEnvironment
 from medalflow.logging import get_logger
 
 if TYPE_CHECKING:

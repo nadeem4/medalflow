@@ -4,13 +4,13 @@ This module contains operation classes for DDL commands like
 CREATE TABLE, DROP TABLE, CREATE SCHEMA, etc.
 """
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import Field, model_validator
 
 from medalflow.constants.sql import QueryType
-from medalflow.operations.columns import ColumnDefinition
 from medalflow.operations.base import BaseOperation
+from medalflow.operations.columns import ColumnDefinition
 
 
 class CreateTable(BaseOperation):
@@ -28,7 +28,7 @@ class CreateTable(BaseOperation):
     )
     
     # Table definition options
-    columns: Optional[List[ColumnDefinition]] = Field(default=None)
+    columns: Optional[list[ColumnDefinition]] = Field(default=None)
     select_query: Optional[str] = Field(default=None)  
     source_table: Optional[str] = Field(default=None)  
     
@@ -37,9 +37,9 @@ class CreateTable(BaseOperation):
     file_format: str = Field(default="parquet")
     
     # Table properties
-    partitions: Optional[List[str]] = Field(default=None)
+    partitions: Optional[list[str]] = Field(default=None)
     distribution: Optional[str] = Field(default=None)  # HASH, ROUND_ROBIN, REPLICATE
-    properties: Dict[str, Any] = Field(default_factory=dict)
+    properties: dict[str, Any] = Field(default_factory=dict)
     recreate: bool = Field(
         default=True,
         description="If True, drop and recreate table if it exists. If False, only create if not exists."

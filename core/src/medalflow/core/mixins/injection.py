@@ -4,7 +4,7 @@ This module provides mixins that enable dependency injection patterns,
 allowing classes to receive dependencies at runtime rather than construction time.
 """
 
-from typing import Optional, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from medalflow.protocols.providers import SecretProvider

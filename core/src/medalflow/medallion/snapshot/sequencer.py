@@ -1,7 +1,7 @@
 from typing import Optional
 
-from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.constants.medallion import Layer
+from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.settings import get_settings
 
 

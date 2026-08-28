@@ -4,7 +4,8 @@ This module provides the MockSecrets class which implements the
 SecretProvider protocol for testing without requiring actual Key Vault access.
 """
 
-from typing import Optional, Dict
+from typing import Optional
+
 from pydantic import SecretStr
 
 
@@ -19,7 +20,7 @@ class MockSecrets:
         mock_values: Dictionary mapping secret names to mock values
     """
     
-    def __init__(self, mock_values: Optional[Dict[str, str]] = None):
+    def __init__(self, mock_values: Optional[dict[str, str]] = None):
         """Initialize mock secret provider.
         
         Args:
@@ -28,7 +29,7 @@ class MockSecrets:
         """
         self.mock_values = mock_values or self._get_default_mocks()
     
-    def _get_default_mocks(self) -> Dict[str, str]:
+    def _get_default_mocks(self) -> dict[str, str]:
         """Get default mock values for common secrets.
         
         Returns:

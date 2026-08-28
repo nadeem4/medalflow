@@ -1,16 +1,16 @@
-from typing import List, Optional
+from typing import Optional
 
-from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.constants.medallion import Layer
+from medalflow.medallion.base.sequencer import _BaseSequencer
+from medalflow.operations import BaseOperation
 from medalflow.settings import get_settings
 from medalflow.types.metadata import DiscoveredMethod
-from medalflow.operations import BaseOperation
 
 
 class GoldSequencer(_BaseSequencer):
     """Sequencer for Gold layer operations in the medallion architecture."""
     
-    def __init__(self, selected_tables: Optional[List[str]] = None):
+    def __init__(self, selected_tables: Optional[list[str]] = None):
         """Initialize the Gold sequencer.
         
         Args:
@@ -40,7 +40,7 @@ class GoldSequencer(_BaseSequencer):
         """
         return '_gold_metadata'
     
-    def _get_queries(self, discovered_methods: List[DiscoveredMethod]) -> List[BaseOperation]:
+    def _get_queries(self, discovered_methods: list[DiscoveredMethod]) -> list[BaseOperation]:
         """Filter operations based on selected table names.
         
         Args:

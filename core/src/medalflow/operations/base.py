@@ -6,7 +6,7 @@ action should be performed, independent of how it's executed.
 """
 
 import re
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from pydantic import Field, field_validator
 
@@ -104,9 +104,9 @@ class BaseOperation(CTEBaseModel):
             self.context.attributes['engine_hint'] = self.engine_hint.value
         self.context.telemetry_base = self.context.to_telemetry_dict()
 
-    def telemetry_fields(self) -> Dict[str, str]:
+    def telemetry_fields(self) -> dict[str, str]:
         """Return flattened telemetry fields describing this operation."""
-        payload: Dict[str, str] = {
+        payload: dict[str, str] = {
             "operation.type": str(self.operation_type),
             "operation.schema": self.schema_name,
             "operation.object": self.object_name,
@@ -121,9 +121,9 @@ class BaseOperation(CTEBaseModel):
                 payload[f"operation.ctx.{key}"] = sanitized
         return payload
 
-    def observability_attributes(self) -> Dict[str, str]:
+    def observability_attributes(self) -> dict[str, str]:
         """Return key attributes useful for logging/metrics."""
-        attrs: Dict[str, str] = {
+        attrs: dict[str, str] = {
             "schema": self.schema_name,
             "object": self.object_name,
             "operation_type": str(self.operation_type),

@@ -11,16 +11,13 @@ import json
 import logging
 import logging.config
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Set
-
-from opentelemetry import trace
+from typing import Any, Optional
 
 from medalflow.__version__ import __version__
 from medalflow.logging.filters import set_logging_context
 
 
-
-def _build_reserved_keys() -> Set[str]:
+def _build_reserved_keys() -> set[str]:
     """Collect standard ``LogRecord`` attributes to avoid duplicating them."""
     probe = logging.LogRecord(
         name="medalflow.probe",
@@ -48,7 +45,7 @@ class CustomJsonFormatter(logging.Formatter):
     """JSON formatter that enriches log entries with context and trace data."""
 
     def format(self, record: logging.LogRecord) -> str:
-        log_record: Dict[str, Any] = { }
+        log_record: dict[str, Any] = { }
 
         if hasattr(record, "resource"):
             log_record.update(dict(record.resource.attributes))
@@ -81,7 +78,7 @@ def setup_logging(
     service_name: str = "medalflow",
     service_version: Optional[str] = None,
     environment: Optional[str] = None,
-    static_fields: Optional[Dict[str, Any]] = None,
+    static_fields: Optional[dict[str, Any]] = None,
 ) -> None:
     """Configure structured logging backed by ``logging.config.dictConfig``.
 
@@ -98,7 +95,7 @@ def setup_logging(
         service_version=service_version or __version__,
         extra=static_fields,
     )
-    config_dict: Dict[str, Any] = {
+    config_dict: dict[str, Any] = {
         "version": 1,
         "disable_existing_loggers": False,
         "formatters": {

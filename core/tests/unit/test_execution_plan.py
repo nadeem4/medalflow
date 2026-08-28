@@ -11,7 +11,6 @@ Before that, stage creation read `operation.schema` and the plan builder
 import logging
 
 import pytest
-
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from medalflow.medallion.types import ExecutionPlan

@@ -84,36 +84,31 @@ See Also:
 """
 
 # Import operations from new location
+from medalflow.compute.factory import create_platform
+from medalflow.compute.platforms.synapse import SynapsePlatform
+
+# Import compute-specific types (results and configs)
+from medalflow.compute.types import OperationResult
+from medalflow.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 from medalflow.operations import (
     BaseOperation,
-    CreateTable,
-    DropTable,
-    Insert,
-    Update,
-    Delete,
-    Merge,
     Copy,
     CreateOrAlterView,
-    DropView,
-    CreateStatistics,
     CreateSchema,
+    CreateStatistics,
+    CreateTable,
+    Delete,
+    DropTable,
+    DropView,
     ExecuteSQL,
+    Insert,
+    Merge,
     QueryContext,
+    Update,
 )
 
 # Import protocol types
 from medalflow.operations.columns import ColumnDefinition
-
-# Import compute-specific types (results and configs)
-from medalflow.compute.types import OperationResult
-
-from medalflow.constants.compute import ComputeEnvironment, EngineType, ResultFormat
-
-
-from medalflow.compute.factory import create_platform
-from medalflow.compute.platforms.synapse import SynapsePlatform
-
-
 
 __all__ = [
 

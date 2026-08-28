@@ -1,22 +1,28 @@
 """Synapse Serverless SQL pool query builder implementation."""
 
-from dataclasses import dataclass
-from typing import List, Optional, TYPE_CHECKING
 
 # Import operation types from Layer 1
 from medalflow.operations import (
-    CreateTable, DropTable,
-    Insert, Update, Delete, Merge, Copy,
-    CreateOrAlterView, DropView,
-    CreateStatistics, CreateSchema, DropSchema,
-    Select, ExecuteSQL
+    Copy,
+    CreateOrAlterView,
+    CreateSchema,
+    CreateStatistics,
+    CreateTable,
+    Delete,
+    DropSchema,
+    DropTable,
+    DropView,
+    ExecuteSQL,
+    Insert,
+    Merge,
+    Select,
+    Update,
 )
+from medalflow.operations.columns import ColumnDefinition
 
 # Import from Layer 1 and Layer 0
 from medalflow.query_builder.base import BaseQueryBuilder
-from medalflow.operations.columns import ColumnDefinition
 from medalflow.settings import _Settings
-
 
 
 class SynapseServerlessQueryBuilder(BaseQueryBuilder):
@@ -358,7 +364,7 @@ END"""
         # Use location prefix from settings
         return f"{self.location_prefix}/{schema}/{table_name}/"
     
-    def format_column_definitions(self, columns: List[ColumnDefinition]) -> str:
+    def format_column_definitions(self, columns: list[ColumnDefinition]) -> str:
         """Format column definitions for CREATE EXTERNAL TABLE.
         
         IMPORTANT: Synapse Serverless SQL external tables do not support:

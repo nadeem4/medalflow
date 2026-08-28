@@ -7,9 +7,8 @@ the pair, and each exception recorded twice (once by each span).
 """
 
 import pytest
-from opentelemetry import trace
-
 from medalflow.observability.context import ExecutionRequestContext, execution_request_scope
+from opentelemetry import trace
 
 
 class _RecordingSpan:

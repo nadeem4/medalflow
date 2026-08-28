@@ -8,7 +8,8 @@ accessed, improving performance and allowing objects to be created even
 when secret providers are not immediately available.
 """
 
-from typing import Optional, Any, Dict, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
+
 from pydantic import SecretStr
 
 if TYPE_CHECKING:
@@ -60,7 +61,7 @@ class SecretField:
             return_secret_str: If True, return SecretStr object; if False, return plain string
         """
         self.return_secret_str = return_secret_str
-        self._cache: Dict[tuple[int, str], Optional[Any]] = {}
+        self._cache: dict[tuple[int, str], Optional[Any]] = {}
     
     def __set_name__(self, owner: type, name: str) -> None:
         """Store the attribute name when descriptor is attached to a class.

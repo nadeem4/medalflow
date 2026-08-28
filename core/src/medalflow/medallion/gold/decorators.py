@@ -4,7 +4,7 @@ This module provides decorators specific to the Gold layer of the medallion
 architecture, which focuses on business-ready analytical datasets and views.
 """
 
-from typing import Callable, List, Optional, Type
+from typing import Callable, Optional
 
 from medalflow.types.metadata import GoldMetadata
 
@@ -13,8 +13,8 @@ def gold_metadata(
     schema_name: str,
     layer: str = "gold",
     description: Optional[str] = None,
-    tags: Optional[List[str]] = None
-) -> Callable[[Type], Type]:
+    tags: Optional[list[str]] = None
+) -> Callable[[type], type]:
     """Decorator for Gold layer sequencer classes.
     
     This decorator configures classes that create and manage Gold layer views.
@@ -75,7 +75,7 @@ def gold_metadata(
         - Use consistent naming conventions for views (e.g., v_ prefix)
         - Document business logic and calculations within view definitions
     """
-    def decorator(cls: Type) -> Type:
+    def decorator(cls: type) -> type:
         metadata = GoldMetadata(
             schema_name=schema_name,
             layer=layer,

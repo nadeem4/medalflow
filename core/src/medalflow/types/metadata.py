@@ -4,15 +4,14 @@ This module contains all metadata classes including layer-specific metadata
 (Bronze, Silver, Gold, Snapshot) and query-related metadata types.
 """
 
-from typing import Any, Dict, List, NamedTuple, Optional, Set, Union
+from typing import Any, NamedTuple, Optional, Union
 
 from pydantic import Field, field_serializer, model_validator
 
-from medalflow.types.base import CTEBaseModel
+from medalflow.constants.compute import EngineType
 from medalflow.constants.medallion import SnapshotFrequency
 from medalflow.constants.sql import QueryType
-from medalflow.constants.compute import EngineType
-
+from medalflow.types.base import CTEBaseModel
 
 # ============================================================================
 # Layer Metadata Classes
@@ -37,7 +36,7 @@ class BronzeMetadata(CTEBaseModel):
     source_system: str
     ingestion_mode: str = "incremental"  # "incremental", "full", "append"
     description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
 
 class SilverMetadata(CTEBaseModel):
@@ -64,7 +63,7 @@ class SilverMetadata(CTEBaseModel):
     sp_name: str
     group_file_name: str
     description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
     model_name: Optional[str] = None 
     disable_key_reshuffling: bool = False
@@ -104,7 +103,7 @@ class GoldMetadata(CTEBaseModel):
     schema_name: str
     layer: str = "gold"
     description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
 
 class SnapshotMetadata(CTEBaseModel):
@@ -134,7 +133,7 @@ class SnapshotMetadata(CTEBaseModel):
     compression: bool = True
     frequency: SnapshotFrequency = SnapshotFrequency.DAILY
     description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
 
 class TransformationMetadata(CTEBaseModel):
@@ -160,11 +159,11 @@ class TransformationMetadata(CTEBaseModel):
     add_default_row: bool = False
     is_surrogate_key_calculated: bool = False
     surrogate_key: Optional[str] = None
-    unique_idx: Optional[List[str]] = None
+    unique_idx: Optional[list[str]] = None
     disable_key_reshuffling: bool = False
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'TransformationMetadata':
+    def from_dict(cls, data: dict[str, Any]) -> 'TransformationMetadata':
         """Create TransformationMetadata from dictionary.
         
         Handles string to boolean conversions and optional fields.
@@ -228,10 +227,10 @@ class QueryMetadata(CTEBaseModel):
     table_name: str = ""
     schema_name: str = ""
     preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
-    unique_idx: Optional[List[str]] = None  # Dimension natural key columns
+    unique_idx: Optional[list[str]] = None  # Dimension natural key columns
     filter: Optional[str] = None  # Enum name for auto-generation
     create_stats: bool = False  # Auto-create statistics after operation
-    stats_columns: Optional[List[str]] = None  # Specific columns for statistics
+    stats_columns: Optional[list[str]] = None  # Specific columns for statistics
 
 
 class DiscoveredMethod(NamedTuple):
@@ -269,7 +268,7 @@ class SQLDependencies(CTEBaseModel):
         reads_from: Set of qualified source tables the query reads from
         writes_to: Qualified target table for DML operations (None for SELECT)
     """
-    reads_from: Set[str] = Field(default_factory=set)
+    reads_from: set[str] = Field(default_factory=set)
     writes_to: Optional[str] = None
 
 

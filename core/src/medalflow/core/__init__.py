@@ -11,7 +11,7 @@ The core module includes:
 """
 
 from .descriptors import SecretField
-from .mixins import SecretProviderMixin, NestedSecretsMixin
+from .mixins import NestedSecretsMixin, SecretProviderMixin
 
 __all__ = [
     # Descriptors

@@ -5,15 +5,14 @@ including execution plans, DAGs, lineage tracking, and database metadata.
 """
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from medalflow.types.base import CTEBaseModel
-from medalflow.operations import BaseOperation
-from medalflow.types.metadata import ClassMetadata
 from medalflow.observability.context import ExecutionRequestContext
-
+from medalflow.operations import BaseOperation
+from medalflow.types.base import CTEBaseModel
+from medalflow.types.metadata import ClassMetadata
 
 
 class TableInfo(BaseModel):
@@ -65,7 +64,7 @@ class LineageInfo(CTEBaseModel):
     Attributes:
         lineage_data: Dictionary containing lineage information
     """
-    lineage_data: Dict[str, Any] = Field(default_factory=dict)
+    lineage_data: dict[str, Any] = Field(default_factory=dict)
 
 
 
@@ -81,7 +80,7 @@ class ExecutionStage(CTEBaseModel):
         operations: List of operations that can run in parallel
     """
     stage: int
-    operations: List[BaseOperation]
+    operations: list[BaseOperation]
     context: Optional[ExecutionRequestContext] = None
     
     def to_dict(self) -> dict:
@@ -118,11 +117,11 @@ class ExecutionPlan(CTEBaseModel):
         total_queries: Total number of queries in the plan
     """
     sequencer_name: str
-    metadata: Optional[Union[ClassMetadata, Dict[str, Any]]] = None
+    metadata: Optional[Union[ClassMetadata, dict[str, Any]]] = None
     lineage: Optional[LineageInfo] = None
     total_queries: int
-    stages: List[ExecutionStage]  
-    dependency_graph: Dict[str, List[str]]
+    stages: list[ExecutionStage]  
+    dependency_graph: dict[str, list[str]]
     context: Optional[ExecutionRequestContext] = None
     
     def to_dict(self) -> dict:
@@ -137,7 +136,7 @@ class ExecutionPlan(CTEBaseModel):
             "context": self.context.model_dump() if self.context else None,
         }  
 
-    def get_all_operations(self, serialize: bool = False) -> Union[List[List[BaseOperation]], List[List[dict]]]:
+    def get_all_operations(self, serialize: bool = False) -> Union[list[list[BaseOperation]], list[list[dict]]]:
         """Get all operations grouped by execution stage.
         
         Operations within the same stage (inner list) can be executed in parallel.
@@ -152,9 +151,9 @@ class ExecutionPlan(CTEBaseModel):
             - List[List[dict]] if serialize=True - serialized operations grouped by stage
         """
         if serialize:
-            serialized: List[List[dict]] = []
+            serialized: list[list[dict]] = []
             for stage in self.stages:
-                group: List[dict] = []
+                group: list[dict] = []
                 for position, operation in enumerate(stage.operations):
                     op_dict = operation.to_dict()
                     op_dict["_cte_stage"] = stage.stage
@@ -187,7 +186,7 @@ class DependencyDAG(BaseModel):
     Attributes:
         adjacency_list: Maps each node to its list of dependencies
     """
-    adjacency_list: Dict[str, List[str]] = Field(default_factory=dict)
+    adjacency_list: dict[str, list[str]] = Field(default_factory=dict)
     
     def add_node(self, node: str) -> None:
         """Add a node to the DAG without dependencies.
@@ -198,7 +197,7 @@ class DependencyDAG(BaseModel):
         if node not in self.adjacency_list:
             self.adjacency_list[node] = []
     
-    def add_edges(self, from_node: str, to_nodes: List[str]) -> None:
+    def add_edges(self, from_node: str, to_nodes: list[str]) -> None:
         """Add multiple edges (dependencies) for a node.
         
         Args:
@@ -211,7 +210,7 @@ class DependencyDAG(BaseModel):
             if node not in self.adjacency_list[from_node]:
                 self.adjacency_list[from_node].append(node)
     
-    def get_dependencies(self, node: str) -> List[str]:
+    def get_dependencies(self, node: str) -> list[str]:
         """Get all direct dependencies for a node.
         
         Args:
@@ -222,7 +221,7 @@ class DependencyDAG(BaseModel):
         """
         return self.adjacency_list.get(node, [])
     
-    def get_dependents(self, node: str) -> List[str]:
+    def get_dependents(self, node: str) -> list[str]:
         """Get all nodes that directly depend on this node.
         
         Args:
@@ -268,7 +267,7 @@ class DependencyDAG(BaseModel):
         
         return False
     
-    def get_execution_stages(self) -> List[List[str]]:
+    def get_execution_stages(self) -> list[list[str]]:
         """Get execution stages where each stage contains nodes that can run in parallel.
         
         Returns:
@@ -310,7 +309,7 @@ class DependencyDAG(BaseModel):
         
         return stages
     
-    def get_adjacency_list(self) -> Dict[str, List[str]]:
+    def get_adjacency_list(self) -> dict[str, list[str]]:
         """Get a copy of the adjacency list for external use.
         
         Returns:

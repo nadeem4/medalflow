@@ -6,7 +6,7 @@ statistics metadata that can be used by compute, medallion, datalake,
 and other modules.
 """
 
-from typing import Dict, List
+
 from pydantic import BaseModel, Field
 
 
@@ -44,12 +44,12 @@ class StatsConfiguration(BaseModel):
         description="Database schema name (e.g., 'bronze', 'silver', 'gold')"
     )
     
-    table_stats: Dict[str, List[str]] = Field(
+    table_stats: dict[str, list[str]] = Field(
         default_factory=dict,
         description="Mapping of table names to column lists for statistics"
     )
     
-    def get_table_columns(self, table_name: str) -> List[str]:
+    def get_table_columns(self, table_name: str) -> list[str]:
         """Get statistics columns for a specific table.
         
         Args:
@@ -80,7 +80,7 @@ class StatsConfiguration(BaseModel):
         """
         return table_name in self.table_stats and len(self.table_stats[table_name]) > 0
     
-    def get_tables(self) -> List[str]:
+    def get_tables(self) -> list[str]:
         """Get list of all tables with statistics configuration.
         
         Returns:

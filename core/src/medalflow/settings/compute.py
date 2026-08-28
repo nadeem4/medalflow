@@ -1,11 +1,12 @@
-from typing import List, Optional, TYPE_CHECKING, Any, ClassVar
-from functools import cached_property
 import logging
-from pydantic import Field, SecretStr, field_validator, PrivateAttr
+from typing import ClassVar, Optional
+
+from pydantic import Field, PrivateAttr
 from pydantic_settings import SettingsConfigDict
 
-from medalflow.constants.compute import ComputeType, EngineType, ComputeEnvironment
+from medalflow.constants.compute import ComputeEnvironment, ComputeType
 from medalflow.core.descriptors import SecretField
+
 from .base import CTEBaseSettings
 
 
@@ -27,12 +28,12 @@ class BaseComputeSettings(CTEBaseSettings):
     etl_odbc: ClassVar[SecretField] = SecretField()
     consumption_odbc: ClassVar[SecretField] = SecretField()
     
-    schemas: List[str] = Field(
+    schemas: list[str] = Field(
         default=["silver", "bronze", "gold", "temp", "snapshot"],
         description="Database schemas to create/manage"
     )
 
-    skip_prefix_on_schema: List[str] = Field(
+    skip_prefix_on_schema: list[str] = Field(
         default=["dbo", "gold", "snapshot"],
         description="Schemas that do not get the prefix applied"
     )

@@ -4,8 +4,8 @@ This module defines protocols for feature managers used throughout
 the MedalFlow framework.
 """
 
-from typing import Protocol, Optional, Any, Dict, Callable, List
-from typing_extensions import runtime_checkable
+from typing import Any, Callable, Optional, Protocol, runtime_checkable
+
 import pandas as pd
 
 
@@ -36,7 +36,7 @@ class CacheProtocol(Protocol):
         """Clear keys matching pattern."""
         ...
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         ...
 
@@ -48,7 +48,7 @@ class StatsProtocol(Protocol):
     Any class implementing these methods can be used as a stats manager.
     """
     
-    def get_stats_columns(self, table_name: str, layer: str = "bronze") -> Optional[List[str]]:
+    def get_stats_columns(self, table_name: str, layer: str = "bronze") -> Optional[list[str]]:
         """Get statistics columns for a specific table."""
         ...
     
@@ -60,7 +60,7 @@ class StatsProtocol(Protocol):
         """Get processed stats configuration for a schema."""
         ...
     
-    def get_configured_tables(self, layer: str = "bronze") -> List[str]:
+    def get_configured_tables(self, layer: str = "bronze") -> list[str]:
         """Get list of tables configured for statistics."""
         ...
     

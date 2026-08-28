@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 class ErrorCode(Enum):
@@ -46,7 +46,7 @@ class CTEError(Exception):
         self,
         message: str,
         error_code: ErrorCode = ErrorCode.OPERATION_ERROR,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
         cause: Optional[Exception] = None,
         is_retryable: bool = False
     ):

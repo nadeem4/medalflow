@@ -1,7 +1,6 @@
 import time
-from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from medalflow.settings import BaseComputeSettings
@@ -10,13 +9,14 @@ from urllib import parse
 import pandas as pd
 import pyodbc
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine, Connection
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.pool import QueuePool
 
 from medalflow.common.exceptions import CTEError, connection_error, query_execution_error
 from medalflow.constants.compute import ComputeEnvironment
-from medalflow.utils.decorators import retry_with_backoff as retry, traced
 from medalflow.logging import get_logger
+from medalflow.utils.decorators import retry_with_backoff as retry
+from medalflow.utils.decorators import traced
 
 logger = get_logger(__name__)
 
@@ -72,7 +72,7 @@ class BaseSQLEngine:
         self.settings = settings  # Type: BaseComputeSettings (injected)
         self.environment: ComputeEnvironment = environment
         self._engine: Optional[Engine] = None
-        self._connection_info: Dict[str, Any] = {
+        self._connection_info: dict[str, Any] = {
             "platform": self.__class__.__name__.replace("SQLEngine", "").lower(),
             "environment": environment.value
         }
@@ -165,19 +165,19 @@ class BaseSQLEngine:
     def _span_attributes(
         self,
         query: str,
-        telemetry: Optional[Dict[str, str]] = None,
+        telemetry: Optional[dict[str, str]] = None,
         *,
         operation: str,
         batch_position: Optional[int] = None,
         batch_total: Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build OpenTelemetry span attributes for SQL operations."""
         platform = self._connection_info.get("platform", "sql")
         sanitized_query = (query or "").strip()
         if sanitized_query and len(sanitized_query) > 4096:
             sanitized_query = f"{sanitized_query[:4093]}..."
 
-        attributes: Dict[str, Any] = {
+        attributes: dict[str, Any] = {
             "db.system": platform,
             "db.operation": operation,
             "medalflow.compute.environment": self.environment.value,
@@ -210,10 +210,10 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def execute_query(self, query: str, telemetry: Optional[Dict[str, str]] = None) -> None:
+    def execute_query(self, query: str, telemetry: Optional[dict[str, str]] = None) -> None:
         """Execute a SQL query without returning results."""
         start_time = time.time()
-        payload: Dict[str, str] = dict(telemetry or {})
+        payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))
 
         try:
@@ -245,10 +245,10 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def fetch_dataframe(self, query: str, telemetry: Optional[Dict[str, str]] = None) -> pd.DataFrame:
+    def fetch_dataframe(self, query: str, telemetry: Optional[dict[str, str]] = None) -> pd.DataFrame:
         """Execute query and return results as pandas DataFrame."""
         start_time = time.time()
-        payload: Dict[str, str] = dict(telemetry or {})
+        payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))
 
         try:
@@ -281,7 +281,7 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def fetch_scalar(self, query: str, telemetry: Optional[Dict[str, str]] = None) -> Any:
+    def fetch_scalar(self, query: str, telemetry: Optional[dict[str, str]] = None) -> Any:
         """Execute query and return single scalar value.
         
         Used for queries that return a single value (COUNT, MAX, etc).
@@ -298,7 +298,7 @@ class BaseSQLEngine:
             ValueError: If query returns more than one value
         """
         start_time = time.time()
-        payload: Dict[str, str] = dict(telemetry or {})
+        payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))
         
         try:
@@ -333,10 +333,10 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def fetch_all(self, query: str, telemetry: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+    def fetch_all(self, query: str, telemetry: Optional[dict[str, str]] = None) -> list[dict[str, Any]]:
         """Execute query and fetch all results as list of dictionaries."""
         start_time = time.time()
-        payload: Dict[str, str] = dict(telemetry or {})
+        payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))
         
         try:
@@ -380,7 +380,7 @@ class BaseSQLEngine:
             )
             return False
     
-    def get_connection_info(self) -> Dict[str, Any]:
+    def get_connection_info(self) -> dict[str, Any]:
         """Get connection information for debugging/logging.
         
         Returns:
@@ -398,10 +398,10 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def execute_batch(self, queries: List[str], telemetry: Optional[Dict[str, str]] = None) -> None:
+    def execute_batch(self, queries: list[str], telemetry: Optional[dict[str, str]] = None) -> None:
         """Execute multiple queries in a batch."""
         start_time = time.time()
-        payload: Dict[str, str] = dict(telemetry or {})
+        payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))
         
         try:

@@ -5,14 +5,14 @@ such as operation results, job configurations, and execution metadata.
 Operations themselves have been moved to the operations module.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 import pandas as pd
 from pydantic import Field
 
-from medalflow.types.base import CTEBaseModel
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
+from medalflow.types.base import CTEBaseModel
 
 
 class OperationResult(CTEBaseModel):
@@ -44,7 +44,7 @@ class OperationResult(CTEBaseModel):
     
     # Optional details
     rows_affected: Optional[int] = Field(default=None, ge=0)
-    data: Optional[Union[pd.DataFrame, List[Dict[str, Any]], Any]] = Field(
+    data: Optional[Union[pd.DataFrame, list[dict[str, Any]], Any]] = Field(
         default=None,
         description="Query result data - DataFrame, list of dicts, or scalar value"
     )
@@ -52,7 +52,7 @@ class OperationResult(CTEBaseModel):
     error_type: Optional[str] = Field(default=None)
     engine_used: Optional[EngineType] = Field(default=None)
     query_executed: Optional[str] = Field(default=None)
-    statistics: Dict[str, Any] = Field(default_factory=dict)
+    statistics: dict[str, Any] = Field(default_factory=dict)
     
     @property
     def full_object_name(self) -> str:

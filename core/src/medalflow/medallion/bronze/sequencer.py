@@ -5,18 +5,18 @@ The Bronze layer is responsible for ingesting raw data from source systems
 with minimal transformation.
 """
 
-from typing import Dict, List, Optional, TYPE_CHECKING
 import logging
+from typing import TYPE_CHECKING, Optional
 
-from medalflow.operations import BaseOperation, CreateTable, CreateStatistics, Select
-from medalflow.query_builder.factory import create_query_builder
-from medalflow.constants.sql import QueryType
-from ..base.sequencer import _BaseSequencer
-from ..landing_zone.lake_database import LakeDatabase
-from ..types import TableInfo, LineageInfo
 from medalflow.constants.medallion import Layer
+from medalflow.constants.sql import QueryType
+from medalflow.operations import BaseOperation, CreateTable, Select
+from medalflow.query_builder.factory import create_query_builder
 from medalflow.types import QueryMetadata
 
+from ..base.sequencer import _BaseSequencer
+from ..landing_zone.lake_database import LakeDatabase
+from ..types import TableInfo
 
 if TYPE_CHECKING:
     from medalflow.settings import _Settings
@@ -59,7 +59,7 @@ class BronzeSequencer(_BaseSequencer):
         self.requested_table_names = self._parse_table_names(table_names)
         self.layer = Layer.BRONZE
     
-    def _parse_table_names(self, table_names: Optional[str]) -> Optional[List[str]]:
+    def _parse_table_names(self, table_names: Optional[str]) -> Optional[list[str]]:
         """Parse comma-separated table names into a list.
         
         Args:
@@ -135,7 +135,7 @@ class BronzeSequencer(_BaseSequencer):
     
     
 
-    def get_queries(self) -> List[BaseOperation]:
+    def get_queries(self) -> list[BaseOperation]:
         tables = self.lake_db.get_tables(table_names=self.requested_table_names)
         
         if self.requested_table_names:
@@ -143,7 +143,7 @@ class BronzeSequencer(_BaseSequencer):
         else:
             logger.info(f"Processing all {len(tables)} tables from {self.source_schema} for bronze layer")
         
-        table_plans: List[CreateTable] = []
+        table_plans: list[CreateTable] = []
         for table in tables:
             plan = self._create_table_op(table)
             table_plans.append(plan)

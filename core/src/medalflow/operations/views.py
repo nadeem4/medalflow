@@ -3,7 +3,7 @@
 This module contains operation classes for managing database views.
 """
 
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import Field
 
@@ -19,7 +19,7 @@ class CreateOrAlterView(BaseOperation):
     )
     
     select_query: str = Field(..., min_length=1)
-    columns: Optional[List[str]] = Field(default=None)  # Column aliases
+    columns: Optional[list[str]] = Field(default=None)  # Column aliases
     with_schemabinding: bool = Field(default=False)
     materialized: bool = Field(default=False)
     or_replace: bool = Field(default=True)  # Whether to use CREATE OR REPLACE

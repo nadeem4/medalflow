@@ -11,22 +11,23 @@ The orchestrator:
 - Supports operations from multiple sources
 """
 
-from typing import Dict, List, Optional, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 from medalflow.logging import get_logger
-from medalflow.observability.context import sanitize_extras
 from medalflow.medallion.types import ExecutionPlan
-from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
 from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
+from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
+from medalflow.observability.context import sanitize_extras
 from medalflow.operations import BaseOperation
+
 from .operation_dag_builder import OperationDAGBuilder
 
 if TYPE_CHECKING:
-    from medalflow.settings import _Settings
     from medalflow.medallion.base.sequencer import _BaseSequencer
     from medalflow.medallion.bronze.sequencer import BronzeSequencer
     from medalflow.medallion.gold.sequencer import GoldSequencer
     from medalflow.medallion.silver.sequencer import SilverTransformationSequencer
+    from medalflow.settings import _Settings
 
 logger = get_logger(__name__)
 
@@ -59,8 +60,8 @@ class ExecutionPlanOrchestrator:
         
     def create_execution_plan(
         self,
-        operations: List[BaseOperation],
-        metadata: Optional[Dict[str, Any]] = None,
+        operations: list[BaseOperation],
+        metadata: Optional[dict[str, Any]] = None,
         sequencer_name: Optional[str] = None
     ) -> ExecutionPlan:
         """Create an execution plan from a list of operations.
@@ -119,7 +120,7 @@ class ExecutionPlanOrchestrator:
     
     def create_plan_from_sequencers(
         self, 
-        sequencers: List["_BaseSequencer"]  
+        sequencers: list["_BaseSequencer"]  
     ) -> ExecutionPlan:
         """Create a combined execution plan from multiple sequencers.
         
@@ -225,7 +226,7 @@ class ExecutionPlanOrchestrator:
 
     def create_plan_for_silver_layer(
         self,
-        silver_sequencers: List["SilverTransformationSequencer"]
+        silver_sequencers: list["SilverTransformationSequencer"]
     ) -> ExecutionPlan:
         """Create an execution plan specifically for a silver layer sequencer.
         

@@ -31,9 +31,7 @@ Example:
     builder = SynapseServerlessQueryBuilder(settings)
 """
 
-from medalflow.query_builder.synapse.serverless_builder import (
-    SynapseServerlessQueryBuilder
-)
+from medalflow.query_builder.synapse.serverless_builder import SynapseServerlessQueryBuilder
 
 __all__ = [
     "SynapseServerlessQueryBuilder"

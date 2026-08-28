@@ -6,11 +6,10 @@ in Layer 0 as they have no dependencies and provide the foundation
 for SQL operations throughout the system.
 """
 
-from typing import Protocol, Optional, Any, Dict, List
 import re
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ColumnDefinition(BaseModel):

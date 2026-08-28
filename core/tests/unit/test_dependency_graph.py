@@ -18,7 +18,6 @@ Both are now settled on one shape: flat sets of fully-qualified lowercase
 """
 
 import pytest
-
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.orchestration.operation_dag_builder import OperationDAGBuilder
 from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer

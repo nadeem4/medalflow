@@ -20,10 +20,9 @@ query-builder collaborators are stubs, so nothing touches a warehouse.
 """
 
 import pytest
-
+from medalflow.compute.platforms.base import _BasePlatform
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
-from medalflow.compute.platforms.base import _BasePlatform
 from medalflow.operations import CreateStatistics, CreateTable
 from medalflow.settings.base import CTEBaseSettings
 from medalflow.types.metadata import QueryMetadata

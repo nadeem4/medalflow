@@ -4,11 +4,10 @@ This module provides a central registry for all feature managers,
 managing their lifecycle and providing unified access across the application.
 """
 
-from typing import Dict, Optional, Type, List, Any
 import logging
+from typing import Optional
 
 from .base import FeatureManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +35,11 @@ class FeatureRegistry:
     
     def __init__(self):
         """Initialize the registry."""
-        self._managers: Dict[str, Type[FeatureManager]] = {}
-        self._instances: Dict[str, Optional[FeatureManager]] = {}
+        self._managers: dict[str, type[FeatureManager]] = {}
+        self._instances: dict[str, Optional[FeatureManager]] = {}
         self._initialized: bool = False
     
-    def register(self, feature_name: str, manager_class: Type[FeatureManager]) -> None:
+    def register(self, feature_name: str, manager_class: type[FeatureManager]) -> None:
         """Register a feature manager.
         
         Once registered, subsequent registration attempts are ignored to maintain
@@ -102,7 +101,7 @@ class FeatureRegistry:
         
         return self._instances[feature_name]
     
-    def get_available_features(self) -> List[str]:
+    def get_available_features(self) -> list[str]:
         """Get list of all available (enabled) features.
         
         Returns:
@@ -115,7 +114,7 @@ class FeatureRegistry:
                 available.append(name)
         return available
     
-    def get_all_features(self) -> List[str]:
+    def get_all_features(self) -> list[str]:
         """Get list of all registered features (enabled or disabled).
         
         Returns:
@@ -153,7 +152,8 @@ class FeatureRegistry:
         try:
             # Import all managers to trigger registration
             # Each manager module should register itself when imported
-            from . import managers  # This imports all managers via __init__.py
+            # Side-effect import: managers/__init__.py registers each manager.
+            from . import managers  # noqa: F401
             # Managers auto-register when imported
             
             self._initialized = True
@@ -206,7 +206,7 @@ def get_feature_manager(feature_name: str) -> Optional[FeatureManager]:
     return _global_registry.get_manager(feature_name)
 
 
-def get_available_features() -> List[str]:
+def get_available_features() -> list[str]:
     """Get list of all available (enabled) features.
     
     Returns:
@@ -216,7 +216,7 @@ def get_available_features() -> List[str]:
     return _global_registry.get_available_features()
 
 
-def register_feature(feature_name: str, manager_class: Type[FeatureManager]) -> None:
+def register_feature(feature_name: str, manager_class: type[FeatureManager]) -> None:
     """Register a feature manager with the global registry.
     
     This is typically called automatically by manager modules

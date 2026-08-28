@@ -5,7 +5,8 @@ throughout the MedalFlow framework. These protocols ensure consistent
 interfaces for different implementations.
 """
 
-from typing import Protocol, Optional, runtime_checkable
+from typing import Optional, Protocol, runtime_checkable
+
 from pydantic import SecretStr
 
 

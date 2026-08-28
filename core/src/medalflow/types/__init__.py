@@ -8,16 +8,16 @@ from .base import CTEBaseModel
 from .metadata import (
     # Layer metadata
     BronzeMetadata,
-    SilverMetadata,
-    GoldMetadata,
-    SnapshotMetadata,
-    TransformationMetadata,
     ClassMetadata,
+    DiscoveredMethod,
+    GoldMetadata,
+    QueryAnalysis,
     # Query metadata
     QueryMetadata,
-    DiscoveredMethod,
+    SilverMetadata,
+    SnapshotMetadata,
     SQLDependencies,
-    QueryAnalysis,
+    TransformationMetadata,
 )
 
 __all__ = [

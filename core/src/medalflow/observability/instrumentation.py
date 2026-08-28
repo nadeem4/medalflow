@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Dict, Iterator, Optional
+from typing import Optional
 
 from opentelemetry.trace import Status, StatusCode
 
@@ -25,9 +26,9 @@ def _build_tags(
     ctx: ExecutionRequestContext,
     stage: Optional[str],
     operation: Optional[str],
-    extra: Optional[Dict[str, str]] = None,
-) -> Dict[str, str]:
-    tags: Dict[str, str] = {
+    extra: Optional[dict[str, str]] = None,
+) -> dict[str, str]:
+    tags: dict[str, str] = {
         "request_id": ctx.request_id,
     }
     if stage:
@@ -49,8 +50,8 @@ def operation_instrumentation(
     stage_name: str,
     operation_name: str,
     metrics: MetricsCollector,
-    attributes: Optional[Dict[str, str]] = None,
-) -> Iterator[Dict[str, str]]:
+    attributes: Optional[dict[str, str]] = None,
+) -> Iterator[dict[str, str]]:
     """Instrument a single operation."""
     tags = _build_tags(
         ctx=ctx,

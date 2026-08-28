@@ -8,8 +8,8 @@ Protocols provide type-safe interfaces without requiring inheritance,
 following Python's structural subtyping (duck typing with type hints).
 """
 
-from .providers import SecretProvider
 from .features import CacheProtocol, StatsProtocol
+from .providers import SecretProvider
 
 __all__ = [
     "SecretProvider",

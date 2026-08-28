@@ -4,12 +4,12 @@ This module contains operation classes for bulk data operations
 like COPY and executing arbitrary SQL.
 """
 
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import Field, model_validator
 
-from medalflow.constants.sql import QueryType
 from medalflow.constants.compute import ResultFormat
+from medalflow.constants.sql import QueryType
 from medalflow.operations.base import BaseOperation
 
 
@@ -25,7 +25,7 @@ class Copy(BaseOperation):
     
     source_path: str = Field(..., min_length=1)  # External data path
     file_format: str = Field(default="parquet")
-    copy_options: Dict[str, Any] = Field(default_factory=dict)
+    copy_options: dict[str, Any] = Field(default_factory=dict)
     credential: Optional[str] = Field(default=None)
 
 

@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, TYPE_CHECKING
-from pydantic import Field, field_validator, PrivateAttr
+from typing import Any
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from medalflow.core.mixins import SecretProviderMixin
 from medalflow.constants import LayerType
-
+from medalflow.core.mixins import SecretProviderMixin
 
 
 class CTEBaseSettings(SecretProviderMixin, BaseSettings):
@@ -178,7 +178,7 @@ class CTEBaseSettings(SecretProviderMixin, BaseSettings):
         """
         return self.name
     
-    def get_configured_model_list(self) -> List[str]:
+    def get_configured_model_list(self) -> list[str]:
         """Get the list of configured models.
         
         Returns:

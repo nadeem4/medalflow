@@ -1,13 +1,13 @@
-from medalflow.observability.context import sanitize_extras
-from medalflow.logging import get_logger
-from typing import List, Optional, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
 from medalflow.compute.factory import create_platform
 from medalflow.constants.compute import ComputeEnvironment, ResultFormat
 from medalflow.core.features.registry import get_feature_manager
-from ..types import TableInfo
+from medalflow.logging import get_logger
+from medalflow.observability.context import sanitize_extras
 from medalflow.protocols import CacheProtocol
-from medalflow.operations import ExecuteSQL
 
+from ..types import TableInfo
 
 if TYPE_CHECKING:
     from medalflow.settings import _Settings
@@ -53,7 +53,7 @@ class LakeDatabase:
         AND table_name not like ('%_partitioned') 
         """
     
-    def get_tables(self, table_names: Optional[List[str]] = None, refresh: bool = False) -> List[TableInfo]:
+    def get_tables(self, table_names: Optional[list[str]] = None, refresh: bool = False) -> list[TableInfo]:
         """
         Retrieve tables from the specified schema with caching via CacheManager.
         
@@ -69,7 +69,7 @@ class LakeDatabase:
             ValueError: If any requested table doesn't exist
         """
         cache_key = self._get_cache_key()
-        all_tables: List[TableInfo] = []
+        all_tables: list[TableInfo] = []
         
         if refresh and self._cache_manager:
             self._cache_manager.delete(cache_key)
@@ -106,8 +106,8 @@ class LakeDatabase:
         if not table_names:
             return all_tables
 
-        all_tables_dict: Dict[str, TableInfo] = {t.table_name.lower(): t for t in all_tables}
-        result_tables: List[TableInfo] = []
+        all_tables_dict: dict[str, TableInfo] = {t.table_name.lower(): t for t in all_tables}
+        result_tables: list[TableInfo] = []
         missing_tables = []
         
         for name in table_names:
@@ -132,7 +132,7 @@ class LakeDatabase:
         )
         return result_tables
     
-    def _fetch_tables_from_db(self) -> List[TableInfo]:
+    def _fetch_tables_from_db(self) -> list[TableInfo]:
         """Fetch tables from database (internal method for cache loader)."""
         query = self._get_query_to_fetch_tables()
         platform = self._get_platform()
@@ -171,7 +171,7 @@ class LakeDatabase:
             
         return tables
     
-    def validate_tables(self, table_names: List[str]) -> Dict[str, bool]:
+    def validate_tables(self, table_names: list[str]) -> dict[str, bool]:
         """
         Check which tables exist in the database using cached data.
         

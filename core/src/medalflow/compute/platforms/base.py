@@ -1,29 +1,23 @@
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
-import pandas as pd
-
+from medalflow.compute.engines.base import BaseSQLEngine
+from medalflow.compute.types import OperationResult
 from medalflow.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 from medalflow.constants.sql import QueryType
-from medalflow.compute.engines.base import BaseSQLEngine
-from medalflow.query_builder.base import BaseQueryBuilder
-from medalflow.compute.types import OperationResult
-from medalflow.common.exceptions import query_execution_error
+from medalflow.logging import get_logger
 from medalflow.operations import (
     BaseOperation,
-    QueryContext,
-    CreateTable,
-    Insert,
-    Update,
-    Delete,
-    Merge,
     CreateStatistics,
-    CreateOrAlterView,
+    CreateTable,
+    Delete,
     ExecuteSQL,
-    OperationBuilder
+    Insert,
+    OperationBuilder,
+    Update,
 )
-from medalflow.logging import get_logger
+from medalflow.query_builder.base import BaseQueryBuilder
 
 if TYPE_CHECKING:
     from medalflow.settings import BaseComputeSettings
@@ -70,7 +64,7 @@ class _BasePlatform(ABC):
         pass
     
     @abstractmethod
-    def supported_engines(self) -> List[EngineType]:
+    def supported_engines(self) -> list[EngineType]:
         """Get list of supported engine types."""
         pass
     
@@ -91,12 +85,12 @@ class _BasePlatform(ABC):
     def execute_operation(
         self,
         operation: BaseOperation,
-        telemetry: Optional[Dict[str, str]] = None,
+        telemetry: Optional[dict[str, str]] = None,
     ) -> OperationResult:
         """Execute a database operation."""
         start_time = time.time()
         operation_payload = operation.telemetry_fields()
-        telemetry_payload: Dict[str, str] = dict(telemetry or {})
+        telemetry_payload: dict[str, str] = dict(telemetry or {})
         telemetry_payload.update(operation_payload)
 
         try:
@@ -168,7 +162,7 @@ class _BasePlatform(ABC):
             )
     
     
-    def _build_auto_statistics(self, operation: CreateTable) -> List[CreateStatistics]:
+    def _build_auto_statistics(self, operation: CreateTable) -> list[CreateStatistics]:
         """Build the auto-statistics operations for a freshly created table.
 
         Column discovery lives in ``CreateStatistics``' model validator, which
@@ -206,7 +200,7 @@ class _BasePlatform(ABC):
             for column in discovered.columns
         ]
 
-    def execute(self, operation_dict: dict, telemetry: Optional[Dict[str, str]] = None) -> OperationResult:
+    def execute(self, operation_dict: dict, telemetry: Optional[dict[str, str]] = None) -> OperationResult:
         operation = OperationBuilder.create_operation_from_dict(operation_dict)
 
         return self.execute_operation(operation, telemetry=telemetry)
@@ -298,7 +292,7 @@ class _BasePlatform(ABC):
         self,
         query: str,
         operation: BaseOperation,
-        telemetry: Optional[Dict[str, str]] = None,
+        telemetry: Optional[dict[str, str]] = None,
     ) -> OperationResult:
         """Execute query with SQL engine."""
         engine = self._get_sql_engine()
@@ -361,7 +355,7 @@ class _BasePlatform(ABC):
                 query_executed=query,
             )
     
-    def test_connection(self) -> Dict[str, bool]:
+    def test_connection(self) -> dict[str, bool]:
         """Test connections for all available engines.
         
         Returns:

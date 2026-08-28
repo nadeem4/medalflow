@@ -1,30 +1,29 @@
 import re
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any, TYPE_CHECKING
+from typing import Any, Optional
+
+from medalflow.constants.sql import QueryType
 
 # Import operation types from Layer 1
 from medalflow.operations import (
     BaseOperation,
-    CreateTable,
-    DropTable,
-    Insert,
-    Update,
-    Delete,
-    Merge,
     Copy,
     CreateOrAlterView,
-    DropView,
-    CreateStatistics,
     CreateSchema,
+    CreateStatistics,
+    CreateTable,
+    Delete,
     DropSchema,
+    DropTable,
+    DropView,
+    ExecuteSQL,
+    Insert,
+    Merge,
     Select,
-    ExecuteSQL
+    Update,
 )
-
 from medalflow.operations.columns import ColumnDefinition
-from medalflow.constants.sql import QueryType
 from medalflow.settings import _Settings
-
 
 
 class BaseQueryBuilder(ABC):
@@ -356,7 +355,7 @@ class BaseQueryBuilder(ABC):
         escaped = value.replace("'", "''")
         return f"'{escaped}'"
     
-    def format_column_list(self, columns: List[str]) -> str:
+    def format_column_list(self, columns: list[str]) -> str:
         """Format a list of columns for SQL.
         
         Args:
@@ -367,7 +366,7 @@ class BaseQueryBuilder(ABC):
         """
         return ", ".join(self.quote_identifier(col) for col in columns)
     
-    def format_value_list(self, values: List[Any]) -> str:
+    def format_value_list(self, values: list[Any]) -> str:
         """Format a list of values for SQL.
         
         Args:
@@ -388,7 +387,7 @@ class BaseQueryBuilder(ABC):
                 formatted.append(str(value))
         return ", ".join(formatted)
     
-    def format_set_clause(self, columns: Dict[str, Any]) -> str:
+    def format_set_clause(self, columns: dict[str, Any]) -> str:
         """Format SET clause for UPDATE.
         
         Args:
@@ -414,7 +413,7 @@ class BaseQueryBuilder(ABC):
                 assignments.append(f"{col_quoted} = {value}")
         return ", ".join(assignments)
     
-    def format_column_definitions(self, columns: List[ColumnDefinition]) -> str:
+    def format_column_definitions(self, columns: list[ColumnDefinition]) -> str:
         """Format column definitions for CREATE TABLE.
         
         Args:
@@ -536,7 +535,7 @@ class BaseQueryBuilder(ABC):
         full_name = self.fully_qualified_name(schema, object_name)
         return f"SELECT * FROM {full_name}"
     
-    def build_select_columns(self, schema: str, object_name: str, columns: List[str]) -> str:
+    def build_select_columns(self, schema: str, object_name: str, columns: list[str]) -> str:
         """Build SELECT query with specific columns.
         
         Args:
@@ -555,7 +554,7 @@ class BaseQueryBuilder(ABC):
         return f"SELECT {column_list} FROM {full_name}"
     
     def build_select_where(self, schema: str, object_name: str, where_clause: str, 
-                          columns: Optional[List[str]] = None) -> str:
+                          columns: Optional[list[str]] = None) -> str:
         """Build SELECT query with WHERE clause.
         
         Args:
@@ -577,7 +576,7 @@ class BaseQueryBuilder(ABC):
         return f"SELECT {column_list} FROM {full_name} WHERE {where_clause}"
     
     def build_select_where_not(self, schema: str, object_name: str, where_clause: str,
-                               columns: Optional[List[str]] = None) -> str:
+                               columns: Optional[list[str]] = None) -> str:
         """Build SELECT query with WHERE NOT condition.
         
         Useful for DELETE operations where we need to select rows to keep

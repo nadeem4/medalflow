@@ -4,16 +4,14 @@ This module provides the CacheManager plugin for centralized caching
 of all configuration and data across the application, similar to Redis/Memcache.
 """
 
-from typing import Dict, Any, Optional, Callable
-import time
 import fnmatch
 import logging
+import time
+from typing import Any, Callable, Optional
 
 from medalflow.core.features.base import FeatureManager
 from medalflow.core.features.registry import register_feature
-
 from medalflow.protocols import CacheProtocol
-
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +39,9 @@ class CacheManager(CacheProtocol, FeatureManager):
     def __init__(self):
         """Initialize the cache manager."""
         super().__init__()
-        self._storage: Dict[str, Any] = {}
-        self._ttl_storage: Dict[str, float] = {}
-        self._access_count: Dict[str, int] = {}
+        self._storage: dict[str, Any] = {}
+        self._ttl_storage: dict[str, float] = {}
+        self._access_count: dict[str, int] = {}
         self._initialized = False
         
     def get_feature_name(self) -> str:
@@ -62,7 +60,7 @@ class CacheManager(CacheProtocol, FeatureManager):
         """
         return self.feature_settings.global_cache_enabled
         
-    def initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def initialize(self, config: Optional[dict[str, Any]] = None) -> None:
         """Initialize the cache manager.
         
         Args:
@@ -231,7 +229,7 @@ class CacheManager(CacheProtocol, FeatureManager):
                 
         return True
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
         
         Returns:

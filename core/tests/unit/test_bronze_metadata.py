@@ -11,7 +11,6 @@ implemented minimally, mirroring `gold_metadata`.
 """
 
 import pytest
-
 from medalflow.medallion.bronze.decorators import bronze_metadata
 from medalflow.types.metadata import BronzeMetadata
 

@@ -4,14 +4,10 @@ This module provides functionality to build execution plans in both
 traditional (parallel/sequential) and DAG-based formats.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
-from medalflow.medallion.types import (
-    ExecutionStage,
-    LineageInfo,
-    ExecutionPlan
-)
 from medalflow.logging import get_logger
+from medalflow.medallion.types import ExecutionPlan, ExecutionStage, LineageInfo
 from medalflow.observability.context import sanitize_extras
 
 
@@ -36,10 +32,10 @@ class ExecutionPlanBuilder:
         self.table_prefix = table_prefix
     
     def build_plan(self,
-                      stages: List[ExecutionStage],
-                      dag: Dict[str, List[str]],
-                      lineage: Optional[Dict[str, Any]],
-                      class_metadata: Dict[str, Any],
+                      stages: list[ExecutionStage],
+                      dag: dict[str, list[str]],
+                      lineage: Optional[dict[str, Any]],
+                      class_metadata: dict[str, Any],
                       sequencer_name: str,
                       total_queries: int) -> ExecutionPlan:
         """Build DAG-based execution plan with stages.

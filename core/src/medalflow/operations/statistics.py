@@ -4,14 +4,13 @@ This module contains operation classes for managing database statistics.
 """
 
 import logging
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import Field, model_validator
 
 from medalflow.constants.sql import QueryType
 from medalflow.operations.base import BaseOperation
 from medalflow.protocols import StatsProtocol
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class CreateStatistics(BaseOperation):
         frozen=True
     )
     
-    columns: Optional[List[str]] = Field(default=None)
+    columns: Optional[list[str]] = Field(default=None)
     sample_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     with_fullscan: bool = Field(default=True)
     stats_name: Optional[str] = Field(default=None)  # Auto-generate if not provided

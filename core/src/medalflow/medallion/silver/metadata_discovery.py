@@ -8,16 +8,16 @@ the need for external configuration files (CSV, JSON).
 import importlib
 import inspect
 import pkgutil
-from typing import Dict, List, Optional, Type, Generator, Any
-import logging
+from collections.abc import Generator
 from dataclasses import dataclass
-import pandas as pd
+from typing import Any, Optional
 
-from medalflow.settings import get_settings
-from medalflow.logging import get_logger
-from medalflow.types import SilverMetadata
-from medalflow.protocols import CacheProtocol
 from medalflow.core.features import get_feature_manager
+from medalflow.logging import get_logger
+from medalflow.protocols import CacheProtocol
+from medalflow.settings import get_settings
+from medalflow.types import SilverMetadata
+
 from .sequencer import SilverTransformationSequencer
 
 
@@ -30,7 +30,7 @@ class TransformationMetadata:
     """
     sp_name: str  
     model_name: str  
-    sequencer_class: Type[SilverTransformationSequencer]  
+    sequencer_class: type[SilverTransformationSequencer]  
     silver_metadata: SilverMetadata  
     
     @property
@@ -39,7 +39,7 @@ class TransformationMetadata:
         return self.silver_metadata.description or ""
     
     @property
-    def tags(self) -> List[str]:
+    def tags(self) -> list[str]:
         """Get tags from silver metadata."""
         return self.silver_metadata.tags or []
     
@@ -65,7 +65,7 @@ class TransformationMetadata:
         """Get full module path of the sequencer class."""
         return f"{self.sequencer_class.__module__}.{self.sequencer_class.__name__}"
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary including computed properties."""
         return {
             'sp_name': self.sp_name,
@@ -113,7 +113,7 @@ class SilverMetadataDiscovery:
         else:
             self.logger.debug("Cache manager not available - will perform discovery on each call")
     
-    def discover_all_transformations(self, force_refresh: bool = False) -> List[TransformationMetadata]:
+    def discover_all_transformations(self, force_refresh: bool = False) -> list[TransformationMetadata]:
         """Discover all silver transformations from the package.
         
         This method walks the entire silver package tree, imports each module,
@@ -151,7 +151,7 @@ class SilverMetadataDiscovery:
         
         return result
     
-    def _perform_discovery(self) -> List[TransformationMetadata]:
+    def _perform_discovery(self) -> list[TransformationMetadata]:
         """Perform the actual discovery of transformations.
         
         Internal method that does the actual work of discovering transformations
@@ -162,7 +162,7 @@ class SilverMetadataDiscovery:
         """
         self.logger.info(f"Starting discovery of transformations in {self.silver_package}")
         
-        metadata_dict: Dict[str, TransformationMetadata] = {}
+        metadata_dict: dict[str, TransformationMetadata] = {}
         discovered_count = 0
         error_count = 0
         
@@ -203,7 +203,7 @@ class SilverMetadataDiscovery:
         
         return list(metadata_dict.values())
     
-    def get_transformations_by_models(self, models: str) -> List[TransformationMetadata]:
+    def get_transformations_by_models(self, models: str) -> list[TransformationMetadata]:
         """Get all transformations for a specific model.
         
         Uses cache for improved performance when available.
@@ -230,7 +230,7 @@ class SilverMetadataDiscovery:
         
         return result
     
-    def get_transformation_by_sp(self, sp_names: str) -> List[TransformationMetadata]:
+    def get_transformation_by_sp(self, sp_names: str) -> list[TransformationMetadata]:
         """Get transformations by stored procedure name.
         
         Uses cache for improved performance when available.
@@ -289,7 +289,7 @@ class SilverMetadataDiscovery:
 
             yield module
     
-    def _extract_transformation_classes(self, module) -> List[Type]:
+    def _extract_transformation_classes(self, module) -> list[type]:
         """Extract all transformation classes from a module.
         
         Args:
@@ -310,7 +310,7 @@ class SilverMetadataDiscovery:
         
         return classes
     
-    def _is_transformation_class(self, cls: Type) -> bool:
+    def _is_transformation_class(self, cls: type) -> bool:
         """Check if a class is a silver transformation.
         
         Args:
@@ -321,7 +321,7 @@ class SilverMetadataDiscovery:
         """
         return hasattr(cls, '_silver_metadata')
     
-    def _extract_metadata_from_class(self, cls: Type) -> Optional[TransformationMetadata]:
+    def _extract_metadata_from_class(self, cls: type) -> Optional[TransformationMetadata]:
         """Extract and normalize metadata from decorated class.
         
         Only returns metadata for enabled transformations.
@@ -400,7 +400,7 @@ class SilverMetadataDiscovery:
             cleared = self._cache_manager.clear("silver:metadata:*")
             self.logger.info(f"Cleared {cleared} silver metadata cache entries")
     
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics for silver metadata.
         
         Returns:
