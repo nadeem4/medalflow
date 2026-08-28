@@ -4,9 +4,8 @@ This module provides utilities for working with dates, times, and
 partition paths in the data lake.
 """
 
-import os
-from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple
+from datetime import datetime
+from typing import Dict, Optional
 
 from core.constants.medallion import SnapshotFrequency
 
@@ -27,53 +26,6 @@ def get_snapshot_datetime() -> str:
         Datetime string in format 'YYYY-MM-DD HH:MM:SS'
     """
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def get_ds_prefix() -> str:
-    """Get data source prefix from settings.
-    
-    This function maintains backward compatibility with the original
-    utility function.
-    
-    Returns:
-        Data source prefix from settings
-    """
-    # Lazy import to avoid circular dependency
-    from core.settings import get_settings
-    settings = get_settings()
-    if settings.datasource and settings.datasource.environment:
-        return settings.datasource.environment.lower()
-    return "default"
-
-
-def get_env(key: str, default: Optional[str] = None) -> str:
-    """Get configuration value from settings.
-    
-    This function is deprecated. Use get_settings() directly instead.
-    
-    Args:
-        key: Configuration key name
-        default: Default value if not set
-        
-    Returns:
-        Configuration value
-        
-    Raises:
-        ValueError: If variable not set and no default provided
-    """
-    # This function is deprecated - direct environment access should be through settings
-    # For backward compatibility, we still support it but log a warning
-    import warnings
-    warnings.warn(
-        "get_env() is deprecated. Use get_settings() to access configuration values.",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    
-    value = os.getenv(key, default)
-    if value is None:
-        raise ValueError(f"Environment variable {key} not set")
-    return value
 
 
 def get_partition_path(
@@ -186,112 +138,3 @@ def parse_snapshot_path(path: str) -> Dict[str, str]:
             break
     
     return components
-
-
-def get_date_range_for_frequency(
-    frequency: SnapshotFrequency,
-    reference_date: Optional[datetime] = None
-) -> Tuple[datetime, datetime]:
-    """Get date range for a given frequency.
-    
-    Args:
-        frequency: Snapshot frequency
-        reference_date: Reference date (defaults to current date)
-        
-    Returns:
-        Tuple of (start_date, end_date) for the period
-        
-    Example:
-        >>> start, end = get_date_range_for_frequency(
-        ...     SnapshotFrequency.WEEKLY,
-        ...     datetime(2024, 1, 15)
-        ... )
-    """
-    if reference_date is None:
-        reference_date = datetime.utcnow()
-    
-    if frequency == SnapshotFrequency.HOURLY:
-        start = reference_date.replace(minute=0, second=0, microsecond=0)
-        end = start + timedelta(hours=1)
-    
-    elif frequency == SnapshotFrequency.DAILY:
-        start = reference_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        end = start + timedelta(days=1)
-    
-    elif frequency == SnapshotFrequency.WEEKLY:
-        # Start from Monday
-        days_since_monday = reference_date.weekday()
-        start = reference_date - timedelta(days=days_since_monday)
-        start = start.replace(hour=0, minute=0, second=0, microsecond=0)
-        end = start + timedelta(weeks=1)
-    
-    elif frequency == SnapshotFrequency.MONTHLY:
-        start = reference_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        # Get first day of next month
-        if reference_date.month == 12:
-            end = start.replace(year=start.year + 1, month=1)
-        else:
-            end = start.replace(month=start.month + 1)
-    
-    elif frequency == SnapshotFrequency.QUARTERLY:
-        quarter = (reference_date.month - 1) // 3
-        start_month = quarter * 3 + 1
-        start = reference_date.replace(
-            month=start_month, day=1, hour=0, minute=0, second=0, microsecond=0
-        )
-        # Add 3 months
-        end_month = start_month + 3
-        if end_month > 12:
-            end = start.replace(year=start.year + 1, month=end_month - 12)
-        else:
-            end = start.replace(month=end_month)
-    
-    elif frequency == SnapshotFrequency.YEARLY:
-        start = reference_date.replace(
-            month=1, day=1, hour=0, minute=0, second=0, microsecond=0
-        )
-        end = start.replace(year=start.year + 1)
-    
-    else:  # EVERY_RUN or default
-        start = reference_date
-        end = reference_date
-    
-    return start, end
-
-
-def format_datetime_for_sql(dt: datetime) -> str:
-    """Format datetime for SQL queries.
-    
-    Args:
-        dt: Datetime to format
-        
-    Returns:
-        SQL-compatible datetime string
-    """
-    return dt.strftime("%Y-%m-%d %H:%M:%S")
-
-
-def parse_sql_datetime(dt_str: str) -> datetime:
-    """Parse SQL datetime string.
-    
-    Args:
-        dt_str: Datetime string from SQL
-        
-    Returns:
-        Parsed datetime object
-    """
-    # Try common SQL datetime formats
-    formats = [
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d %H:%M:%S.%f",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%dT%H:%M:%S.%f"
-    ]
-    
-    for fmt in formats:
-        try:
-            return datetime.strptime(dt_str, fmt)
-        except ValueError:
-            continue
-    
-    raise ValueError(f"Could not parse datetime string: {dt_str}")
