@@ -78,10 +78,18 @@ MedalFlow is designed to be cloud-agnostic through exactly **three seams**:
 | Storage client | Reading and writing lake files | ADLS Gen2 |
 | Secret provider | Resolving credentials | Azure Key Vault, or a mock in test mode |
 
-Everything outside those seams is meant to be cloud-neutral. That boundary is **not yet
-enforced** — cloud SDKs are still hard dependencies of the core package. Moving them behind
-an optional `[azure]` extra, with a CI job that fails the build if an `azure` import leaks
-into core, is planned.
+Everything outside those seams is cloud-neutral, and that boundary is **enforced**. The
+Azure SDKs, `pyodbc`, `pandas` and the `abfs://` plumbing live behind an optional extra:
+
+```bash
+pip install medalflow            # planning, DAG building, SQL analysis — no cloud SDK
+pip install 'medalflow[azure]'   # adds Synapse execution, ADLS Gen2 and Key Vault
+```
+
+A `bare-install` CI job installs the package with no extras, imports the public surface and
+fails if any `azure`, `pyodbc`, `adlfs`, `pyarrow` or `pandas` import has leaked back into
+core. Reaching a cloud path without the extra installed raises a MedalFlow error naming the
+install command, not a bare `ModuleNotFoundError`.
 
 Deployment is runtime-agnostic by design: a plain Python process or container configured by
 environment variables. There is no built-in scheduler, no hosted service, and no UI —

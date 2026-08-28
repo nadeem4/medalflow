@@ -25,6 +25,10 @@ protocol you can implement to run the framework somewhere else:
 These three are the whole integration surface. Nothing else in the package is
 an extension point, and no abstraction is offered for a cloud provider that
 has no implementation here.
+
+The Azure implementations of all three -- and pandas, pyodbc and the ``abfs://``
+plumbing they use -- ship in the optional ``azure`` extra. Core is importable
+without any of it; the ``bare-install`` CI job proves it on every push.
 """
 
 from .features import CacheProtocol, StatsProtocol

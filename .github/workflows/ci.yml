@@ -29,10 +29,10 @@ jobs:
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
-      # --no-root: `poetry install` cannot install the project itself because
-      # core/pyproject.toml declares `readme = "README.md"` while README.md lives at
-      # the repo root. Source is reached via `pythonpath = ["src"]` (pytest) and
-      # PYTHONPATH=src (smoke test) instead. Phase 6 fixes the packaging metadata.
+      # --no-root: source is reached via `pythonpath = ["src"]` (pytest) and
+      # PYTHONPATH=src (smoke test), so the project itself does not need
+      # installing here. The `bare-install` job below is the one that installs
+      # it. Phase 6 finishes the packaging metadata.
       - name: Install dependencies
         run: poetry install --with dev --no-root
 
@@ -63,30 +63,12 @@ jobs:
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
-      # --no-root: `poetry install` cannot install the project itself because
-      # core/pyproject.toml declares `readme = "README.md"` while README.md lives at
-      # the repo root. Source is reached via `pythonpath = ["src"]` (pytest) and
-      # PYTHONPATH=src (smoke test) instead. Phase 6 fixes the packaging metadata.
+      # --no-root: source is reached via `pythonpath = ["src"]` (pytest) and
+      # PYTHONPATH=src (smoke test), so the project itself does not need
+      # installing here. The `bare-install` job below is the one that installs
+      # it. Phase 6 finishes the packaging metadata.
       - name: Install dependencies
-        run: poetry install --with dev --no-root
-
-      # pyodbc is declared `optional = true` in pyproject but imported
-      # unconditionally at src/medalflow/compute/engines/base.py:11, and no extra
-      # exposes it — so `poetry install` never brings it in. Without it every
-      # import fails on "No module named 'pyodbc'", masking the real Phase 1
-      # breakage. Phase 3 moves pyodbc behind the `[azure]` extra and this goes.
-      - name: Install pyodbc (declared optional, imported unconditionally)
-        run: |
-          # Prefer a wheel. Only fall back to a source build — which needs ODBC
-          # headers — when pip cannot find one for this interpreter. The runner
-          # ships a packages.microsoft.com apt repo that intermittently returns
-          # 403 and fails `apt-get update`, so it is dropped before updating.
-          if ! poetry run pip install pyodbc; then
-            sudo rm -f /etc/apt/sources.list.d/microsoft*.list                        /etc/apt/sources.list.d/azure*.list
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq unixodbc-dev
-            poetry run pip install pyodbc
-          fi
+        run: poetry install --with dev --no-root --extras azure
 
       # Blocking as of Phase 1: the orphaned processor/validator stubs are gone,
       # so the package imports and the suite runs.
@@ -106,26 +88,57 @@ jobs:
       - name: Install Poetry
         run: pipx install "poetry==${POETRY_VERSION}"
 
-      # --no-root: `poetry install` cannot install the project itself because
-      # core/pyproject.toml declares `readme = "README.md"` while README.md lives at
-      # the repo root. Source is reached via `pythonpath = ["src"]` (pytest) and
-      # PYTHONPATH=src (smoke test) instead. Phase 6 fixes the packaging metadata.
+      # --no-root: source is reached via `pythonpath = ["src"]` (pytest) and
+      # PYTHONPATH=src (smoke test), so the project itself does not need
+      # installing here. The `bare-install` job below is the one that installs
+      # it. Phase 6 finishes the packaging metadata.
       - name: Install dependencies
-        run: poetry install --with dev --no-root
-
-      - name: Install pyodbc (declared optional, imported unconditionally)
-        run: |
-          # Prefer a wheel. Only fall back to a source build — which needs ODBC
-          # headers — when pip cannot find one for this interpreter. The runner
-          # ships a packages.microsoft.com apt repo that intermittently returns
-          # 403 and fails `apt-get update`, so it is dropped before updating.
-          if ! poetry run pip install pyodbc; then
-            sudo rm -f /etc/apt/sources.list.d/microsoft*.list                        /etc/apt/sources.list.d/azure*.list
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq unixodbc-dev
-            poetry run pip install pyodbc
-          fi
+        run: poetry install --with dev --no-root --extras azure
 
       # Blocking as of Phase 1. Renamed to `medalflow` in Phase 2.
       - name: Import smoke test
         run: PYTHONPATH=src poetry run python -c "import medalflow; import medalflow.medallion; import medalflow.api"
+
+  # The guardrail behind the cloud-agnostic claim. `pip install .` with no
+  # extras is exactly what `pip install medalflow` gives a user: pydantic,
+  # SQLAlchemy, sqlglot and opentelemetry-api, and nothing from Azure. Every
+  # heavy import lives inside the function that needs it (see
+  # medalflow/common/optional_deps.py), so the core import graph -- api,
+  # medallion, compute, datalake -- must come up without one of them present.
+  #
+  # If an `import azure` / `import pyodbc` / `import pandas` ever moves back to
+  # module scope, this job fails and keeps failing. That is the point.
+  bare-install:
+    name: bare-install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # No Poetry, no extras, no dev group, no PYTHONPATH: the installed
+      # distribution is what gets imported below.
+      - name: Install with no extras
+        run: pip install .
+
+      - name: The public surface imports with no cloud SDK present
+        run: python -c "import medalflow; import medalflow.medallion; import medalflow.api"
+
+      - name: No cloud SDK was pulled in
+        run: |
+          for module in azure pyodbc adlfs pyarrow pandas; do
+            if python -c "import $module" 2>/dev/null; then
+              echo "::error::a bare install pulled in $module"
+              exit 1
+            fi
+          done
+
+      # The whole suite qualifies: nothing in tests/ needs a cloud SDK. If that
+      # ever stops being true, mark the offending tests and deselect them here
+      # rather than weakening the job.
+      - name: Unit tests that need no cloud SDK
+        run: |
+          pip install pytest pytest-mock
+          pytest
