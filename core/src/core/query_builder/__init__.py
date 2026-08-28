@@ -11,7 +11,6 @@ not just compute platforms.
 Architecture:
     The query builder module is organized by platform:
     - synapse/: Azure Synapse query builders
-    - fabric/: Microsoft Fabric query builders
     - base.py: Abstract base class for all builders
 
 Design Principles:
@@ -24,8 +23,6 @@ Design Principles:
 Available Builders:
     - SynapseServerlessQueryBuilder: For Synapse Serverless SQL pools
     - SynapseSQLQueryBuilder: For Synapse Dedicated SQL pools
-    - FabricWarehouseQueryBuilder: For Fabric Warehouse
-    - FabricSparkQueryBuilder: For Fabric Spark
 
 Example:
     >>> from core.query_builder import get_synapse_query_builder
@@ -57,16 +54,11 @@ Security:
     - Safe string escaping and quoting
     - Maximum length constraints on identifiers
 
-Platform Differences:
+Platform Specifics:
     Synapse:
         - External tables with LOCATION, DATA_SOURCE, FILE_FORMAT
         - CREATE STATISTICS with FULLSCAN
         - T-SQL specific syntax
-        
-    Fabric:
-        - Managed tables with USING format
-        - ANALYZE TABLE for statistics
-        - Spark SQL and Warehouse SQL variants
 
 See Also:
     - core.query_builder.base: Base query builder interface
@@ -80,17 +72,13 @@ from core.query_builder.factory import (
     QueryBuilderFactory,
     get_query_builder,
     get_synapse_query_builder,
-    get_fabric_query_builder,
 )
 from core.query_builder.synapse.serverless_builder import SynapseServerlessQueryBuilder
-from core.query_builder.fabric.warehouse_builder import FabricWarehouseQueryBuilder
 
 __all__ = [
     "BaseQueryBuilder",
     "QueryBuilderFactory",
     "get_query_builder",
     "get_synapse_query_builder",
-    "get_fabric_query_builder",
     "SynapseServerlessQueryBuilder",
-    "FabricWarehouseQueryBuilder",
 ]

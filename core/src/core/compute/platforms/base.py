@@ -39,7 +39,7 @@ class _BasePlatform(ABC):
     
     Base class for compute platforms.
     
-    A platform represents a specific compute service (Synapse, Fabric)
+    A platform represents a specific compute service (Synapse)
     and handles all database operations in a platform-agnostic way.
     """
     
@@ -79,7 +79,7 @@ class _BasePlatform(ABC):
         """Initialize platform-specific dependencies.
         
         This method is called during platform initialization to set up
-        all required dependencies such as SQL engines, Spark engines,
+        all required dependencies such as SQL engines,
         query builders, and data lake clients.
         
         Concrete platforms must implement this method to create their

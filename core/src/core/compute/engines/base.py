@@ -25,7 +25,7 @@ class BaseSQLEngine:
     """SQLAlchemy-based SQL execution engine for all platforms.
     
     This concrete implementation provides full SQL engine functionality using
-    SQLAlchemy, which supports Synapse, Fabric, Databricks, Snowflake, and many
+    SQLAlchemy, which supports Synapse and many
     other platforms. Platform-specific engines inherit from this class and only
     need to provide customization through hooks.
     
@@ -45,7 +45,6 @@ class BaseSQLEngine:
     Supported Platforms:
         Any SQLAlchemy-compatible database including:
         - Azure Synapse
-        - Microsoft Fabric
         - Databricks
         - Snowflake
         - PostgreSQL

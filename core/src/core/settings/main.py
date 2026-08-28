@@ -61,7 +61,7 @@ class _Settings(CTEBaseSettings):
     )
     compute: ComputeSettings = Field(
         default_factory=ComputeSettings,
-        description="Compute platform configuration (SQL and Spark engines)"
+        description="Compute platform configuration (SQL engines)"
     )
     keyvault: KeyVaultSettings = Field(
         default_factory=KeyVaultSettings,

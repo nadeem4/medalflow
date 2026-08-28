@@ -20,7 +20,6 @@ class ComputeType(str, Enum):
             - Apache Spark pools
             - External table support
             
-        FABRIC: Microsoft Fabric
             - Lakehouse SQL endpoint
             - SQL Data Warehouse
             - Spark compute
@@ -28,7 +27,6 @@ class ComputeType(str, Enum):
     """
     
     SYNAPSE = "synapse"
-    FABRIC = "fabric"
 
 
 class ComputeEnvironment(str, Enum):
@@ -70,10 +68,10 @@ class EngineType(str, Enum):
     Values:
         SQL: Traditional SQL engine for set-based operations.
             - Best for: Simple queries, small-medium datasets
-            - Platforms: All (Synapse SQL, Fabric Warehouse)
+            - Platforms: Synapse SQL
         SPARK: Distributed compute engine for large-scale processing.
             - Best for: Complex transformations, large datasets, ML
-            - Platforms: Synapse Spark, Fabric Spark
+            - Platforms: none currently implemented
         AUTO: Automatic engine selection based on heuristics.
             - Platform analyzes query characteristics to choose
             - Considers: data volume, complexity, transformations

@@ -20,7 +20,7 @@ Architecture:
        - CTEBaseSettings: Base class with common functionality
        
     2. Domain Settings:
-       - compute.py: Compute platform configuration (Synapse/Fabric)
+       - compute.py: Compute platform configuration (Synapse)
        - datalake.py: Azure Data Lake Storage configuration
        - datasource.py: Data source identity and organization
        - keyvault.py: Azure Key Vault integration
@@ -66,7 +66,7 @@ Minimal Required Configuration:
     - DS_ENV: Data source environment
     - NAME: Table prefix and package name
     - PROCESSED_LAKE_ACCOUNT_NAME: Primary data lake account
-    - COMPUTE_TYPE: Platform type (synapse/fabric)
+    - COMPUTE_TYPE: Platform type (synapse)
     - Platform-specific settings (e.g., SYNAPSE_LAKE_DATABASE_NAME)
 
 For detailed documentation, see the README.md file in this directory.
@@ -85,7 +85,6 @@ from .compute import (
     EngineType,
     ComputeEnvironment,
     SynapseSettings,
-    FabricSettings,
     BaseComputeSettings,
 )
 from .datalake import (

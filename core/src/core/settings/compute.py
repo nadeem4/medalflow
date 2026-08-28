@@ -134,13 +134,6 @@ class SynapseSettings(BaseComputeSettings):
 
 
 
-class FabricSettings(BaseComputeSettings):
-    
-    model_config = SettingsConfigDict(case_sensitive=False)
-    
-    
-    
-
 class ComputeSettings(CTEBaseSettings):
     
     model_config = SettingsConfigDict(case_sensitive=False)
@@ -151,7 +144,6 @@ class ComputeSettings(CTEBaseSettings):
     )
     
     _synapse: Optional[SynapseSettings] = PrivateAttr(default=None)
-    _fabric: Optional[FabricSettings] = PrivateAttr(default=None)
     
     @property
     def synapse(self) -> SynapseSettings:
@@ -168,21 +160,6 @@ class ComputeSettings(CTEBaseSettings):
         return self._synapse
     
     @property
-    def fabric(self) -> FabricSettings:
-        """Get or create Fabric settings.
-        
-        Lazily creates the settings and propagates secret provider and datasource config.
-        """
-        if self._fabric is None:
-            self._fabric = FabricSettings()
-            if self._secret_provider:
-                self._fabric.attach_secrets(self._secret_provider)
-            else:
-                raise ValueError("Secret provider must be attached before accessing Fabric settings")
-        return self._fabric
-    
-    
-    @property
     def active_config(self) -> BaseComputeSettings:
         """Get configuration for the active compute type.
         
@@ -190,8 +167,6 @@ class ComputeSettings(CTEBaseSettings):
         """
         if self.compute_type == ComputeType.SYNAPSE:
             return self.synapse
-        elif self.compute_type == ComputeType.FABRIC:
-            return self.fabric
         else:
             raise ValueError(f"Unknown compute type: {self.compute_type}")
     

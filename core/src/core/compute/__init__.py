@@ -1,7 +1,7 @@
 """MedalFlow compute module for platform-agnostic data processing.
 
 This module provides abstractions for working with different compute platforms
-(Synapse, Fabric) and engines (SQL, Spark) in a unified, operation-based way.
+(Synapse) and SQL engines in a unified, operation-based way.
 
 Overview:
     The compute module implements a clean operation-based architecture where
@@ -19,12 +19,10 @@ Architecture:
     2. **Platform Layer**: Manages platform-specific execution
        - BasePlatform: Protocol defining platform interface
        - SynapsePlatform: Azure Synapse implementation
-       - FabricPlatform: Microsoft Fabric implementation
     
     3. **Engine Layer**: Handles actual query execution
        - BaseEngine: Abstract base for all engines
        - SQLEngine: SQL query execution (platform-specific)
-       - SparkEngine: Spark job submission and monitoring
     
     4. **Query Builder Layer**: Generates platform-specific SQL
        - BaseQueryBuilder: Abstract interface for query builders
@@ -36,7 +34,6 @@ Architecture:
 Key Features:
     - **Operation-Based**: All operations are data, platforms handle execution
     - **Platform Abstraction**: Write once, run on multiple platforms
-    - **Engine Selection**: Automatic SQL vs Spark selection per operation
     - **Batch Operations**: Execute multiple operations efficiently
     - **Transaction Support**: Where platform supports it
     - **Type Safety**: Full type hints and validation
@@ -46,9 +43,8 @@ Configuration:
     The compute module is configured through environment variables with the
     CTE_COMPUTE__ prefix. Key settings include:
     
-    - CTE_COMPUTE__COMPUTE_TYPE: Platform type (synapse/fabric)
+    - CTE_COMPUTE__COMPUTE_TYPE: Platform type (synapse)
     - CTE_COMPUTE__SYNAPSE__CONNECTION__ENDPOINT: Synapse SQL endpoint
-    - CTE_COMPUTE__FABRIC__WORKSPACE__ID: Fabric workspace identifier
     
     See core.settings.ComputeSettings for full configuration options.
 
@@ -130,7 +126,6 @@ from core.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 
 from core.compute.factory import get_platform_factory
 from core.compute.platforms.synapse import SynapsePlatform
-from core.compute.platforms.fabric import FabricPlatform
 
 
 
@@ -171,5 +166,4 @@ __all__ = [
     # Factory
     "get_platform_factory",
     "SynapsePlatform",
-    "FabricPlatform",
 ]

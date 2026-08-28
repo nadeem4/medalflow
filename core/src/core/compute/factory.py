@@ -1,7 +1,7 @@
 """Platform factory for compute operations.
 
 This module provides factory classes for creating compute platform instances
-and engines. It supports multiple platforms (Synapse, Fabric) and implements
+and engines. It supports the Synapse platform and implements
 the factory pattern for easy extensibility.
 
 Overview:
@@ -21,14 +21,12 @@ Design Pattern:
 Platform Support:
     The factory supports built-in platforms only:
     - Synapse: Azure Synapse Analytics
-    - Fabric: Microsoft Fabric
 
 Configuration:
     The factory automatically loads platform-specific settings from the
     global settings object based on the platform type:
     
     - Synapse: settings.compute.synapse
-    - Fabric: settings.compute.fabric
     - Custom: Must be added to settings structure
 
 Thread Safety:
@@ -44,7 +42,6 @@ from typing import TYPE_CHECKING
 from core.constants.compute import ComputeEnvironment
 from core.compute.platforms.base import _BasePlatform
 from core.compute.platforms.synapse import SynapsePlatform
-from core.compute.platforms.fabric import FabricPlatform
 from core.logging import get_logger
 from core.constants import ComputeType
 
@@ -69,7 +66,7 @@ class _PlatformFactory:
     Attributes:
         _platforms (Dict[str, Type[BasePlatform]]): Registry mapping platform
             identifiers to their implementation classes. Pre-populated with
-            built-in platforms (synapse, fabric).
+            built-in platforms (synapse).
     
     Class Methods:
         register_platform: Add a new platform type to the registry
@@ -83,20 +80,19 @@ class _PlatformFactory:
         >>> 
         >>> # Specifying platform and environment
         >>> platform = PlatformFactory.create_platform(
-        ...     name="fabric",
+        ...     name="synapse",
         ...     environment=ComputeEnvironment.CONSUMPTION
         ... )
         >>> 
         >>> # Only built-in platforms are supported
         >>> platform = PlatformFactory.create_platform("synapse")
-        >>> platform = PlatformFactory.create_platform("fabric")
+        >>> platform = PlatformFactory.create_platform("synapse")
     
     Note:
         Platform creation requires corresponding settings to be configured
         in the application settings. For built-in platforms, these are:
         - settings.compute.synapse for Synapse
-        - settings.compute.fabric for Fabric
-    """
+        """
     
     
     
@@ -126,7 +122,7 @@ class _PlatformFactory:
             >>> platform = PlatformFactory.create_platform()
             >>> 
             >>> # Create specific platform
-            >>> platform = PlatformFactory.create_platform("fabric")
+            >>> platform = PlatformFactory.create_platform("synapse")
             >>> 
             >>> # Create for consumption workload
             >>> platform = PlatformFactory.create_platform(
@@ -143,9 +139,6 @@ class _PlatformFactory:
         if platform_type == ComputeType.SYNAPSE:
             platform_settings = settings.compute.synapse
             platform = SynapsePlatform(platform_settings, environment)
-        elif platform_type == ComputeType.FABRIC:
-            platform_settings = settings.compute.fabric
-            platform = FabricPlatform(platform_settings, environment)
         else:
             raise ValueError(f"No settings configured for platform: {platform_type}")
         
