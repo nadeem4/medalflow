@@ -4,7 +4,6 @@ This module provides the DataLakeConfigurationService which injects
 data loading capabilities into feature managers via dependency injection.
 """
 
-from typing import Dict, Any, Optional, List
 import logging
 
 from core.datalake import get_internal_datalake_client
@@ -92,68 +91,6 @@ class DataLakeConfigurationService:
         except Exception as e:
             self.logger.error(f"Failed to initialize configuration service: {e}")
             return False
-    
-    def warm_all(self) -> Dict[str, bool]:
-        """Warm all configuration caches by triggering loads.
-        
-        This method attempts to load common configurations to warm
-        the caches, avoiding lazy loading delays during runtime.
-        
-        Returns:
-            Dictionary mapping configuration names to success status
-        """
-        # Ensure initialized
-        if not self.initialize():
-            return {"initialized": False}
-        
-        results = {}
-        
-        # Warm stats for all schemas
-        stats_mgr = get_feature_manager('stats')
-        if stats_mgr:
-            for schema in ['bronze', 'silver', 'gold']:
-                try:
-                    config = stats_mgr.get_stats_config(schema)
-                    results[f'stats_{schema}'] = config is not None
-                except Exception as e:
-                    self.logger.error(f"Failed to warm stats for {schema}: {e}")
-                    results[f'stats_{schema}'] = False
-        
-        # Silver grouping has been deprecated - transformations now use
-        # ExecutionPlanOrchestrator for dependency-based execution
-        
-        
-        self.logger.info(f"Cache warming results: {results}")
-        return results
-    
-    def get_injected_managers(self) -> List[str]:
-        """Get list of managers that have been injected with loaders.
-        
-        Returns:
-            List of manager:loader_type strings (e.g., 'stats:csv')
-        """
-        return self._injected_managers.copy()
-    
-    def reinitialize(self) -> bool:
-        """Force reinitialization of the service.
-        
-        This clears the initialized state and reinjects all loaders.
-        Useful for testing or after configuration changes.
-        
-        Returns:
-            True if reinitialization successful
-        """
-        self._initialized = False
-        self._injected_managers = []
-        return self.initialize()
-    
-    def __repr__(self) -> str:
-        """String representation of the service."""
-        return (
-            f"DataLakeConfigurationService("
-            f"initialized={self._initialized}, "
-            f"injections={len(self._injected_managers)})"
-        )
 
 
 # Singleton accessor
@@ -166,6 +103,5 @@ def get_configuration_service() -> DataLakeConfigurationService:
     Example:
         >>> service = get_configuration_service()
         >>> service.initialize()
-        >>> results = service.warm_all()
     """
     return DataLakeConfigurationService()

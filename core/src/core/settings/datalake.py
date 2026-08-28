@@ -148,55 +148,6 @@ class MultiDataLakeSettings(CTEBaseSettings):
         else:
             raise ValueError(f"Unsupported lake type: {lake_type}")
 
-    @property
-    def processed_storage(self) -> ProcessedDataLakeConfig:
-        """Get the processed DataLake configuration.
-        
-        Returns:
-            ProcessedDataLakeConfig instance
-        """
-        return self.processed
-    
-    @property
-    def internal_storage(self) -> InternalDataLakeConfig:
-        """Get the internal DataLake configuration.
-        
-        Returns:
-            InternalDataLakeConfig instance
-        """
-        return self.internal
-    
-    @property
-    def is_processed_configured(self) -> bool:
-        """Check if processed DataLake is properly configured.
-        
-        Returns:
-            True if processed DataLake is configured
-        """
-        return self.processed.is_configured
-    
-    @property
-    def is_internal_configured(self) -> bool:
-        """Check if internal DataLake is properly configured.
-        
-        Returns:
-            True if internal DataLake is configured
-        """
-        return self.internal.is_configured
-    
-    @property
-    def is_configured(self) -> bool:
-        """Check if DataLake settings are properly configured.
-        
-        Args:
-            require_both: If True, both processed and internal must be configured.
-                         If False (default), only processed is required.
-        
-        Returns:
-            True if configuration meets requirements
-        """
-        return self.is_processed_configured and self.is_internal_configured
-    
     def attach_secrets(self, provider: SecretProvider) -> 'MultiDataLakeSettings':
         """Attach secret provider to all DataLake configurations.
         

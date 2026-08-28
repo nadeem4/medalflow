@@ -42,17 +42,3 @@ class SecretProvider(Protocol):
         fresh retrieval of secrets on the next access.
         """
         ...
-    
-    def __getattr__(self, name: str) -> Optional[SecretStr]:
-        """Dynamic attribute access for secrets.
-        
-        This allows accessing secrets using attribute notation,
-        e.g., provider.my_secret_name
-        
-        Args:
-            name: Secret name in snake_case format
-            
-        Returns:
-            SecretStr with the secret value or None
-        """
-        ...

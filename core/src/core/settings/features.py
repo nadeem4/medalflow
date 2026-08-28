@@ -1,5 +1,3 @@
-from typing import Dict
-
 from pydantic import Field
 from pydantic_settings import SettingsConfigDict
 
@@ -57,25 +55,6 @@ class FeatureSettings(CTEBaseSettings):
         """
         return [ field_name for field_name in self.__class__.model_fields.keys() if field_name.endswith('_enabled') ]
 
-    def get_enabled_features(self) -> list[str]:
-        """Get a list of all enabled features.
-        
-        Provides a list of currently active feature keys (without '_enabled' suffix)
-        for programmatic use, logging, or debugging purposes.
-        
-        Returns:
-            List[str]: Enabled feature keys (e.g., 'cte_stats', 'snapshots')
-            
-        Example:
-            >>> settings = get_settings()
-            >>> features = settings.features.get_enabled_features()
-            >>> print(f"Active features: {', '.join(features)}")
-            >>> # Output: "Active features: cte_stats, synapse_link"
-        """
-        enabled = [ feature.replace('_enabled', '') for feature in self._get_feature_list() if getattr(self, feature) ]
-                
-        return enabled
-    
     def check_feature(self, feature_name: str, raise_on_disabled: bool = True) -> bool:
         """Check if a feature is enabled, optionally raising an error if disabled.
         
@@ -125,20 +104,3 @@ class FeatureSettings(CTEBaseSettings):
             )
         
         return is_enabled
-    
-    def get_feature_status(self) -> Dict[str, bool]:
-        """Get the status of all features.
-        
-        Returns a dictionary mapping feature names to their enabled status.
-        Useful for debugging, logging, or displaying configuration.
-        
-        Returns:
-            Dict[str, bool]: Feature names mapped to enabled status
-            
-        Example:
-            >>> features = get_settings().features
-            >>> status = features.get_feature_status()
-            >>> for feature, enabled in status.items():
-            >>>     print(f"{feature}: {'✓' if enabled else '✗'}")
-        """
-        return {feature.replace('_enabled', ''): getattr(self, feature) for feature in self._get_feature_list() }

@@ -26,7 +26,6 @@ Architecture:
        - keyvault.py: Azure Key Vault integration
        - features.py: Feature flags and toggles
        - processing.py: Data processing behavior
-       - powerbi.py: Power BI integration
        - stats.py: Statistics management
        - models.py: Model group configuration for medallion orchestration
        
@@ -99,7 +98,6 @@ from .datalake import (
 from .keyvault import KeyVaultSettings
 from .features import FeatureSettings
 from .processing import ProcessingSettings
-from .powerbi import PowerBISettings
 from .stats import StatsSettings
 
 __all__ = [
