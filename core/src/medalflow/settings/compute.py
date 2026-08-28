@@ -1,16 +1,33 @@
+"""Compute platform configuration.
+
+A single group holding everything the SQL compute platform needs. ``ComputeType``
+currently has exactly one member (``SYNAPSE``), so there is no separate
+per-platform model: :attr:`ComputeSettings.active_config` and
+:attr:`ComputeSettings.synapse` both return the group itself. When a second
+platform is added, those two properties are the seam to split on.
+"""
+
 import logging
 from typing import ClassVar, Optional
 
 from pydantic import Field, PrivateAttr
-from pydantic_settings import SettingsConfigDict
 
 from medalflow.constants.compute import ComputeEnvironment, ComputeType
 from medalflow.core.descriptors import SecretField
+from medalflow.core.mixins import SecretProviderMixin
 
-from .base import CTEBaseSettings
 
+class ComputeSettings(SecretProviderMixin):
+    """Configuration for the SQL compute platform.
 
-class BaseComputeSettings(CTEBaseSettings):
+    Environment variables are namespaced by the parent settings object, e.g.
+    ``MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME``.
+    """
+
+    compute_type: ComputeType = Field(
+        default=ComputeType.SYNAPSE, description="Active compute platform"
+    )
+
     lake_database_name: str = Field(
         ..., description="Name of the lake database for metadata storage"
     )
@@ -44,6 +61,70 @@ class BaseComputeSettings(CTEBaseSettings):
     sql_pool_timeout: int = Field(default=30, ge=1)
     sql_max_overflow: int = Field(default=10, ge=0)
 
+    database_scoped_cred_name: str = Field(
+        default="cte_adls_creds", description="Database Scoped Credential"
+    )
+    raw_external_data_source_name_override: Optional[str] = Field(
+        default=None,
+        description="Override for raw external data source name. If unset, derived from the top-level `name`.",
+    )
+    processed_external_data_source_name_override: Optional[str] = Field(
+        default=None,
+        description="Override for processed external data source name. If unset, derived from the top-level `name`.",
+    )
+    csv_file_format: str = Field(default="csv_file_format")
+    parquet_file_format: str = Field(default="parquet_file_format")
+
+    # Set by MedalflowSettings.model_post_init from the single top-level `name`.
+    # Deliberately private: the data source identity is configured once, at the
+    # top level, and is not separately settable under MEDALFLOW_COMPUTE__.
+    _data_source_name: str = PrivateAttr(default="")
+
+    def bind_data_source_name(self, name: str) -> "ComputeSettings":
+        """Bind the top-level data source ``name`` used to derive external names.
+
+        Args:
+            name: The single top-level ``name`` from :class:`MedalflowSettings`
+
+        Returns:
+            Self for method chaining
+        """
+        self._data_source_name = name
+        return self
+
+    @property
+    def synapse(self) -> "ComputeSettings":
+        """The active Synapse configuration.
+
+        ``ComputeType`` has one member, so the compute group *is* the Synapse
+        configuration. Kept as a named alias for call sites that read
+        ``settings.compute.synapse``.
+        """
+        return self
+
+    @property
+    def active_config(self) -> "ComputeSettings":
+        """Configuration for the active compute type."""
+        if self.compute_type != ComputeType.SYNAPSE:
+            raise ValueError(f"Unknown compute type: {self.compute_type}")
+        return self
+
+    @property
+    def raw_external_data_source_name(self) -> str:
+        """Raw external data source name, derived from the top-level ``name``."""
+        if self.raw_external_data_source_name_override:
+            return self.raw_external_data_source_name_override
+
+        return f"ds_{self._data_source_name}_raw"
+
+    @property
+    def processed_external_data_source_name(self) -> str:
+        """Processed external data source name, derived from the top-level ``name``."""
+        if self.processed_external_data_source_name_override:
+            return self.processed_external_data_source_name_override
+
+        return f"ds_{self._data_source_name}_proc"
+
     @property
     def is_configured(self) -> bool:
         """Check if compute settings are properly configured.
@@ -65,101 +146,15 @@ class BaseComputeSettings(CTEBaseSettings):
         return True
 
     def get_odbc_string(self, environment: ComputeEnvironment) -> Optional[str]:
-        """Get ODBC connection string for specified environment.
-
-        Secrets are now loaded lazily through descriptors.
+        """Get ODBC connection string for the specified environment.
 
         Args:
             environment: The compute environment (ETL or CONSUMPTION)
 
         Returns:
-            The ODBC connection string or None
+            The ODBC connection string, or None if no secret provider is attached
         """
         if environment == ComputeEnvironment.ETL:
             return self.etl_odbc
         else:
             return self.consumption_odbc
-
-
-class SynapseSettings(BaseComputeSettings):
-    model_config = SettingsConfigDict(case_sensitive=False)
-
-    database_scoped_cred_name: str = Field(
-        default="cte_adls_creds", description="Database Scoped Credential"
-    )
-    raw_external_data_source_name_override: Optional[str] = Field(
-        default=None,
-        description="Override for raw external data source name. If not set, auto-constructed from DataSourceConfig.",
-    )
-    processed_external_data_source_name_override: Optional[str] = Field(
-        default=None,
-        description="Override for processed external data source name. If not set, auto-constructed from DataSourceConfig.",
-    )
-    csv_file_format: str = Field(default="csv_file_format")
-    parquet_file_format: str = Field(default="parquet_file_format")
-
-    @property
-    def raw_external_data_source_name(self) -> str:
-        """Get raw external data source name.
-
-        Returns override if set, otherwise constructs from DataSourceConfig.
-        Computed once and cached for performance.
-        """
-        if self.raw_external_data_source_name_override:
-            return self.raw_external_data_source_name_override
-
-        return f"ds_{self.name}_raw"
-
-    @property
-    def processed_external_data_source_name(self) -> str:
-        """Get processed external data source name.
-
-        Returns override if set, otherwise constructs from DataSourceConfig.
-        Computed once and cached for performance.
-        """
-        if self.processed_external_data_source_name_override:
-            return self.processed_external_data_source_name_override
-
-        return f"ds_{self.name}_proc"
-
-
-class ComputeSettings(CTEBaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False)
-
-    compute_type: ComputeType = Field(
-        default=ComputeType.SYNAPSE, description="Active compute platform"
-    )
-
-    _synapse: Optional[SynapseSettings] = PrivateAttr(default=None)
-
-    @property
-    def synapse(self) -> SynapseSettings:
-        """Get or create Synapse settings.
-
-        Lazily creates the settings and propagates secret provider and datasource config.
-        """
-        if self._synapse is None:
-            self._synapse = SynapseSettings()
-            if self._secret_provider:
-                self._synapse.attach_secrets(self._secret_provider)
-        return self._synapse
-
-    @property
-    def active_config(self) -> BaseComputeSettings:
-        """Get configuration for the active compute type.
-
-        Returns the appropriate platform settings based on compute_type.
-        """
-        if self.compute_type == ComputeType.SYNAPSE:
-            return self.synapse
-        else:
-            raise ValueError(f"Unknown compute type: {self.compute_type}")
-
-    @property
-    def is_configured(self) -> bool:
-        """Check if the active compute platform is properly configured.
-
-        Returns:
-            True if the active platform is configured
-        """
-        return self.active_config.is_configured

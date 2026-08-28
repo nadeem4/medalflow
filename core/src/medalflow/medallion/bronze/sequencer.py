@@ -19,7 +19,7 @@ from ..landing_zone.lake_database import LakeDatabase
 from ..types import TableInfo
 
 if TYPE_CHECKING:
-    from medalflow.settings import _Settings
+    from medalflow.settings import MedalflowSettings
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class BronzeSequencer(_BaseSequencer):
     """
 
     def __init__(
-        self, settings: "_Settings", schema: str = "dbo", table_names: Optional[str] = None
+        self, settings: "MedalflowSettings", schema: str = "dbo", table_names: Optional[str] = None
     ):
         """Initialize the Bronze sequencer.
 

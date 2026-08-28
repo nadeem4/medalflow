@@ -27,15 +27,9 @@ Performance Optimizations:
 
 Example:
     from medalflow.compute.engines.synapse import SynapseSQLEngine
-    from medalflow.settings import SynapseSettings
+    from medalflow.settings import get_settings
     
-    settings = SynapseSettings(
-        server="mysynapse.sql.azuresynapse.net",
-        database="mydatabase",
-        authentication="AzureAD"
-    )
-    
-    engine = SynapseSQLEngine(settings)
+    engine = SynapseSQLEngine(get_settings().compute)
     
     # Test connection
     if engine.test_connection():

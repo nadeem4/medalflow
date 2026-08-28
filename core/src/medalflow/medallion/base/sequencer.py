@@ -14,7 +14,7 @@ from medalflow.types.metadata import (
 )
 
 if TYPE_CHECKING:
-    from medalflow.settings import _Settings
+    from medalflow.settings import MedalflowSettings
 
 
 # B024: ABC here marks the class as not-for-direct-instantiation. Every method
@@ -49,7 +49,7 @@ class _BaseSequencer(ABC):  # noqa: B024
         >>> plan = sequencer.get_execution_plan()
     """
 
-    def __init__(self, settings: "_Settings"):
+    def __init__(self, settings: "MedalflowSettings"):
         """Initialize the base sequencer.
 
         Args:

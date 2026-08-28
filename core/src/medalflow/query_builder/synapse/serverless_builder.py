@@ -22,7 +22,7 @@ from medalflow.operations.columns import ColumnDefinition
 
 # Import from Layer 1 and Layer 0
 from medalflow.query_builder.base import BaseQueryBuilder
-from medalflow.settings import _Settings
+from medalflow.settings import MedalflowSettings
 
 
 class SynapseServerlessQueryBuilder(BaseQueryBuilder):
@@ -42,7 +42,7 @@ class SynapseServerlessQueryBuilder(BaseQueryBuilder):
         - No data movement - queries data in-place
     """
 
-    def __init__(self, settings: _Settings):
+    def __init__(self, settings: MedalflowSettings):
         """Initialize Synapse Serverless query builder.
 
         Args:

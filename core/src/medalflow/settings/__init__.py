@@ -1,88 +1,69 @@
-"""Settings module providing organized configuration management for MedalFlow.
+"""Configuration for MedalFlow.
 
-This module provides a comprehensive configuration management system built on Pydantic Settings.
-It organizes settings into domain-specific files for better maintainability and clarity,
-with each settings file handling a specific aspect of the application configuration.
+Everything MedalFlow reads lives on one object, :class:`MedalflowSettings`.
+Identity is declared once at the top level; the rest is grouped by domain into
+plain pydantic models.
 
-Key Features:
-    - Type-safe configuration with automatic validation
-    - Environment variable support with consistent naming conventions
-    - Azure Key Vault integration for secure secret management
-    - Modular organization by domain (compute, datalake, features, etc.)
-    - Flexible authentication supporting multiple methods
-    - Production-grade validation with detailed error reporting
-    - Test mode support for development environments
+Environment variables
+---------------------
+Every variable is prefixed ``MEDALFLOW_``. Use the ``__`` delimiter to descend
+into a group::
 
-Architecture:
-    The settings system follows a hierarchical structure:
-    
-    1. Base Layer (base.py):
-       - CTEBaseSettings: Base class with common functionality
-       
-    2. Domain Settings:
-       - compute.py: Compute platform configuration (Synapse)
-       - datalake.py: Azure Data Lake Storage configuration
-       - datasource.py: Data source identity and organization
-       - keyvault.py: Azure Key Vault integration
-       - features.py: Feature flags and toggles
-       - processing.py: Data processing behavior
-       - stats.py: Statistics management
-       - models.py: Model group configuration for medallion orchestration
-       
-    3. Main Aggregator (main.py):
-       - Settings: Main class that aggregates all domain settings
-       - get_settings(): Singleton factory function
-       - reload_settings(): Force reload from environment
+    MEDALFLOW_NAME=fin                              # top level
+    MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME=lakedb    # compute group
+    MEDALFLOW_DATALAKE__PROCESSED__ACCOUNT_NAME=mylake
 
-Configuration Sources (precedence order):
-    1. Environment Variables (highest priority)
-    2. Azure Key Vault Secrets (loaded after initialization)
-    3. Default Values in code (lowest priority)
+Values are read from the process environment and from a ``.env`` file, in that
+precedence order, ahead of the defaults declared in code. Secrets (ODBC strings,
+lake access keys) are never environment variables: they are pulled from Azure
+Key Vault by name.
 
-Environment Variable Naming:
-    - Format: [PREFIX_]SETTING_NAME
-    - Case: UPPER_SNAKE_CASE
-    - Prefixes: Module-specific (e.g., KEYVAULT_, FEATURE_)
-    - Nested: Use double underscore __ (e.g., COMPUTE__SYNAPSE__DATABASE)
+Minimal configuration
+---------------------
+Four variables are enough to construct settings::
 
-Quick Start:
+    MEDALFLOW_SOURCE_SYSTEM      # source ERP system, e.g. sap
+    MEDALFLOW_DS_ENV             # data source environment, e.g. dev
+    MEDALFLOW_NAME               # short data source name, e.g. fin
+    MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME
+
+A real deployment adds two more -- the processed lake account and the Key Vault
+that holds its credentials::
+
+    MEDALFLOW_DATALAKE__PROCESSED__ACCOUNT_NAME
+    MEDALFLOW_KEYVAULT__URL
+
+See ``.env.example`` at the repository root. For the authoritative list of every
+option, read the settings classes themselves; each field carries its own
+description.
+
+Groups
+------
+- ``compute``  -- SQL platform, pools, external data sources (``compute.py``)
+- ``datalake`` -- processed and internal ADLS accounts (``datalake.py``)
+- ``keyvault`` -- Azure Key Vault connection and credentials (``keyvault.py``)
+- ``features`` -- feature flags (``features.py``)
+- ``stats``    -- statistics management (``stats.py``)
+
+Quick start
+-----------
     >>> from medalflow.settings import get_settings
-    >>> 
-    >>> # Get singleton instance
+    >>>
     >>> settings = get_settings()
-    >>> 
-    >>> # Access configuration
-    >>> account = settings.datalake.processed.account_name
-    >>> compute_type = settings.compute.compute_type
-    >>> 
-    >>> # Settings are validated automatically by Pydantic
-    >>> # Any configuration errors will raise ValidationError on initialization
-
-Minimal Required Configuration:
-    - TENANT_ID: Azure AD tenant ID
-    - SOURCE_SYSTEM: Source ERP system
-    - DS_ENV: Data source environment
-    - NAME: Table prefix and package name
-    - PROCESSED_LAKE_ACCOUNT_NAME: Primary data lake account
-    - COMPUTE_TYPE: Platform type (synapse)
-    - Platform-specific settings (e.g., SYNAPSE_LAKE_DATABASE_NAME)
-
-For the authoritative list of options, read the settings classes themselves;
-each field carries its own description.
+    >>> settings.table_prefix
+    'fin_'
+    >>> settings.compute.active_config.dialect
+    'tsql'
 """
-
-# Main settings and functions
-from medalflow.constants.compute import ComputeEnvironment  # noqa: F401
 
 # Re-exported for use inside the package only; deliberately kept out of __all__
 # so the documented public surface stays limited to get_settings. noqa: F401 is
 # required because ruff cannot see the cross-module consumers of these names.
-from .compute import (  # noqa: F401
-    BaseComputeSettings,
-    SynapseSettings,
-)
+from medalflow.constants.compute import ComputeEnvironment  # noqa: F401
+
+from .compute import ComputeSettings  # noqa: F401
 from .main import (
-    _Settings,  # noqa: F401
+    MedalflowSettings,  # noqa: F401
     get_settings,
 )
 

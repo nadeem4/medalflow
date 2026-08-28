@@ -20,7 +20,7 @@ from medalflow.operations import (
 from medalflow.query_builder.base import BaseQueryBuilder
 
 if TYPE_CHECKING:
-    from medalflow.settings import BaseComputeSettings
+    from medalflow.settings import ComputeSettings
 
 
 logger = get_logger(__name__)
@@ -39,7 +39,7 @@ class _BasePlatform(ABC):
 
     def __init__(
         self,
-        settings: "BaseComputeSettings",
+        settings: "ComputeSettings",
         environment: ComputeEnvironment = ComputeEnvironment.ETL,
     ):
         """Initialize platform with settings.

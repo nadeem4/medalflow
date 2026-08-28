@@ -36,7 +36,7 @@ from medalflow.operations import BaseOperation
 from medalflow.types.metadata import SQLDependencies
 
 if TYPE_CHECKING:
-    from medalflow.settings import _Settings
+    from medalflow.settings import MedalflowSettings
 
 logger = get_logger(__name__)
 
@@ -66,7 +66,7 @@ class SQLDependencyAnalyzer:
         'silver.fact_sales'
     """
 
-    def __init__(self, settings: "_Settings"):
+    def __init__(self, settings: "MedalflowSettings"):
         """Initialize the SQL dependency analyzer.
 
         Args:

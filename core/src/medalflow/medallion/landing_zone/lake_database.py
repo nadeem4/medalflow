@@ -10,13 +10,13 @@ from medalflow.protocols import CacheProtocol
 from ..types import TableInfo
 
 if TYPE_CHECKING:
-    from medalflow.settings import _Settings
+    from medalflow.settings import MedalflowSettings
 
 logger = get_logger(__name__)
 
 
 class LakeDatabase:
-    def __init__(self, settings: "_Settings", schema: str = "dbo"):
+    def __init__(self, settings: "MedalflowSettings", schema: str = "dbo"):
         self.settings = settings
         self.compute_settings = self.settings.compute
         self.name = self.compute_settings.active_config.lake_database_name

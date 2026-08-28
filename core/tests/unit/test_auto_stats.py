@@ -24,7 +24,7 @@ from medalflow.compute.platforms.base import _BasePlatform
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
 from medalflow.operations import CreateStatistics, CreateTable
-from medalflow.settings.base import CTEBaseSettings
+from medalflow.settings.main import MedalflowSettings
 from medalflow.types.metadata import QueryMetadata
 
 
@@ -81,11 +81,11 @@ def offline_table_prefix(monkeypatch):
     """`full_object_name` resolves live settings; keep that offline (D6)."""
     import medalflow.settings
 
-    settings = CTEBaseSettings(
-        tenant_id="00000000-0000-0000-0000-000000000000",
+    settings = MedalflowSettings(
         source_system="sap",
         ds_env="dev",
         name="fin",
+        compute={"lake_database_name": "lakedb"},
     )
     monkeypatch.setattr(medalflow.settings, "get_settings", lambda: settings)
     return settings

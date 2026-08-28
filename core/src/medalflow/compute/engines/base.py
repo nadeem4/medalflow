@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
-    from medalflow.settings import BaseComputeSettings
+    from medalflow.settings import ComputeSettings
 from urllib import parse
 
 import pandas as pd
@@ -64,16 +64,16 @@ class BaseSQLEngine:
 
     def __init__(
         self,
-        settings: "BaseComputeSettings",
+        settings: "ComputeSettings",
         environment: ComputeEnvironment = ComputeEnvironment.ETL,
     ):
         """Initialize SQL engine.
 
         Args:
-            settings: Platform settings inheriting from BaseComputeSettings
+            settings: Compute platform settings
             environment: Compute environment (ETL or CONSUMPTION)
         """
-        self.settings = settings  # Type: BaseComputeSettings (injected)
+        self.settings = settings  # Type: ComputeSettings (injected)
         self.environment: ComputeEnvironment = environment
         self._engine: Optional[Engine] = None
         self._connection_info: dict[str, Any] = {
