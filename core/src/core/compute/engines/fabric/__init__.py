@@ -47,6 +47,5 @@ Example:
 """
 
 from .sql_engine import FabricSQLEngine
-from .spark_engine import FabricSparkEngine
 
-__all__ = ["FabricSQLEngine", "FabricSparkEngine"]
+__all__ = ["FabricSQLEngine"]

@@ -13,7 +13,7 @@ Key Features:
 from typing import Optional
 
 from core.constants.compute import EngineType
-from core.compute.engines.fabric import FabricSQLEngine, FabricSparkEngine
+from core.compute.engines.fabric import FabricSQLEngine
 from core.compute.platforms.base import _BasePlatform
 from core.query_builder.fabric import FabricWarehouseQueryBuilder
 from core.datalake.client import DatalakeClient
@@ -56,7 +56,7 @@ class FabricPlatform(_BasePlatform):
         
         Fabric supports both SQL (via SQL Analytics endpoint) and Spark engines.
         """
-        return [EngineType.SQL, EngineType.SPARK, EngineType.AUTO]
+        return [EngineType.SQL, EngineType.AUTO]
     
     def _initialize_dependencies(self) -> None:
         """Initialize Fabric-specific dependencies.
@@ -66,5 +66,4 @@ class FabricPlatform(_BasePlatform):
  
         self._sql_engine = FabricSQLEngine(self.settings, self.environment)
         self._query_builder = get_fabric_query_builder()
-        self._spark_engine: Optional[FabricSparkEngine] = None
         

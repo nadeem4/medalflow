@@ -124,6 +124,6 @@ See Also:
     - core.compute.platforms: Platform orchestration layer
 """
 
-from core.compute.engines.base import BaseSQLEngine, BaseSparkEngine
+from core.compute.engines.base import BaseSQLEngine
 
-__all__ = ["BaseSQLEngine", "BaseSparkEngine"]
+__all__ = ["BaseSQLEngine"]

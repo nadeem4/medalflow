@@ -123,11 +123,9 @@ from core.protocols.operations import ColumnDefinition
 from core.compute.types import (
     OperationResult,
     BatchOperationResult,
-    SparkJobConfig,
-    JobResult,
 )
 
-from core.constants.compute import ComputeEnvironment, EngineType, JobStatus, ResultFormat
+from core.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 
 
 from core.compute.factory import get_platform_factory
@@ -165,13 +163,10 @@ __all__ = [
     # Constants (public)
     "ComputeEnvironment",
     "EngineType",
-    "JobStatus",
     "ResultFormat",
     
     
 
-    "SparkJobConfig",
-    "JobResult",
 
     # Factory
     "get_platform_factory",

@@ -17,8 +17,7 @@ from core.constants.compute import (
     ComputeType,
     ComputeEnvironment,
     EngineType,
-    JobStatus,
-)
+    )
 
 # SQL/Query constants
 from core.constants.sql import QueryType
@@ -50,7 +49,6 @@ __all__ = [
     "ComputeType",
     "ComputeEnvironment", 
     "EngineType",
-    "JobStatus",
     # Medallion
     "QueryType",
     "ExecutionMode",

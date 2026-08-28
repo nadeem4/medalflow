@@ -6,7 +6,7 @@ import pandas as pd
 
 from core.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 from core.constants.sql import QueryType
-from core.compute.engines.base import BaseSQLEngine, BaseSparkEngine
+from core.compute.engines.base import BaseSQLEngine
 from core.query_builder.base import BaseQueryBuilder
 from core.compute.types import OperationResult, BatchOperationResult
 from core.common.exceptions import query_execution_error
@@ -59,7 +59,6 @@ class _BasePlatform(ABC):
         
         # Initialize engines to None - will be set by _initialize_dependencies
         self._sql_engine: Optional[BaseSQLEngine] = None
-        self._spark_engine: Optional[BaseSparkEngine] = None
         self._query_builder: Optional[BaseQueryBuilder] = None
         
         # Initialize platform-specific dependencies
@@ -104,10 +103,7 @@ class _BasePlatform(ABC):
             engine_type = self._select_engine_for_operation(operation)
             query = self._query_builder.build_query(operation)
 
-            if engine_type == EngineType.SPARK:
-                result = self._execute_with_spark(query, operation, telemetry_payload)
-            else:
-                result = self._execute_with_sql(query, operation, telemetry_payload)
+            result = self._execute_with_sql(query, operation, telemetry_payload)
 
             result.duration_seconds = time.time() - start_time
             result.engine_used = engine_type
@@ -204,13 +200,6 @@ class _BasePlatform(ABC):
             )
         return self._sql_engine
     
-    def _get_spark_engine(self) -> BaseSparkEngine:
-        """Get Spark engine instance (internal use only)."""
-        if self._spark_engine is None:
-            raise RuntimeError(
-                "Spark engine not configured. Use platform builder to create platform with dependencies."
-            )
-        return self._spark_engine
     
     def _get_query_builder(self) -> BaseQueryBuilder:
         """Get query builder instance (internal use only).
@@ -249,9 +238,6 @@ class _BasePlatform(ABC):
         ]:
             return EngineType.SQL
         
-        if operation.operation_type in [QueryType.MERGE, QueryType.COPY]:
-            if EngineType.SPARK in self.supported_engines():
-                return EngineType.SPARK
         
         if isinstance(operation, (Insert, Update, Delete)):
             pass
@@ -334,33 +320,6 @@ class _BasePlatform(ABC):
                 query_executed=query,
             )
     
-    def _execute_with_spark(
-        self,
-        query: str,
-        operation: BaseOperation,
-        telemetry: Optional[Dict[str, str]] = None,
-    ) -> OperationResult:
-        """Execute query with Spark engine.
-        
-        Args:
-            query: SQL query to execute
-            operation: Original operation for context
-            
-        Returns:
-            BaseOperation result
-        """
-        # Return not implemented error for now
-        return OperationResult(
-            success=False,
-            operation_type=operation.operation_type,
-            schema_name=operation.schema_name,
-            object_name=operation.object_name,
-            duration_seconds=0,
-            error_message="Executing queries with Spark is not yet supported",
-            error_type="NotImplementedError",
-            query_executed=query
-        )
-    
     def _supports_transactions(self) -> bool:
         """Check if platform supports transactions.
         
@@ -405,13 +364,6 @@ class _BasePlatform(ABC):
                 logger.error(f"SQL connection test failed: {e}")
                 results["sql"] = False
         
-        if EngineType.SPARK in self.supported_engines():
-            try:
-                spark_engine = self._get_spark_engine()
-                results["spark"] = spark_engine.test_connection()
-            except Exception as e:
-                logger.error(f"Spark connection test failed: {e}")
-                results["spark"] = False
         
         return results
     
@@ -419,5 +371,4 @@ class _BasePlatform(ABC):
     def cleanup(self) -> None:
         """Clean up resources."""
         self._sql_engine = None
-        self._spark_engine = None
         self._query_builder = None

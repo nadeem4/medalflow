@@ -90,51 +90,6 @@ class EngineType(str, Enum):
     SQL = "sql"
     SPARK = "spark"
     AUTO = "auto"
-
-
-class JobStatus(str, Enum):
-    """Status of a compute job.
-    
-    Represents the lifecycle states of a compute job (primarily Spark jobs).
-    Used for tracking job progress and determining appropriate actions.
-    
-    Values:
-        PENDING: Job submitted but not yet started.
-            - Waiting for resources or in queue
-        RUNNING: Job actively executing.
-            - Resources allocated, processing data
-        SUCCEEDED: Job completed successfully.
-            - All tasks finished without errors
-        FAILED: Job terminated due to error.
-            - Check JobResult.error for details
-        CANCELLED: Job terminated by user request.
-            - Manual cancellation or system shutdown
-        TIMEOUT: Job exceeded time limit.
-            - Terminated due to timeout_seconds limit
-    
-    State Transitions:
-        PENDING -> RUNNING -> SUCCEEDED
-                         |-> FAILED
-                         |-> TIMEOUT
-                |-> CANCELLED
-    
-    Example:
-        >>> result = spark_engine.submit_job(query)
-        >>> while result.status == JobStatus.RUNNING:
-        ...     time.sleep(5)
-        ...     result = spark_engine.get_job_status(result.job_id)
-        >>> if result.status == JobStatus.SUCCEEDED:
-        ...     print("Job completed!")
-    """
-    
-    PENDING = "pending"
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-    TIMEOUT = "timeout"
-
-
 class ResultFormat(str, Enum):
     """Format for query result data when using ExecuteSQL operation.
     

@@ -46,23 +46,11 @@ class BaseComputeSettings(CTEBaseSettings):
     sql_pool_timeout: int = Field(default=30, ge=1)
     sql_max_overflow: int = Field(default=10, ge=0)
 
-    spark_workspace_name: Optional[str] = Field(None, description="Synapse workspace for Spark")
-    spark_pool_name: Optional[str] = Field(None, description="Spark pool name")
-    spark_executor_instances: int = Field(default=2, ge=1)
-    spark_executor_cores: int = Field(default=4, ge=1)
-    spark_executor_memory: str = Field(default="4g")
-    spark_driver_memory: str = Field(default="4g")
-    spark_max_concurrent_jobs: int = Field(default=10, ge=1)
 
 
-    spark_enabled: bool = Field(default=False, description="Whether Spark is enabled")
 
 
     
-    @property
-    def spark_configured(self) -> bool:
-        """Check if Spark is configured."""
-        return bool(self.spark_workspace_name and self.spark_pool_name)
     
     @property
     def is_configured(self) -> bool:
