@@ -85,6 +85,7 @@ class SQLDependencyAnalyzer:
         self.settings = settings
         self.dialect = settings.compute.active_config.dialect
         self.table_prefix = settings.table_prefix
+        self.skip_prefix_on_schema = settings.compute.active_config.skip_prefix_on_schema
 
     def extract_dependencies(self, sql: str) -> SQLDependencies:
         """Extract source and target tables from SQL query.
@@ -233,15 +234,38 @@ class SQLDependencyAnalyzer:
         """
         return {"database": table.catalog, "schema": table.db, "table": table.name}
 
-    @staticmethod
-    def _qualified_name(table_parts: dict) -> str:
+    def _qualified_name(self, table_parts: dict) -> str:
         """Join table parts into one lowercase ``[database.]schema.table`` name.
 
         This is the single naming convention for both ``reads_from`` and
         ``writes_to``; the DAG builder matches operations on exactly these
         strings, so producers must not diverge from it.
+
+        The name is *logical*: the deployment table prefix is stripped, so
+        generated ``[silver].[fin_DimCustomer]`` and a model author's
+        ``silver.DimCustomer`` are the same table. See
+        docs/adr/000-table-prefix-is-deployment-detail.md.
         """
-        return ".".join(part for part in table_parts.values() if part).lower()
+        schema = table_parts.get("schema") or ""
+        table = table_parts.get("table") or ""
+
+        if self._is_prefixed_schema(schema) and table.lower().startswith(self.table_prefix.lower()):
+            table = table[len(self.table_prefix) :]
+
+        parts = (table_parts.get("database"), schema, table)
+        return ".".join(part for part in parts if part).lower()
+
+    def _is_prefixed_schema(self, schema: str) -> bool:
+        """Whether the query builder would prefix a table living in this schema.
+
+        Mirrors ``BaseQueryBuilder.fully_qualified_name``: ``skip_prefix_on_schema``
+        makes the prefix conditional, so it cannot be stripped blindly. An
+        unqualified name has no schema to judge by, so it is left alone.
+        """
+        if not self.table_prefix or not schema:
+            return False
+
+        return schema.lower() not in {skipped.lower() for skipped in self.skip_prefix_on_schema}
 
     def analyze_operations(
         self, operations: list[BaseOperation]
