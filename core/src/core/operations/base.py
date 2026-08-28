@@ -17,14 +17,6 @@ from core.types import QueryMetadata
 from core.types.base import CTEBaseModel
 
 
-def _stringify(value: Any) -> Optional[str]:
-    if value is None:
-        return None
-    if isinstance(value, (str, int, float, bool)):
-        return str(value)
-    return str(value)
-
-
 class BaseOperation(CTEBaseModel):
     """Base class for all database operations.
     
@@ -130,7 +122,7 @@ class BaseOperation(CTEBaseModel):
         if self.metadata and getattr(self.metadata, "operation_id", None):
             payload["operation.id"] = str(self.metadata.operation_id)
         for key, value in (self.logging_context or {}).items():
-            sanitized = _stringify(value)
+            sanitized = ExecutionRequestContext._stringify(value)
             if sanitized is not None:
                 payload[f"operation.ctx.{key}"] = sanitized
         return payload
@@ -143,7 +135,7 @@ class BaseOperation(CTEBaseModel):
             "operation_type": str(self.operation_type),
         }
         for key, value in (self.logging_context or {}).items():
-            sanitized = _stringify(value)
+            sanitized = ExecutionRequestContext._stringify(value)
             if sanitized is not None:
                 attrs[f"context_{key}"] = sanitized
         return attrs

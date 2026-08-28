@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from core.compute import create_platform, ComputeEnvironment, OperationResult
 from core.monitoring.metrics import MetricsCollector
 from core.observability import operation_instrumentation
-from core.observability.context import resolve_request_context
+from core.observability.context import ExecutionRequestContext, resolve_request_context
 from core.settings import get_settings
 
 
@@ -38,13 +38,6 @@ def execute(
     stage = str(operation.get("_cte_stage", "unknown"))
     op_name = str(operation.get("operation_type", "unknown"))
 
-    def _stringify(value: Any) -> Optional[str]:
-        if value is None:
-            return None
-        if isinstance(value, (str, int, float, bool)):
-            return str(value)
-        return str(value)
-
     attributes: Dict[str, str] = {}
     for key, raw in {
         "schema": operation.get("schema_name"),
@@ -52,7 +45,7 @@ def execute(
         "operation_type": op_name,
         "compute_environment": getattr(compute_environment, "value", compute_environment),
     }.items():
-        sanitized = _stringify(raw)
+        sanitized = ExecutionRequestContext._stringify(raw)
         if sanitized:
             attributes[key] = sanitized
 

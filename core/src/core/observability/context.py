@@ -11,7 +11,7 @@ from pydantic import Field
 
 from core.logging import get_logger
 from core.logging.filters import clear_request_context, set_request_context
-from core.telemetry import get_tracer
+from opentelemetry import trace
 from core.types.base import CTEBaseModel
 
 
@@ -57,7 +57,7 @@ def execution_request_scope(
     ctx: ExecutionRequestContext,
     *,
     operation: Optional[str] = None,
-) -> Iterator[None]:
+) -> Iterator[trace.Span]:
     """Apply logging + tracing scope for a request/operation."""
     ctx.telemetry_base = ctx.to_telemetry_dict()
 
@@ -66,7 +66,7 @@ def execution_request_scope(
         user_id=ctx.user_id
     )
 
-    tracer = get_tracer("medalflow")
+    tracer = trace.get_tracer("medalflow")
     span_name = operation or "medalflow.request"
     span_attributes = {f"medalflow.{key}": value for key, value in ctx.telemetry_base.items()}
     if operation:
@@ -77,7 +77,7 @@ def execution_request_scope(
             span.set_attribute(key, value)
 
         try:
-            yield
+            yield span
         except Exception as exc:
             span.record_exception(exc)
             span.set_status(Status(StatusCode.ERROR))
