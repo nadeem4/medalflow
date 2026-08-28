@@ -1,6 +1,5 @@
 """Synapse Serverless SQL pool query builder implementation."""
 
-
 # Import operation types from Layer 1
 from medalflow.operations import (
     Copy,

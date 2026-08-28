@@ -5,7 +5,7 @@ including execution plans, DAGs, lineage tracking, and database metadata.
 """
 
 from collections import defaultdict
-from typing import Any, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -72,7 +72,7 @@ class ExecutionStage(CTEBaseModel):
 
     stage: int
     operations: list[BaseOperation]
-    context: Optional[ExecutionRequestContext] = None
+    context: ExecutionRequestContext | None = None
 
     def to_dict(self) -> dict:
         """Override to ensure operations are properly serialized."""
@@ -107,12 +107,12 @@ class ExecutionPlan(CTEBaseModel):
     """
 
     sequencer_name: str
-    metadata: Optional[Union[ClassMetadata, dict[str, Any]]] = None
-    lineage: Optional[LineageInfo] = None
+    metadata: ClassMetadata | dict[str, Any] | None = None
+    lineage: LineageInfo | None = None
     total_queries: int
     stages: list[ExecutionStage]
     dependency_graph: dict[str, list[str]]
-    context: Optional[ExecutionRequestContext] = None
+    context: ExecutionRequestContext | None = None
 
     def to_dict(self) -> dict:
         """Override to ensure stages and nested objects are properly serialized."""
@@ -128,7 +128,7 @@ class ExecutionPlan(CTEBaseModel):
 
     def get_all_operations(
         self, serialize: bool = False
-    ) -> Union[list[list[BaseOperation]], list[list[dict]]]:
+    ) -> list[list[BaseOperation]] | list[list[dict]]:
         """Get all operations grouped by execution stage.
 
         Operations within the same stage (inner list) can be executed in parallel.

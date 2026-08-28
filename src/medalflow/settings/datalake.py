@@ -5,7 +5,7 @@ Two lakes are configured: ``processed`` (the medallion data) and ``internal``
 parent settings object, e.g. ``MEDALFLOW_DATALAKE__PROCESSED__ACCOUNT_NAME``.
 """
 
-from typing import ClassVar, Optional, Union
+from typing import ClassVar
 
 from pydantic import Field, model_validator
 
@@ -18,11 +18,11 @@ from medalflow.protocols import SecretProvider
 class BaseDataLakeConfig(SecretProviderMixin):
     """Configuration for a single Azure Data Lake Storage account."""
 
-    account_name: Optional[str] = Field(
+    account_name: str | None = Field(
         None,
         description="DataLake account name. Required to use this lake; see `is_configured`.",
     )
-    file_system_name: Optional[str] = Field(
+    file_system_name: str | None = Field(
         None, description="File system name (can be overridden by data source)"
     )
     auth_method: DataLakeAuthMethod = Field(
@@ -49,7 +49,7 @@ class BaseDataLakeConfig(SecretProviderMixin):
         return self
 
     @property
-    def connection_string(self) -> Optional[str]:
+    def connection_string(self) -> str | None:
         """Connection string for this DataLake, or None if not key-authenticated."""
         if self.auth_method == DataLakeAuthMethod.ACCESS_KEY:
             return (
@@ -101,7 +101,7 @@ class MultiDataLakeSettings(NestedSecretsMixin):
 
     def get_lake_config(
         self, lake_type: LakeType
-    ) -> Union[ProcessedDataLakeConfig, InternalDataLakeConfig]:
+    ) -> ProcessedDataLakeConfig | InternalDataLakeConfig:
         """Get the DataLake configuration for the specified lake type.
 
         Args:

@@ -8,7 +8,7 @@ platform is added, those two properties are the seam to split on.
 """
 
 import logging
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from pydantic import Field, PrivateAttr
 
@@ -64,11 +64,11 @@ class ComputeSettings(SecretProviderMixin):
     database_scoped_cred_name: str = Field(
         default="adls_creds", description="Database Scoped Credential"
     )
-    raw_external_data_source_name_override: Optional[str] = Field(
+    raw_external_data_source_name_override: str | None = Field(
         default=None,
         description="Override for raw external data source name. If unset, derived from the top-level `name`.",
     )
-    processed_external_data_source_name_override: Optional[str] = Field(
+    processed_external_data_source_name_override: str | None = Field(
         default=None,
         description="Override for processed external data source name. If unset, derived from the top-level `name`.",
     )
@@ -145,7 +145,7 @@ class ComputeSettings(SecretProviderMixin):
 
         return True
 
-    def get_odbc_string(self, environment: ComputeEnvironment) -> Optional[str]:
+    def get_odbc_string(self, environment: ComputeEnvironment) -> str | None:
         """Get ODBC connection string for the specified environment.
 
         Args:

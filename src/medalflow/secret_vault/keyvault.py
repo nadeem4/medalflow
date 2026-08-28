@@ -42,7 +42,7 @@ def _is_retryable(error: Exception) -> bool:
         True for transient transport and throttling failures; False for a
         missing SDK, a missing secret, or rejected credentials.
     """
-    if isinstance(error, (ImportError, CTEError)):
+    if isinstance(error, ImportError | CTEError):
         return False
 
     if type(error).__name__ in _NON_RETRYABLE_ERRORS:
@@ -77,7 +77,7 @@ class KeyVaultSecrets:
             settings: Key Vault configuration settings
         """
         self.kv_settings = settings
-        self._secret_client: Optional["SecretClient"] = None
+        self._secret_client: SecretClient | None = None
 
     @property
     def secret_client(self) -> Optional["SecretClient"]:
@@ -110,7 +110,7 @@ class KeyVaultSecrets:
 
         return self._secret_client
 
-    def get_secret(self, secret_name: str, default: Optional[str] = None) -> Optional[SecretStr]:
+    def get_secret(self, secret_name: str, default: str | None = None) -> SecretStr | None:
         """Retrieve a secret from Key Vault.
 
         Args:
@@ -157,7 +157,7 @@ class KeyVaultSecrets:
         # entirely and return None, indistinguishable from "secret not found".
         attempts = max(1, self.kv_settings.max_retries)
         retry_delay = self.kv_settings.retry_delay_seconds
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         attempts_made = 0
 
         for attempt in range(attempts):

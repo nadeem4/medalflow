@@ -4,7 +4,7 @@ This module contains operation classes for managing database statistics.
 """
 
 import logging
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -34,10 +34,10 @@ class CreateStatistics(BaseOperation):
         default=QueryType.CREATE_STATISTICS, frozen=True
     )
 
-    columns: Optional[list[str]] = Field(default=None)
-    sample_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    columns: list[str] | None = Field(default=None)
+    sample_percent: float | None = Field(default=None, ge=0.0, le=100.0)
     with_fullscan: bool = Field(default=True)
-    stats_name: Optional[str] = Field(default=None)  # Auto-generate if not provided
+    stats_name: str | None = Field(default=None)  # Auto-generate if not provided
     auto_discover: bool = Field(
         default=True, description="Enable automatic column discovery via StatsManager"
     )

@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from medalflow.medallion import (
     BronzeSequencer,
@@ -28,9 +28,9 @@ def _instantiate_sequencers(transformations) -> list[Any]:
 
 
 def get_bronze_execution_plan(
-    table_names: Optional[list[str]],
+    table_names: list[str] | None,
     *,
-    ctx: Optional[Any] = None,
+    ctx: Any | None = None,
 ) -> ExecutionPlan:
     """Generate the execution plan for the bronze layer."""
     context = resolve_request_context(ctx)
@@ -47,9 +47,9 @@ def get_bronze_execution_plan(
 
 
 def get_gold_execution_plan(
-    table_names: Optional[list[str]],
+    table_names: list[str] | None,
     *,
-    ctx: Optional[Any] = None,
+    ctx: Any | None = None,
 ) -> ExecutionPlan:
     """Generate the execution plan for the gold layer."""
     context = resolve_request_context(ctx)
@@ -65,7 +65,7 @@ def get_gold_execution_plan(
 def get_silver_execution_plan_for_models(
     models: str = "all",
     *,
-    ctx: Optional[Any] = None,
+    ctx: Any | None = None,
 ) -> ExecutionPlan:
     """Generate the execution plan for the silver layer."""
     context = resolve_request_context(ctx)
@@ -83,7 +83,7 @@ def get_silver_execution_plan_for_models(
 def get_execution_plan_for_sps(
     sp_names: str,
     *,
-    ctx: Optional[Any] = None,
+    ctx: Any | None = None,
 ) -> ExecutionPlan:
     """Generate the execution plan for specific stored procedures."""
     context = resolve_request_context(ctx)

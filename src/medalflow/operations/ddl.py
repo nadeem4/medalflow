@@ -5,7 +5,7 @@ CREATE TABLE, DROP TABLE, CREATE SCHEMA, etc.
 """
 
 import re
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -35,17 +35,17 @@ class CreateTable(BaseOperation):
     )
 
     # Table definition options
-    columns: Optional[list[ColumnDefinition]] = Field(default=None)
-    select_query: Optional[SQLFragment] = Field(default=None)
-    source_table: Optional[str] = Field(default=None)
+    columns: list[ColumnDefinition] | None = Field(default=None)
+    select_query: SQLFragment | None = Field(default=None)
+    source_table: str | None = Field(default=None)
 
     # External table options
-    location: Optional[str] = Field(default=None)
+    location: str | None = Field(default=None)
     file_format: str = Field(default="parquet")
 
     # Table properties
-    partitions: Optional[list[str]] = Field(default=None)
-    distribution: Optional[str] = Field(default=None)  # HASH, ROUND_ROBIN, REPLICATE
+    partitions: list[str] | None = Field(default=None)
+    distribution: str | None = Field(default=None)  # HASH, ROUND_ROBIN, REPLICATE
     properties: dict[str, Any] = Field(default_factory=dict)
     recreate: bool = Field(
         default=True,
@@ -54,7 +54,7 @@ class CreateTable(BaseOperation):
 
     @field_validator("location")
     @classmethod
-    def validate_location_is_a_path(cls, v: Optional[str]) -> Optional[str]:
+    def validate_location_is_a_path(cls, v: str | None) -> str | None:
         """Reject anything that is not a plain data lake path."""
         if v is None:
             return v
@@ -114,7 +114,7 @@ class CreateSchema(BaseOperation):
         default=QueryType.CREATE_SCHEMA, frozen=True
     )
     if_not_exists: bool = Field(default=True)
-    authorization: Optional[str] = Field(default=None)
+    authorization: str | None = Field(default=None)
 
 
 class DropSchema(BaseOperation):

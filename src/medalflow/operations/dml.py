@@ -4,7 +4,7 @@ This module contains operation classes for DML commands like
 INSERT, UPDATE, DELETE, MERGE.
 """
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -27,21 +27,21 @@ class Select(BaseOperation):
     operation_type: Literal[QueryType.SELECT] = Field(default=QueryType.SELECT, frozen=True)
 
     # Column selection
-    columns: Optional[list[str]] = Field(default=None)  # None = SELECT *
+    columns: list[str] | None = Field(default=None)  # None = SELECT *
     distinct: bool = Field(default=False)
 
     # Filtering and joins
-    where_clause: Optional[SQLFragment] = Field(default=None)
-    join_clause: Optional[SQLFragment] = Field(default=None)
+    where_clause: SQLFragment | None = Field(default=None)
+    join_clause: SQLFragment | None = Field(default=None)
 
     # Grouping and ordering
-    group_by: Optional[list[str]] = Field(default=None)
-    having_clause: Optional[SQLFragment] = Field(default=None)
-    order_by: Optional[list[str]] = Field(default=None)
+    group_by: list[str] | None = Field(default=None)
+    having_clause: SQLFragment | None = Field(default=None)
+    order_by: list[str] | None = Field(default=None)
 
     # Limiting results
-    limit: Optional[int] = Field(default=None, gt=0)
-    offset: Optional[int] = Field(default=None, ge=0)
+    limit: int | None = Field(default=None, gt=0)
+    offset: int | None = Field(default=None, ge=0)
 
 
 class Insert(BaseOperation):
@@ -56,12 +56,12 @@ class Insert(BaseOperation):
     operation_type: Literal[QueryType.INSERT] = Field(default=QueryType.INSERT, frozen=True)
 
     # Data source (use one)
-    source_query: Optional[SQLFragment] = Field(default=None)  # INSERT INTO ... SELECT
-    values: Optional[list[dict[str, Any]]] = Field(default=None)  # Direct values
+    source_query: SQLFragment | None = Field(default=None)  # INSERT INTO ... SELECT
+    values: list[dict[str, Any]] | None = Field(default=None)  # Direct values
 
     # Insert options
     mode: str = Field(default="append", pattern="^(append|overwrite)$")  # append, overwrite
-    columns: Optional[list[str]] = Field(default=None)  # Specific columns for insert
+    columns: list[str] | None = Field(default=None)  # Specific columns for insert
 
     @model_validator(mode="after")
     def validate_data_source(self):
@@ -76,8 +76,8 @@ class Update(BaseOperation):
 
     operation_type: Literal[QueryType.UPDATE] = Field(default=QueryType.UPDATE, frozen=True)
     set_columns: dict[str, Any] = Field(...)  # Column -> value or expression
-    where_clause: Optional[SQLFragment] = Field(default=None)
-    from_clause: Optional[SQLFragment] = Field(default=None)  # For UPDATE with JOIN
+    where_clause: SQLFragment | None = Field(default=None)
+    from_clause: SQLFragment | None = Field(default=None)  # For UPDATE with JOIN
 
     @field_validator("set_columns")
     @classmethod
@@ -92,7 +92,7 @@ class Delete(BaseOperation):
     """Delete data operation."""
 
     operation_type: Literal[QueryType.DELETE] = Field(default=QueryType.DELETE, frozen=True)
-    where_clause: Optional[SQLFragment] = Field(default=None)  # None = delete all
+    where_clause: SQLFragment | None = Field(default=None)  # None = delete all
 
 
 class Merge(BaseOperation):
@@ -107,10 +107,10 @@ class Merge(BaseOperation):
     merge_condition: SQLFragment = Field(...)  # Join condition
 
     # Merge actions
-    when_matched_update: Optional[dict[str, Any]] = Field(default=None)
-    when_matched_delete: Optional[SQLFragment] = Field(default=None)  # Condition for delete
-    when_not_matched_insert: Optional[dict[str, Any]] = Field(default=None)
-    when_not_matched_by_source_update: Optional[dict[str, Any]] = Field(default=None)
+    when_matched_update: dict[str, Any] | None = Field(default=None)
+    when_matched_delete: SQLFragment | None = Field(default=None)  # Condition for delete
+    when_not_matched_insert: dict[str, Any] | None = Field(default=None)
+    when_not_matched_by_source_update: dict[str, Any] | None = Field(default=None)
     when_not_matched_by_source_delete: bool = Field(default=False)
 
     @model_validator(mode="after")

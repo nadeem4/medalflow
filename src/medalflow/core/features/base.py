@@ -6,7 +6,7 @@ to any layer of the application.
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from medalflow.settings.features import FeatureSettings
@@ -63,7 +63,7 @@ class FeatureManager(ABC):
         pass
 
     @abstractmethod
-    def initialize(self, config: Optional[dict[str, Any]] = None) -> None:
+    def initialize(self, config: dict[str, Any] | None = None) -> None:
         """Initialize the manager with optional configuration.
 
         This method is called once when the manager is first accessed

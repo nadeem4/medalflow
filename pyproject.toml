@@ -11,14 +11,12 @@ keywords = ["etl", "elt", "medallion-architecture", "data-engineering", "dag", "
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.13",
 ]
 packages = [{include = "medalflow", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.13"
 pydantic = {extras = ["dotenv"], version = "^2.5.0"}
 pydantic-settings = "^2.1.0"
 sqlalchemy = "^2.0.0"
@@ -64,9 +62,12 @@ pytest = "^7.4.0"
 pytest-asyncio = "^0.21.0"
 pytest-cov = "^4.1.0"
 pytest-mock = "^3.12.0"
-# Code quality essentials
-black = "^23.12.0"
-ruff = "^0.1.0"
+# Code quality essentials. The floors are set by `target-version` above,
+# not by taste: `py313` is an unknown value to anything older, and both
+# tools fail to start rather than ignore it. black learned it in 24.4.1,
+# ruff in 0.4.5.
+black = "^24.4.1"
+ruff = "^0.4.5"
 mypy = "^1.8.0"
 pre-commit = "^3.6.0"
 
@@ -76,12 +77,16 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100
-target-version = ['py39']
+target-version = ['py313']
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py313"
+
+# `select`/`ignore` belong under `lint` as of the ruff bump above; left at the
+# top level they still work but warn on every run.
+[tool.ruff.lint]
 # Simplified to essential rules only
 select = [
     "E",   # pycodestyle errors
@@ -92,19 +97,10 @@ select = [
 ]
 ignore = [
     "E501",   # Line too long - handled by black
-    # UP007 rewrites Optional[X] to X | None. PEP 604 unions are Python 3.10+.
-    # All 26 occurrences sit in the four modules that carry
-    # `from __future__ import annotations`, so the annotations themselves are
-    # deferred -- but observability/context.py defines a pydantic model, and
-    # pydantic resolves those deferred strings at class-creation time. That
-    # raises TypeError on the Python 3.9 floor declared above, which CI tests.
-    # Ruff's ignore is repo-wide, so the rule stays off until the floor moves
-    # to 3.10.
-    "UP007",
 ]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

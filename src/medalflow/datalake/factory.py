@@ -1,4 +1,5 @@
 """Factory for creating datalake clients."""
+
 from medalflow.constants.datalake import LakeType
 from medalflow.logging import get_logger
 

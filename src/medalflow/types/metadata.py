@@ -4,7 +4,7 @@ This module contains all metadata classes including layer-specific metadata
 (Bronze, Silver, Gold, Snapshot) and query-related metadata types.
 """
 
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, NamedTuple
 
 from pydantic import Field, field_serializer, model_validator
 
@@ -37,7 +37,7 @@ class BronzeMetadata(CTEBaseModel):
 
     source_system: str
     ingestion_mode: str = "incremental"  # "incremental", "full", "append"
-    description: Optional[str] = None
+    description: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -65,10 +65,10 @@ class SilverMetadata(CTEBaseModel):
 
     sp_name: str
     group_file_name: str
-    description: Optional[str] = None
+    description: str | None = None
     tags: list[str] = Field(default_factory=list)
     preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
-    model_name: Optional[str] = None
+    model_name: str | None = None
     disable_key_reshuffling: bool = False
     disabled: bool = (
         False  # If True, transformation won't be executed (for client-specific features)
@@ -108,7 +108,7 @@ class GoldMetadata(CTEBaseModel):
 
     schema_name: str
     layer: str = "gold"
-    description: Optional[str] = None
+    description: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -139,7 +139,7 @@ class SnapshotMetadata(CTEBaseModel):
     retention_days: int = 90
     compression: bool = True
     frequency: SnapshotFrequency = SnapshotFrequency.DAILY
-    description: Optional[str] = None
+    description: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -166,8 +166,8 @@ class TransformationMetadata(CTEBaseModel):
     intermediate_synapse_object: str
     add_default_row: bool = False
     is_surrogate_key_calculated: bool = False
-    surrogate_key: Optional[str] = None
-    unique_idx: Optional[list[str]] = None
+    surrogate_key: str | None = None
+    unique_idx: list[str] | None = None
     disable_key_reshuffling: bool = False
 
     @classmethod
@@ -197,7 +197,7 @@ class TransformationMetadata(CTEBaseModel):
 
 
 # Union type for all class metadata
-ClassMetadata = Union[BronzeMetadata, SilverMetadata, GoldMetadata, SnapshotMetadata]
+ClassMetadata = BronzeMetadata | SilverMetadata | GoldMetadata | SnapshotMetadata
 
 
 # ============================================================================
@@ -236,10 +236,10 @@ class QueryMetadata(CTEBaseModel):
     table_name: str = ""
     schema_name: str = ""
     preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
-    unique_idx: Optional[list[str]] = None  # Dimension natural key columns
-    filter: Optional[str] = None  # Enum name for auto-generation
+    unique_idx: list[str] | None = None  # Dimension natural key columns
+    filter: str | None = None  # Enum name for auto-generation
     create_stats: bool = False  # Auto-create statistics after operation
-    stats_columns: Optional[list[str]] = None  # Specific columns for statistics
+    stats_columns: list[str] | None = None  # Specific columns for statistics
 
 
 class DiscoveredMethod(NamedTuple):
@@ -280,7 +280,7 @@ class SQLDependencies(CTEBaseModel):
     """
 
     reads_from: set[str] = Field(default_factory=set)
-    writes_to: Optional[str] = None
+    writes_to: str | None = None
 
 
 class QueryAnalysis(CTEBaseModel):
@@ -298,11 +298,11 @@ class QueryAnalysis(CTEBaseModel):
         error: Error message if analysis failed (None if successful)
     """
 
-    sql: Optional[str]
+    sql: str | None
     dependencies: "SQLDependencies"
     metadata: QueryMetadata
     method: Any
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # Export all metadata types

@@ -10,7 +10,8 @@ import pandas.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, runtime_checkable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -23,11 +24,11 @@ class CacheProtocol(Protocol):
     Any class implementing these methods can be used as a cache manager.
     """
 
-    def get(self, key: str, loader: Optional[Callable[[], Any]] = None) -> Any:
+    def get(self, key: str, loader: Callable[[], Any] | None = None) -> Any:
         """Get value from cache or load it."""
         ...
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value in cache with optional TTL."""
         ...
 
@@ -55,7 +56,7 @@ class StatsProtocol(Protocol):
     Any class implementing these methods can be used as a stats manager.
     """
 
-    def get_stats_columns(self, table_name: str, layer: str = "bronze") -> Optional[list[str]]:
+    def get_stats_columns(self, table_name: str, layer: str = "bronze") -> list[str] | None:
         """Get statistics columns for a specific table."""
         ...
 
@@ -63,7 +64,7 @@ class StatsProtocol(Protocol):
         """Check if stats should be created for a table."""
         ...
 
-    def get_stats_config(self, schema: str) -> Optional[Any]:
+    def get_stats_config(self, schema: str) -> Any | None:
         """Get processed stats configuration for a schema."""
         ...
 
@@ -75,6 +76,6 @@ class StatsProtocol(Protocol):
         """Inject CSV loader for reading configuration files."""
         ...
 
-    def clear_metadata(self, layer: Optional[str] = None) -> None:
+    def clear_metadata(self, layer: str | None = None) -> None:
         """Clear cached statistics metadata."""
         ...

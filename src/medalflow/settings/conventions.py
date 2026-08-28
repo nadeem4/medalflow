@@ -19,7 +19,7 @@ level as the schema and table names alongside them. Runtime values are not:
 those are escaped at the point of use.
 """
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -132,13 +132,13 @@ class NullHandlingRule(BaseModel):
 class ConventionsSettings(BaseModel):
     """Opt-in naming conventions. Everything here is off until configured."""
 
-    soft_delete: Optional[SoftDeleteConvention] = Field(
+    soft_delete: SoftDeleteConvention | None = Field(
         default=None, description="Filter applied to bronze source reads."
     )
-    enum_table: Optional[EnumTableConvention] = Field(
+    enum_table: EnumTableConvention | None = Field(
         default=None, description="Lookup table for filter-based silver dimensions."
     )
-    detail_tables: Optional[DetailTableConvention] = Field(
+    detail_tables: DetailTableConvention | None = Field(
         default=None, description="temp-to-silver promotion of staged detail tables."
     )
     null_handling: list[NullHandlingRule] = Field(

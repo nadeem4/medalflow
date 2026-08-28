@@ -5,8 +5,6 @@ The actual secret retrieval implementation lives in the ``secret_vault``
 package.
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, SecretStr
 
 
@@ -22,20 +20,18 @@ class KeyVaultSettings(BaseModel):
     leave all three unset.
     """
 
-    url: Optional[str] = Field(
+    url: str | None = Field(
         None, description="Azure Key Vault URL (https://vault-name.vault.azure.net/)"
     )
     use_keyvault: bool = Field(default=True, description="Whether to use Key Vault for secrets")
 
-    tenant_id: Optional[str] = Field(
+    tenant_id: str | None = Field(
         None,
         description="Azure AD tenant ID (GUID) for service principal auth. "
         "Only needed alongside client_id and client_secret.",
     )
-    client_id: Optional[str] = Field(
-        None, description="Azure client ID for Key Vault authentication"
-    )
-    client_secret: Optional[SecretStr] = Field(
+    client_id: str | None = Field(None, description="Azure client ID for Key Vault authentication")
+    client_secret: SecretStr | None = Field(
         None, description="Azure client secret for Key Vault authentication"
     )
 

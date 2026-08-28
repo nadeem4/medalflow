@@ -11,7 +11,6 @@ Key Features:
 """
 
 import time
-from typing import Optional
 
 from medalflow.compute.engines.synapse import SynapseSQLEngine
 from medalflow.compute.platforms.base import _BasePlatform
@@ -80,7 +79,7 @@ class SynapsePlatform(_BasePlatform):
     def execute_operation(
         self,
         operation: BaseOperation,
-        telemetry: Optional[dict[str, str]] = None,
+        telemetry: dict[str, str] | None = None,
     ) -> OperationResult:
         """Execute a database operation with Synapse-specific handling.
 

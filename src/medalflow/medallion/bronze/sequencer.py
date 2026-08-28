@@ -6,7 +6,7 @@ with minimal transformation.
 """
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from medalflow.constants.medallion import Layer
 from medalflow.constants.sql import QueryType
@@ -40,7 +40,7 @@ class BronzeSequencer(_BaseSequencer):
     """
 
     def __init__(
-        self, settings: "MedalflowSettings", schema: str = "dbo", table_names: Optional[str] = None
+        self, settings: "MedalflowSettings", schema: str = "dbo", table_names: str | None = None
     ):
         """Initialize the Bronze sequencer.
 
@@ -56,7 +56,7 @@ class BronzeSequencer(_BaseSequencer):
         self.requested_table_names = self._parse_table_names(table_names)
         self.layer = Layer.BRONZE
 
-    def _parse_table_names(self, table_names: Optional[str]) -> Optional[list[str]]:
+    def _parse_table_names(self, table_names: str | None) -> list[str] | None:
         """Parse comma-separated table names into a list.
 
         Args:
@@ -129,7 +129,7 @@ class BronzeSequencer(_BaseSequencer):
             where_clause=self._soft_delete_filter(table.table_name),
         )
 
-    def _soft_delete_filter(self, table_name: str) -> Optional[str]:
+    def _soft_delete_filter(self, table_name: str) -> str | None:
         """WHERE clause hiding soft-deleted rows, if that convention is configured.
 
         Bronze used to filter every source table on a hardcoded ``IsDelete IS

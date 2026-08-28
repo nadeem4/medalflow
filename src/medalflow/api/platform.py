@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from medalflow.compute import ComputeEnvironment, OperationResult, create_platform
 from medalflow.monitoring.metrics import MetricsCollector
@@ -6,7 +6,7 @@ from medalflow.observability import operation_instrumentation
 from medalflow.observability.context import ExecutionRequestContext, resolve_request_context
 from medalflow.settings import get_settings
 
-_metrics_collector: Optional[MetricsCollector] = None
+_metrics_collector: MetricsCollector | None = None
 
 
 def _get_metrics() -> MetricsCollector:
@@ -20,7 +20,7 @@ def execute(
     operation: dict,
     compute_environment: ComputeEnvironment = ComputeEnvironment.ETL,
     *,
-    ctx: Optional[dict[str, Any]] = None,
+    ctx: dict[str, Any] | None = None,
 ) -> OperationResult:
     """Execute a database operation using the configured platform.
 

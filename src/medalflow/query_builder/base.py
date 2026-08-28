@@ -1,6 +1,6 @@
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from medalflow.constants.sql import QueryType
 
@@ -532,7 +532,7 @@ class BaseQueryBuilder(ABC):
         return f"SELECT {column_list} FROM {full_name}"
 
     def build_select_where(
-        self, schema: str, object_name: str, where_clause: str, columns: Optional[list[str]] = None
+        self, schema: str, object_name: str, where_clause: str, columns: list[str] | None = None
     ) -> str:
         """Build SELECT query with WHERE clause.
 
@@ -555,7 +555,7 @@ class BaseQueryBuilder(ABC):
         return f"SELECT {column_list} FROM {full_name} WHERE {where_clause}"
 
     def build_select_where_not(
-        self, schema: str, object_name: str, where_clause: str, columns: Optional[list[str]] = None
+        self, schema: str, object_name: str, where_clause: str, columns: list[str] | None = None
     ) -> str:
         """Build SELECT query with WHERE NOT condition.
 

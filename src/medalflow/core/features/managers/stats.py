@@ -11,7 +11,8 @@ lazily.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from medalflow.core.features import get_feature_manager
 from medalflow.core.features.base import FeatureManager
@@ -52,7 +53,7 @@ class StatsManager(StatsProtocol, FeatureManager):
     def __init__(self):
         """Initialize the stats manager."""
         super().__init__()
-        self._csv_loader: Optional[Callable[[str], pd.DataFrame]] = None
+        self._csv_loader: Callable[[str], pd.DataFrame] | None = None
         self._initialized = False
 
     def get_feature_name(self) -> str:
@@ -83,7 +84,7 @@ class StatsManager(StatsProtocol, FeatureManager):
         self._csv_loader = loader
         logger.debug("CSV loader injected into StatsManager")
 
-    def initialize(self, config: Optional[dict[str, Any]] = None) -> None:
+    def initialize(self, config: dict[str, Any] | None = None) -> None:
         """Initialize stats manager.
 
         Sets up the manager for operation.
@@ -111,7 +112,7 @@ class StatsManager(StatsProtocol, FeatureManager):
         settings = get_settings()
         return settings.stats.stats_csv_path
 
-    def get_stats_config(self, schema: str) -> Optional[StatsConfiguration]:
+    def get_stats_config(self, schema: str) -> StatsConfiguration | None:
         """Get processed stats configuration for a schema.
 
         Args:
@@ -120,13 +121,13 @@ class StatsManager(StatsProtocol, FeatureManager):
         Returns:
             StatsConfiguration object or None
         """
-        cache: Optional[CacheProtocol] = get_feature_manager("cache")
+        cache: CacheProtocol | None = get_feature_manager("cache")
 
         if cache:
             return cache.get(f"stats:{schema}", loader=lambda: self._process_stats(schema))
         return self._process_stats(schema)
 
-    def get_stats_columns(self, table_name: str, layer: str = "bronze") -> Optional[list[str]]:
+    def get_stats_columns(self, table_name: str, layer: str = "bronze") -> list[str] | None:
         """Get statistics columns for a specific table.
 
         Args:
@@ -169,7 +170,7 @@ class StatsManager(StatsProtocol, FeatureManager):
         config = self.get_stats_config(layer)
         return config.get_tables() if config else []
 
-    def _process_stats(self, schema: str) -> Optional[StatsConfiguration]:
+    def _process_stats(self, schema: str) -> StatsConfiguration | None:
         """Process raw CSV into StatsConfiguration.
 
         Args:
@@ -225,7 +226,7 @@ class StatsManager(StatsProtocol, FeatureManager):
             logger.error(f"Failed to process stats for {schema}: {e}")
             return None
 
-    def clear_metadata(self, layer: Optional[str] = None) -> None:
+    def clear_metadata(self, layer: str | None = None) -> None:
         """Clear cached statistics metadata.
 
         Args:

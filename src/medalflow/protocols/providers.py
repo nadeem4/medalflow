@@ -5,7 +5,7 @@ throughout the MedalFlow framework. These protocols ensure consistent
 interfaces for different implementations.
 """
 
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from pydantic import SecretStr
 
@@ -25,7 +25,7 @@ class SecretProvider(Protocol):
     one layer above, which a provider cannot reach.
     """
 
-    def get_secret(self, secret_name: str, default: Optional[str] = None) -> Optional[SecretStr]:
+    def get_secret(self, secret_name: str, default: str | None = None) -> SecretStr | None:
         """Retrieve a secret value.
 
         Args:

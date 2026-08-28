@@ -8,16 +8,16 @@ from __future__ import annotations
 
 import logging
 from contextvars import ContextVar
-from typing import Any, Optional
+from typing import Any
 
 from medalflow.__version__ import __version__
 
-request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
-user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
+user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)
 
-_service_name: Optional[str] = "medalflow"
-_service_version: Optional[str] = __version__
-_environment: Optional[str] = None
+_service_name: str | None = "medalflow"
+_service_version: str | None = __version__
+_environment: str | None = None
 _static_fields: dict[str, Any] = {}
 
 
@@ -58,10 +58,10 @@ class ContextFilter(logging.Filter):
 
 def set_logging_context(
     *,
-    environment: Optional[str] = None,
-    service_name: Optional[str] = None,
-    service_version: Optional[str] = None,
-    extra: Optional[dict[str, Any]] = None,
+    environment: str | None = None,
+    service_name: str | None = None,
+    service_version: str | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> None:
     """Set static logging context fields for all log records."""
     global _service_name, _service_version, _environment, _static_fields
@@ -83,8 +83,8 @@ def set_logging_context(
 
 
 def set_request_context(
-    request_id: Optional[str] = None,
-    user_id: Optional[str] = None,
+    request_id: str | None = None,
+    user_id: str | None = None,
 ) -> None:
     """Set request context variables."""
     if request_id is not None:

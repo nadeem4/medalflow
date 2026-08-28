@@ -5,7 +5,7 @@ The query_metadata decorator is the primary building block for defining SQL oper
 within sequencer classes, providing execution control and dependency management.
 """
 
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
@@ -13,16 +13,16 @@ from medalflow.types.metadata import QueryMetadata
 
 
 def query_metadata(
-    type: Union[str, QueryType],
+    type: str | QueryType,
     table_name: str = "",
     schema_name: str = "",
-    query: Optional[str] = None,
-    name: Optional[str] = None,
-    preferred_engine: Union[str, EngineType] = EngineType.SQL,
-    unique_idx: Optional[list[str]] = None,
-    filter: Optional[str] = None,
+    query: str | None = None,
+    name: str | None = None,
+    preferred_engine: str | EngineType = EngineType.SQL,
+    unique_idx: list[str] | None = None,
+    filter: str | None = None,
     create_stats: bool = False,
-    stats_columns: Optional[list[str]] = None,
+    stats_columns: list[str] | None = None,
 ) -> Callable[[Callable], Callable]:
     """Decorator for query methods within ETL sequencers.
 

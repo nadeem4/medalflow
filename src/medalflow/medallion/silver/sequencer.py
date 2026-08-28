@@ -1,5 +1,4 @@
 from copy import deepcopy
-from typing import Optional
 
 import sqlglot
 from sqlglot import exp
@@ -47,7 +46,7 @@ class SilverTransformationSequencer(_BaseSequencer):
 
         return super().get_obj_name()
 
-    def _get_class_metadata_attribute(self) -> Optional[str]:
+    def _get_class_metadata_attribute(self) -> str | None:
         """Get the class-level metadata attribute name for Silver Transformation sequencer.
 
         Silver Transformation sequencer uses @silver_metadata decorator at class level.
@@ -57,7 +56,7 @@ class SilverTransformationSequencer(_BaseSequencer):
         """
         return "_silver_metadata"
 
-    def _handle_null_result(self, metadata: QueryMetadata) -> Optional[str]:
+    def _handle_null_result(self, metadata: QueryMetadata) -> str | None:
         """Handle filter-based dimensions that return None.
 
         Auto-generates enum queries for Silver dimension tables with filter metadata.

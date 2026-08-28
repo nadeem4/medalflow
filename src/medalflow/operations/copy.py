@@ -4,7 +4,7 @@ This module contains operation classes for bulk data operations
 like COPY and executing arbitrary SQL.
 """
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import Field, model_validator
 
@@ -25,7 +25,7 @@ class Copy(BaseOperation):
     source_path: str = Field(..., min_length=1)  # External data path
     file_format: str = Field(default="parquet")
     copy_options: dict[str, Any] = Field(default_factory=dict)
-    credential: Optional[str] = Field(default=None)
+    credential: str | None = Field(default=None)
 
 
 class ExecuteSQL(BaseOperation):
@@ -47,7 +47,7 @@ class ExecuteSQL(BaseOperation):
         default=ResultFormat.DATAFRAME,
         description="Format for returned results (only applies when returns_results=True)",
     )
-    limit: Optional[int] = Field(
+    limit: int | None = Field(
         default=None,
         gt=0,
         description="Limit number of rows returned (only applies when returns_results=True)",

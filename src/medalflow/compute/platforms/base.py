@@ -1,6 +1,6 @@
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from medalflow.compute.engines.base import BaseSQLEngine
 from medalflow.compute.types import OperationResult
@@ -52,8 +52,8 @@ class _BasePlatform(ABC):
         self.environment = environment
 
         # Initialize engines to None - will be set by _initialize_dependencies
-        self._sql_engine: Optional[BaseSQLEngine] = None
-        self._query_builder: Optional[BaseQueryBuilder] = None
+        self._sql_engine: BaseSQLEngine | None = None
+        self._query_builder: BaseQueryBuilder | None = None
 
         # Initialize platform-specific dependencies
         self._initialize_dependencies()
@@ -84,7 +84,7 @@ class _BasePlatform(ABC):
     def execute_operation(
         self,
         operation: BaseOperation,
-        telemetry: Optional[dict[str, str]] = None,
+        telemetry: dict[str, str] | None = None,
     ) -> OperationResult:
         """Execute a database operation."""
         start_time = time.time()
@@ -206,7 +206,7 @@ class _BasePlatform(ABC):
         ]
 
     def execute(
-        self, operation_dict: dict, telemetry: Optional[dict[str, str]] = None
+        self, operation_dict: dict, telemetry: dict[str, str] | None = None
     ) -> OperationResult:
         operation = OperationBuilder.create_operation_from_dict(operation_dict)
 
@@ -276,7 +276,7 @@ class _BasePlatform(ABC):
         ]:
             return EngineType.SQL
 
-        if isinstance(operation, (Insert, Update, Delete)):
+        if isinstance(operation, Insert | Update | Delete):
             pass
 
         if EngineType.SQL in self.supported_engines():
@@ -292,7 +292,7 @@ class _BasePlatform(ABC):
         self,
         query: str,
         operation: BaseOperation,
-        telemetry: Optional[dict[str, str]] = None,
+        telemetry: dict[str, str] | None = None,
     ) -> OperationResult:
         """Execute query with SQL engine."""
         engine = self._get_sql_engine()

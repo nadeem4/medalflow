@@ -5,7 +5,7 @@ architecture, which focuses on preserving historical states of data for
 compliance, auditing, and temporal analysis.
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from medalflow.constants.medallion import SnapshotFrequency
 from medalflow.types.metadata import SnapshotMetadata
@@ -15,8 +15,8 @@ def snapshot_metadata(
     schema_name: str,
     retention_days: int = 90,
     compression: bool = True,
-    description: Optional[str] = None,
-    tags: Optional[list[str]] = None,
+    description: str | None = None,
+    tags: list[str] | None = None,
     frequency: SnapshotFrequency = SnapshotFrequency.DAILY,
 ) -> Callable[[type], type]:
     """Decorator for Snapshot layer sequencer classes.

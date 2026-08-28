@@ -5,7 +5,7 @@ architecture, including both general Silver transformations and dimension table
 processing with SCD support.
 """
 
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 from medalflow.constants.compute import EngineType
 from medalflow.types.metadata import SilverMetadata
@@ -14,13 +14,13 @@ from medalflow.types.metadata import SilverMetadata
 def silver_metadata(
     sp_name: str,
     group_file_name: str,
-    description: Optional[str] = None,
-    tags: Optional[list[str]] = None,
-    preferred_engine: Union[str, EngineType] = EngineType.SQL,
+    description: str | None = None,
+    tags: list[str] | None = None,
+    preferred_engine: str | EngineType = EngineType.SQL,
     disable_key_reshuffling: bool = False,
     disabled: bool = False,
     take_snapshot: bool = False,
-    model_name: Optional[str] = None,
+    model_name: str | None = None,
 ) -> Callable[[type], type]:
     """Decorator for Silver layer ETL classes.
 

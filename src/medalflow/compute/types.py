@@ -5,7 +5,7 @@ such as operation results, job configurations, and execution metadata.
 Operations themselves have been moved to the operations module.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import Field
 
@@ -43,18 +43,18 @@ class OperationResult(CTEBaseModel):
     duration_seconds: float = Field(..., ge=0.0)
 
     # Optional details
-    rows_affected: Optional[int] = Field(default=None, ge=0)
+    rows_affected: int | None = Field(default=None, ge=0)
     # Annotated `Any`, not a union ending in `Any`. The old
     # `Union[pd.DataFrame, list[dict], Any]` validated identically -- the
     # trailing `Any` accepted everything the earlier members would have -- but
     # naming pandas here dragged it into every import of the compute package.
-    data: Optional[Any] = Field(
+    data: Any | None = Field(
         default=None, description="Query result data - DataFrame, list of dicts, or scalar value"
     )
-    error_message: Optional[str] = Field(default=None)
-    error_type: Optional[str] = Field(default=None)
-    engine_used: Optional[EngineType] = Field(default=None)
-    query_executed: Optional[str] = Field(default=None)
+    error_message: str | None = Field(default=None)
+    error_type: str | None = Field(default=None)
+    engine_used: EngineType | None = Field(default=None)
+    query_executed: str | None = Field(default=None)
     statistics: dict[str, Any] = Field(default_factory=dict)
 
     @property

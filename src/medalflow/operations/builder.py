@@ -8,7 +8,7 @@ This module consolidates all operation creation logic in the operations
 package (Layer 1), making it available to all higher layers.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
@@ -79,8 +79,8 @@ class OperationBuilder:
         schema_name: str,
         object_name: str,
         engine_hint: EngineType = EngineType.SQL,
-        logging_context: Optional[dict] = None,
-        metadata: Optional[QueryMetadata] = None,
+        logging_context: dict | None = None,
+        metadata: QueryMetadata | None = None,
         **kwargs: Any,
     ) -> BaseOperation:
         """Create an operation instance from QueryType and parameters.

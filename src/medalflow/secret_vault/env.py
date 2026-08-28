@@ -12,7 +12,6 @@ with every run of non-alphanumeric characters folded to a single underscore.
 
 import os
 import re
-from typing import Optional
 
 from pydantic import SecretStr
 
@@ -47,7 +46,7 @@ class EnvSecretProvider:
         """
         return f"{self.prefix}{_UNSAFE_CHARACTERS.sub('_', secret_name.upper())}"
 
-    def get_secret(self, secret_name: str, default: Optional[str] = None) -> Optional[SecretStr]:
+    def get_secret(self, secret_name: str, default: str | None = None) -> SecretStr | None:
         """Retrieve a secret from the environment.
 
         Args:

@@ -8,7 +8,7 @@ accessed, improving performance and allowing objects to be created even
 when secret providers are not immediately available.
 """
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import SecretStr
 
@@ -82,8 +82,8 @@ class SecretField:
         return f"_secret_cache_{self.attr_name}"
 
     def __get__(
-        self, obj: Optional["SecretProviderMixin"], objtype: Optional[type] = None
-    ) -> Optional[Union[str, SecretStr]]:
+        self, obj: Optional["SecretProviderMixin"], objtype: type | None = None
+    ) -> str | SecretStr | None:
         """Get the secret value, loading from provider if necessary.
 
         Args:
@@ -143,7 +143,7 @@ class SecretField:
             ) from error
 
         if isinstance(secret_value, SecretStr) and not self.return_secret_str:
-            value: Optional[Union[str, SecretStr]] = secret_value.get_secret_value()
+            value: str | SecretStr | None = secret_value.get_secret_value()
         else:
             value = secret_value
 

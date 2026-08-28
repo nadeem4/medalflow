@@ -65,7 +65,7 @@ class _StubSequencer(_BaseSequencer):
         return "silver"
 
     def _get_method_source(self, method_name: str) -> str:
-        return "def %s(self): ..." % method_name
+        return f"def {method_name}(self): ..."
 
 
 def _discovered(sql="SELECT 1 AS n", **meta):

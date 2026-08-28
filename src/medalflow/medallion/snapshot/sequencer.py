@@ -1,5 +1,3 @@
-from typing import Optional
-
 from medalflow.constants.medallion import Layer
 from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.settings import get_settings
@@ -20,7 +18,7 @@ class SnapshotSequencer(_BaseSequencer):
         """
         return self.layer.value
 
-    def _get_class_metadata_attribute(self) -> Optional[str]:
+    def _get_class_metadata_attribute(self) -> str | None:
         """Get the class-level metadata attribute name for Snapshot sequencer.
 
         Snapshot sequencer uses @snapshot_metadata decorator at class level.

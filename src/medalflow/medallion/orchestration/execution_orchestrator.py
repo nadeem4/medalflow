@@ -11,7 +11,7 @@ The orchestrator:
 - Supports operations from multiple sources
 """
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from medalflow.logging import get_logger
 from medalflow.medallion.types import ExecutionPlan
@@ -61,8 +61,8 @@ class ExecutionPlanOrchestrator:
     def create_execution_plan(
         self,
         operations: list[BaseOperation],
-        metadata: Optional[dict[str, Any]] = None,
-        sequencer_name: Optional[str] = None,
+        metadata: dict[str, Any] | None = None,
+        sequencer_name: str | None = None,
     ) -> ExecutionPlan:
         """Create an execution plan from a list of operations.
 

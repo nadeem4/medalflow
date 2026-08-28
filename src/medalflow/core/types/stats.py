@@ -6,7 +6,6 @@ statistics metadata that can be used by compute, medallion, datalake,
 and other modules.
 """
 
-
 from pydantic import BaseModel, Field
 
 

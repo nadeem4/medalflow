@@ -6,7 +6,6 @@ action should be performed, independent of how it's executed.
 """
 
 import re
-from typing import Optional
 
 from pydantic import Field, field_validator
 
@@ -37,14 +36,14 @@ class BaseOperation(CTEBaseModel):
     operation_type: QueryType
     schema_name: str = Field(..., min_length=1, max_length=128)
     object_name: str = Field(..., min_length=1, max_length=128)
-    engine_hint: Optional[EngineType] = Field(default=None)
-    logging_context: Optional[dict] = Field(
+    engine_hint: EngineType | None = Field(default=None)
+    logging_context: dict | None = Field(
         default_factory=dict, description="Optional operation name for logging/tracking"
     )
-    metadata: Optional[QueryMetadata] = Field(
+    metadata: QueryMetadata | None = Field(
         default=None, description="Optional metadata for the operation"
     )
-    context: Optional[ExecutionRequestContext] = Field(
+    context: ExecutionRequestContext | None = Field(
         default=None,
         description="Observability context for this operation",
     )

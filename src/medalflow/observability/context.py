@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
-from typing import Any, Optional
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
@@ -20,8 +20,8 @@ class ExecutionRequestContext(CTEBaseModel):
     """Observability context propagated across an execution request."""
 
     request_id: str
-    user_id: Optional[str] = None
-    correlation_id: Optional[str] = None
+    user_id: str | None = None
+    correlation_id: str | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
     telemetry_base: dict[str, str] = Field(default_factory=dict, exclude=True)
 
@@ -33,10 +33,10 @@ class ExecutionRequestContext(CTEBaseModel):
         return ctx
 
     @staticmethod
-    def _stringify(value: Any) -> Optional[str]:
+    def _stringify(value: Any) -> str | None:
         if value is None:
             return None
-        if isinstance(value, (str, int, float, bool)):
+        if isinstance(value, str | int | float | bool):
             return str(value)
         return str(value)
 
@@ -57,7 +57,7 @@ class ExecutionRequestContext(CTEBaseModel):
 def execution_request_scope(
     ctx: ExecutionRequestContext,
     *,
-    operation: Optional[str] = None,
+    operation: str | None = None,
 ) -> Iterator[trace.Span]:
     """Apply logging + tracing scope for a request/operation."""
     ctx.telemetry_base = ctx.to_telemetry_dict()
@@ -89,7 +89,7 @@ def execution_request_scope(
             clear_request_context()
 
 
-def resolve_request_context(ctx: Optional[Any]) -> ExecutionRequestContext:
+def resolve_request_context(ctx: Any | None) -> ExecutionRequestContext:
     """Normalize inbound context data into an ExecutionRequestContext."""
     if isinstance(ctx, ExecutionRequestContext):
         if not ctx.telemetry_base:
@@ -137,9 +137,9 @@ def resolve_request_context(ctx: Optional[Any]) -> ExecutionRequestContext:
 
 
 def sanitize_extras(
-    extra: Optional[dict[str, Any]],
+    extra: dict[str, Any] | None,
     *,
-    prefix: Optional[str] = None,
+    prefix: str | None = None,
 ) -> dict[str, str]:
     """Sanitize arbitrary telemetry extras into a JSON-safe dict."""
     if not extra:
@@ -158,7 +158,7 @@ def sanitize_extras(
 def merge_telemetry(
     ctx: ExecutionRequestContext,
     *,
-    extra: Optional[dict[str, Any]] = None,
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     """Merge request context telemetry with additional key/value pairs."""
     if not ctx.telemetry_base:

@@ -1,6 +1,6 @@
 import inspect
 from abc import ABC
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from medalflow.constants.sql import QueryType
 from medalflow.logging import get_logger
@@ -236,7 +236,7 @@ class _BaseSequencer(ABC):  # noqa: B024
 
         return methods
 
-    def _handle_null_result(self, metadata: QueryMetadata) -> Optional[str]:
+    def _handle_null_result(self, metadata: QueryMetadata) -> str | None:
         """Hook for subclasses to handle methods that return None.
 
         This allows subclasses to auto-generate queries for specific patterns,
@@ -302,7 +302,7 @@ class _BaseSequencer(ABC):  # noqa: B024
 
         return {}
 
-    def _get_class_metadata_attribute(self) -> Optional[str]:
+    def _get_class_metadata_attribute(self) -> str | None:
         """Get the expected class-level metadata attribute name.
 
         Returns:
@@ -322,8 +322,8 @@ class _BaseSequencer(ABC):  # noqa: B024
         from medalflow.datalake.services import get_configuration_service
 
         # Get feature managers
-        self._stats_manager: Optional[StatsProtocol] = get_feature_manager("stats")
-        self._cache_manager: Optional[CacheProtocol] = get_feature_manager("cache")
+        self._stats_manager: StatsProtocol | None = get_feature_manager("stats")
+        self._cache_manager: CacheProtocol | None = get_feature_manager("cache")
 
         # Initialize configuration service to inject data loaders
         config_service = get_configuration_service()
@@ -364,9 +364,7 @@ class _BaseSequencer(ABC):  # noqa: B024
         """
         return self.__class__.__name__
 
-    def get_stats_columns(
-        self, table_name: str, layer: Optional[str] = None
-    ) -> Optional[list[str]]:
+    def get_stats_columns(self, table_name: str, layer: str | None = None) -> list[str] | None:
         """Get statistics columns for a table.
 
         Args:

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from medalflow.constants.medallion import Layer
 from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.operations import BaseOperation
@@ -10,7 +8,7 @@ from medalflow.types.metadata import DiscoveredMethod
 class GoldSequencer(_BaseSequencer):
     """Sequencer for Gold layer operations in the medallion architecture."""
 
-    def __init__(self, selected_tables: Optional[list[str]] = None):
+    def __init__(self, selected_tables: list[str] | None = None):
         """Initialize the Gold sequencer.
 
         Args:
@@ -30,7 +28,7 @@ class GoldSequencer(_BaseSequencer):
         """
         return self.layer.value
 
-    def _get_class_metadata_attribute(self) -> Optional[str]:
+    def _get_class_metadata_attribute(self) -> str | None:
         """Get the class-level metadata attribute name for Gold sequencer.
 
         Gold sequencer uses @gold_metadata decorator at class level.

@@ -24,7 +24,7 @@ Example:
     }
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import sqlglot
 from sqlglot import exp
@@ -135,7 +135,7 @@ class SQLDependencyAnalyzer:
                 tables.add(full_table_name)
         return tables
 
-    def _extract_target_table_sqlglot(self, ast: "exp.Expression") -> Optional[str]:
+    def _extract_target_table_sqlglot(self, ast: "exp.Expression") -> str | None:
         """Extract target table for DML operations from SQLGlot AST.
 
         Args:
@@ -265,16 +265,18 @@ class SQLDependencyAnalyzer:
                 # Use fully qualified name as fallback for write operations
                 operation_dependencies[operation] = SQLDependencies(
                     reads_from=set(),
-                    writes_to=f"{operation.schema_name}.{operation.object_name}".lower()
-                    if operation.operation_type
-                    in [
-                        QueryType.CREATE_TABLE,
-                        QueryType.INSERT,
-                        QueryType.UPDATE,
-                        QueryType.MERGE,
-                        QueryType.DELETE,
-                    ]
-                    else None,
+                    writes_to=(
+                        f"{operation.schema_name}.{operation.object_name}".lower()
+                        if operation.operation_type
+                        in [
+                            QueryType.CREATE_TABLE,
+                            QueryType.INSERT,
+                            QueryType.UPDATE,
+                            QueryType.MERGE,
+                            QueryType.DELETE,
+                        ]
+                        else None
+                    ),
                 )
 
         return operation_dependencies

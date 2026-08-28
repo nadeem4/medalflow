@@ -129,7 +129,7 @@ only when it is built test-first against a real dialect.
 
 ## Development
 
-Requires Python 3.9+ and [Poetry](https://python-poetry.org/).
+Requires Python 3.13+ and [Poetry](https://python-poetry.org/).
 
 ```bash
 poetry install --with dev
@@ -137,7 +137,7 @@ poetry run pytest
 ```
 
 The suite runs entirely offline — no warehouse, no network, no cloud credentials. CI runs
-lint, the test suite on Python 3.9 and 3.11, and an import smoke test on every pull request.
+lint, the test suite on Python 3.13, and an import smoke test on every pull request.
 
 `tests/fixtures/sample_project/` is a miniature MedalFlow project — one bronze table,
 two Silver models (one reading the other) and a Gold model — used by the end-to-end suite in

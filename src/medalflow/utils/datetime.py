@@ -5,7 +5,6 @@ partition paths in the data lake.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from medalflow.constants.medallion import SnapshotFrequency
 
@@ -29,7 +28,7 @@ def get_snapshot_datetime() -> str:
 
 
 def get_partition_path(
-    base_path: str, frequency: SnapshotFrequency, timestamp: Optional[datetime] = None
+    base_path: str, frequency: SnapshotFrequency, timestamp: datetime | None = None
 ) -> str:
     """Generate partition path based on frequency and timestamp.
 

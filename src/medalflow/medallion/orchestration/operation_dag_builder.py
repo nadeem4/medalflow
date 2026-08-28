@@ -4,7 +4,7 @@ This module provides the OperationDAGBuilder class that builds
 dependency graphs from collections of database operations.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from medalflow.logging import get_logger
 from medalflow.medallion.types import DependencyDAG, ExecutionStage
@@ -164,7 +164,7 @@ class OperationDAGBuilder:
             else:
                 self.dag.add_node(op_id)
 
-    def validate_dag(self, dag: Optional[DependencyDAG] = None) -> None:
+    def validate_dag(self, dag: DependencyDAG | None = None) -> None:
         """Validate DAG for cycles.
 
         Args:

@@ -7,7 +7,8 @@ of all configuration and data across the application, similar to Redis/Memcache.
 import fnmatch
 import logging
 import time
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from medalflow.core.features.base import FeatureManager
 from medalflow.core.features.registry import register_feature
@@ -60,7 +61,7 @@ class CacheManager(CacheProtocol, FeatureManager):
         """
         return self.feature_settings.global_cache_enabled
 
-    def initialize(self, config: Optional[dict[str, Any]] = None) -> None:
+    def initialize(self, config: dict[str, Any] | None = None) -> None:
         """Initialize the cache manager.
 
         Args:
@@ -79,7 +80,7 @@ class CacheManager(CacheProtocol, FeatureManager):
         if config:
             logger.debug(f"CacheManager initialized with config: {config}")
 
-    def get(self, key: str, loader: Optional[Callable[[], Any]] = None) -> Any:
+    def get(self, key: str, loader: Callable[[], Any] | None = None) -> Any:
         """Get value from cache or load it.
 
         Args:
@@ -112,7 +113,7 @@ class CacheManager(CacheProtocol, FeatureManager):
 
         return None
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value in cache with optional TTL.
 
         Args:

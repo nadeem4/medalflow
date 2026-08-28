@@ -338,7 +338,7 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
 
 
 # Singleton instance
-_settings: Optional[MedalflowSettings] = None
+_settings: MedalflowSettings | None = None
 
 
 def get_settings(force_reload: bool = False) -> MedalflowSettings:

@@ -10,7 +10,7 @@ import inspect
 import pkgutil
 from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from medalflow.core.features import get_feature_manager
 from medalflow.logging import get_logger
@@ -95,7 +95,7 @@ class SilverMetadataDiscovery:
         _cache_manager: Global cache manager for caching metadata
     """
 
-    def __init__(self, silver_package: Optional[str] = None):
+    def __init__(self, silver_package: str | None = None):
         """Initialize the discovery service.
 
         Args:
@@ -106,7 +106,7 @@ class SilverMetadataDiscovery:
         self.logger = get_logger(self.__class__.__name__)
 
         # Get the global cache manager if available
-        self._cache_manager: Optional[CacheProtocol] = get_feature_manager("cache")
+        self._cache_manager: CacheProtocol | None = get_feature_manager("cache")
 
         self.logger.info(f"Initialized SilverMetadataDiscovery for package: {self.silver_package}")
         if self._cache_manager:
@@ -317,7 +317,7 @@ class SilverMetadataDiscovery:
         """
         return hasattr(cls, "_silver_metadata")
 
-    def _extract_metadata_from_class(self, cls: type) -> Optional[TransformationMetadata]:
+    def _extract_metadata_from_class(self, cls: type) -> TransformationMetadata | None:
         """Extract and normalize metadata from decorated class.
 
         Only returns metadata for enabled transformations.
@@ -378,7 +378,7 @@ class SilverMetadataDiscovery:
         group = group_file_name.split("/")[0]
         return group.replace("group_", "")
 
-    def clear_cache(self, pattern: Optional[str] = None) -> None:
+    def clear_cache(self, pattern: str | None = None) -> None:
         """Clear silver metadata cache.
 
         Args:

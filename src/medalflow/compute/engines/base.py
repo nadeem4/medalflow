@@ -8,7 +8,7 @@ itself is a hard dependency and stays at module scope.
 
 import time
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib import parse
 
 from sqlalchemy import create_engine, text
@@ -84,7 +84,7 @@ class BaseSQLEngine:
         """
         self.settings = settings  # Type: ComputeSettings (injected)
         self.environment: ComputeEnvironment = environment
-        self._engine: Optional[Engine] = None
+        self._engine: Engine | None = None
         self._connection_info: dict[str, Any] = {
             "platform": self.__class__.__name__.replace("SQLEngine", "").lower(),
             "environment": environment.value,
@@ -180,11 +180,11 @@ class BaseSQLEngine:
     def _span_attributes(
         self,
         query: str,
-        telemetry: Optional[dict[str, str]] = None,
+        telemetry: dict[str, str] | None = None,
         *,
         operation: str,
-        batch_position: Optional[int] = None,
-        batch_total: Optional[int] = None,
+        batch_position: int | None = None,
+        batch_total: int | None = None,
     ) -> dict[str, Any]:
         """Build OpenTelemetry span attributes for SQL operations."""
         platform = self._connection_info.get("platform", "sql")
@@ -225,7 +225,7 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def execute_query(self, query: str, telemetry: Optional[dict[str, str]] = None) -> None:
+    def execute_query(self, query: str, telemetry: dict[str, str] | None = None) -> None:
         """Execute a SQL query without returning results."""
         start_time = time.time()
         payload: dict[str, str] = dict(telemetry or {})
@@ -261,7 +261,7 @@ class BaseSQLEngine:
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
     def fetch_dataframe(
-        self, query: str, telemetry: Optional[dict[str, str]] = None
+        self, query: str, telemetry: dict[str, str] | None = None
     ) -> "pd.DataFrame":
         """Execute query and return results as pandas DataFrame."""
         pd = require_module("pandas")
@@ -299,7 +299,7 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def fetch_scalar(self, query: str, telemetry: Optional[dict[str, str]] = None) -> Any:
+    def fetch_scalar(self, query: str, telemetry: dict[str, str] | None = None) -> Any:
         """Execute query and return single scalar value.
 
         Used for queries that return a single value (COUNT, MAX, etc).
@@ -356,7 +356,7 @@ class BaseSQLEngine:
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
     def fetch_all(
-        self, query: str, telemetry: Optional[dict[str, str]] = None
+        self, query: str, telemetry: dict[str, str] | None = None
     ) -> list[dict[str, Any]]:
         """Execute query and fetch all results as list of dictionaries."""
         start_time = time.time()
@@ -422,7 +422,7 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def execute_batch(self, queries: list[str], telemetry: Optional[dict[str, str]] = None) -> None:
+    def execute_batch(self, queries: list[str], telemetry: dict[str, str] | None = None) -> None:
         """Execute multiple queries in a batch."""
         start_time = time.time()
         payload: dict[str, str] = dict(telemetry or {})

@@ -5,7 +5,6 @@ managing their lifecycle and providing unified access across the application.
 """
 
 import logging
-from typing import Optional
 
 from .base import FeatureManager
 
@@ -36,7 +35,7 @@ class FeatureRegistry:
     def __init__(self):
         """Initialize the registry."""
         self._managers: dict[str, type[FeatureManager]] = {}
-        self._instances: dict[str, Optional[FeatureManager]] = {}
+        self._instances: dict[str, FeatureManager | None] = {}
         self._initialized: bool = False
 
     def register(self, feature_name: str, manager_class: type[FeatureManager]) -> None:
@@ -58,7 +57,7 @@ class FeatureRegistry:
         self._managers[feature_name] = manager_class
         logger.debug(f"Registered feature manager: {feature_name} -> {manager_class.__name__}")
 
-    def get_manager(self, feature_name: str) -> Optional[FeatureManager]:
+    def get_manager(self, feature_name: str) -> FeatureManager | None:
         """Get a feature manager instance.
 
         Returns None if the feature is disabled. Managers are lazily
@@ -191,7 +190,7 @@ class FeatureRegistry:
 _global_registry = FeatureRegistry()
 
 
-def get_feature_manager(feature_name: str) -> Optional[FeatureManager]:
+def get_feature_manager(feature_name: str) -> FeatureManager | None:
     """Get a feature manager from the global registry.
 
     This is the main entry point for accessing feature managers

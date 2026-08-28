@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class ErrorCode(Enum):
@@ -48,8 +48,8 @@ class CTEError(Exception):
         self,
         message: str,
         error_code: ErrorCode = ErrorCode.OPERATION_ERROR,
-        details: Optional[dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
+        details: dict[str, Any] | None = None,
+        cause: Exception | None = None,
         is_retryable: bool = False,
     ):
         """Initialize medalflow error.
@@ -92,7 +92,7 @@ class CTEError(Exception):
 
 # Helper functions for common error scenarios
 def connection_error(
-    message: str, service: Optional[str] = None, host: Optional[str] = None, **kwargs
+    message: str, service: str | None = None, host: str | None = None, **kwargs
 ) -> CTEError:
     """Create a connection error.
 

@@ -12,9 +12,10 @@ imported inside the methods that use them rather than at module scope:
 that far. Constructing a client is likewise SDK-free -- the service client is
 built on first I/O.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from medalflow.common.exceptions import CTEError
 from medalflow.common.optional_deps import require_module
@@ -120,8 +121,8 @@ class DatalakeClient:
         self,
         *,
         operation: str,
-        path: Optional[str] = None,
-        recursive: Optional[bool] = None,
+        path: str | None = None,
+        recursive: bool | None = None,
     ) -> dict:
         """Build telemetry attributes for storage operations."""
         attributes = {

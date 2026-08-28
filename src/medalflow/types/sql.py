@@ -13,7 +13,7 @@ emitted exactly as written, and the caller owns the consequences.
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Annotated, Any, Union
+from typing import Annotated, Any
 
 from pydantic import BeforeValidator, GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
@@ -76,4 +76,4 @@ def _check_fragment(value: Any) -> Any:
 
 #: A field that is inherently raw SQL. A bare `str` still works, provided it is
 #: non-empty and lexically closed; `RawSQL` bypasses the check entirely.
-SQLFragment = Annotated[Union[str, RawSQL], BeforeValidator(_check_fragment)]
+SQLFragment = Annotated[str | RawSQL, BeforeValidator(_check_fragment)]

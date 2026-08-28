@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import logging.config
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from medalflow.__version__ import __version__
 from medalflow.logging.filters import set_logging_context
@@ -53,9 +53,7 @@ class CustomJsonFormatter(logging.Formatter):
             if key not in _RESERVED_LOG_RECORD_KEYS and key not in log_record:
                 log_record[key] = value
 
-        log_record["timestamp"] = datetime.fromtimestamp(
-            record.created, tz=timezone.utc
-        ).isoformat()
+        log_record["timestamp"] = datetime.fromtimestamp(record.created, tz=UTC).isoformat()
         log_record["level"] = record.levelname
         log_record["logger"] = record.name
         log_record["message"] = record.getMessage()
@@ -76,9 +74,9 @@ def setup_logging(
     level: str = "INFO",
     *,
     service_name: str = "medalflow",
-    service_version: Optional[str] = None,
-    environment: Optional[str] = None,
-    static_fields: Optional[dict[str, Any]] = None,
+    service_version: str | None = None,
+    environment: str | None = None,
+    static_fields: dict[str, Any] | None = None,
 ) -> None:
     """Configure structured logging backed by ``logging.config.dictConfig``.
 

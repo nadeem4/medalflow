@@ -7,7 +7,7 @@ for SQL operations throughout the system.
 """
 
 import re
-from typing import Any, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -75,17 +75,17 @@ class ColumnDefinition(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str = Field(..., min_length=1, max_length=128)
-    data_type: Union[str, RawSQL] = Field(
+    data_type: str | RawSQL = Field(
         ...,
         description="Platform-specific SQL data type (e.g., 'NVARCHAR(60)', 'INT', 'DECIMAL(10,2)')",
     )
     nullable: bool = Field(default=True)
-    default_value: Optional[Any] = Field(default=None)
+    default_value: Any | None = Field(default=None)
     primary_key: bool = Field(default=False)
     unique: bool = Field(default=False)
-    check_constraint: Optional[SQLFragment] = Field(default=None)
-    collation: Optional[str] = Field(default=None)
-    computed_expression: Optional[str] = Field(default=None)
+    check_constraint: SQLFragment | None = Field(default=None)
+    collation: str | None = Field(default=None)
+    computed_expression: str | None = Field(default=None)
 
     @field_validator("name")
     @classmethod
@@ -105,7 +105,7 @@ class ColumnDefinition(BaseModel):
 
     @field_validator("data_type")
     @classmethod
-    def validate_data_type(cls, v: Union[str, RawSQL]) -> Union[str, RawSQL]:
+    def validate_data_type(cls, v: str | RawSQL) -> str | RawSQL:
         """Hold a bare string to the shape of a SQL type name."""
         if isinstance(v, RawSQL):
             return v

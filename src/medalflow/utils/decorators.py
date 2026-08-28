@@ -1,7 +1,8 @@
 import asyncio
 import functools
 import time
-from typing import Any, Callable, Optional, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
@@ -23,11 +24,11 @@ def _get_logger():
 
 
 def traced(
-    span_name: Optional[str] = None,
+    span_name: str | None = None,
     *,
     kind: SpanKind = SpanKind.INTERNAL,
-    attributes: Optional[dict[str, Any]] = None,
-    attribute_getter: Optional[Callable[..., Optional[dict[str, Any]]]] = None,
+    attributes: dict[str, Any] | None = None,
+    attribute_getter: Callable[..., dict[str, Any] | None] | None = None,
 ) -> Callable[[F], F]:
     """Instrument a function with an OpenTelemetry span.
 
@@ -103,8 +104,8 @@ def traced(
 
 def _should_retry_exception(
     exc: Exception,
-    retry_on: Optional[tuple[type[Exception], ...]],
-    retry_condition: Optional[Callable[[Exception], bool]],
+    retry_on: tuple[type[Exception], ...] | None,
+    retry_condition: Callable[[Exception], bool] | None,
 ) -> bool:
     """Decide whether an exception is eligible for another retry attempt.
 
@@ -136,8 +137,8 @@ def retry_with_backoff(
     initial_delay: float = 1.0,
     max_delay: float = 60.0,
     exponential_base: float = 2.0,
-    retry_on: Optional[tuple[type[Exception], ...]] = None,
-    retry_condition: Optional[Callable[[Exception], bool]] = None,
+    retry_on: tuple[type[Exception], ...] | None = None,
+    retry_condition: Callable[[Exception], bool] | None = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for retrying operations with exponential backoff.
 

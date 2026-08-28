@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from medalflow.compute.factory import create_platform
 from medalflow.constants.compute import ComputeEnvironment, ResultFormat
@@ -51,7 +51,7 @@ class LakeDatabase:
         """
 
     def get_tables(
-        self, table_names: Optional[list[str]] = None, refresh: bool = False
+        self, table_names: list[str] | None = None, refresh: bool = False
     ) -> list[TableInfo]:
         """
         Retrieve tables from the specified schema with caching via CacheManager.
