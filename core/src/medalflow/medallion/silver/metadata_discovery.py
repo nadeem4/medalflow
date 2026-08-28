@@ -271,7 +271,7 @@ class SilverMetadataDiscovery:
             self.logger.error(f"Could not import silver package {self.silver_package}: {e}")
             return
         
-        for importer, modname, ispkg in pkgutil.walk_packages(
+        for _importer, modname, _ispkg in pkgutil.walk_packages(
             package_path,
             prefix=f"{self.silver_package}."
         ):
@@ -300,7 +300,7 @@ class SilverMetadataDiscovery:
         """
         classes = []
         
-        for name, obj in inspect.getmembers(module, inspect.isclass):
+        for _name, obj in inspect.getmembers(module, inspect.isclass):
             if obj.__module__ != module.__name__:
                 continue
             

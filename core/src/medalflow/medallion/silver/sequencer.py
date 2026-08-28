@@ -152,7 +152,7 @@ class SilverTransformationSequencer(_BaseSequencer):
         try:
             ast = sqlglot.parse_one(detail_query, dialect=self.sql_dialect)
         except Exception as e:
-            raise ValueError(f"Failed to parse SQL query: {e}")
+            raise ValueError(f"Failed to parse SQL query: {e}") from e
         
         # Find the SELECT clause
         select = ast.find(exp.Select)

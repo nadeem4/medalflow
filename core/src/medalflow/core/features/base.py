@@ -91,7 +91,10 @@ class FeatureManager(ABC):
         feature_name = f'{self.get_feature_name()}_enabled'
         return getattr(self.feature_settings, feature_name, False)
     
-    def cleanup(self) -> None:
+    # B027: cleanup is an intentional optional hook, not part of the contract.
+    # Marking it @abstractmethod would force every future manager to implement a
+    # no-op, contradicting the documented "override only if you need to" design.
+    def cleanup(self) -> None:  # noqa: B027
         """Cleanup resources when feature is disabled or app shuts down.
         
         Override this method if your manager needs to release resources,

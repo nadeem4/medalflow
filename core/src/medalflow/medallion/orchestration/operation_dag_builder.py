@@ -205,7 +205,7 @@ class OperationDAGBuilder:
         try:
             node_stages = self.dag.get_execution_stages()
         except ValueError as e:
-            raise ValueError(f"Failed to create execution stages: {e}")
+            raise ValueError(f"Failed to create execution stages: {e}") from e
         
         # Convert node stages to operation stages
         execution_stages = []

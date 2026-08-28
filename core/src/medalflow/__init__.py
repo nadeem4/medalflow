@@ -7,6 +7,7 @@ from medalflow.api import (
     get_gold_execution_plan,
     get_silver_execution_plan_for_models,
 )
+from medalflow.common.exceptions import CTEError, ErrorCode
 from medalflow.medallion import (
     GoldSequencer,
     SilverTransformationSequencer,
@@ -17,14 +18,6 @@ from medalflow.medallion import (
     snapshot_metadata,
 )
 
-# Backward compatibility aliases
-etl_metadata = silver_metadata  # Backward compatibility alias
-view_metadata = gold_metadata   # Backward compatibility alias
-SilverSequencer = SilverTransformationSequencer  # Backward compatibility alias
-
-
-from medalflow.common.exceptions import CTEError, ErrorCode
-
 # Utils (public API)
 from medalflow.utils import (
     # DateTime utilities
@@ -33,6 +26,11 @@ from medalflow.utils import (
     get_snapshot_datetime,
     parse_snapshot_path,
 )
+
+# Backward compatibility aliases
+etl_metadata = silver_metadata
+view_metadata = gold_metadata
+SilverSequencer = SilverTransformationSequencer
 
 __all__ = [
     "__version__",

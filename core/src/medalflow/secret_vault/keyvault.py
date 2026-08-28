@@ -104,7 +104,7 @@ class KeyVaultSecrets:
         except Exception as e:
             if default is not None:
                 return SecretStr(default)
-            raise ValueError(f"Failed to retrieve secret '{secret_name}': {str(e)}")
+            raise ValueError(f"Failed to retrieve secret '{secret_name}': {str(e)}") from e
         
         return SecretStr(default) if default else None
     

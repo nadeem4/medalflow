@@ -204,7 +204,7 @@ class DatalakeClient:
             file_client = self._get_fs_client().get_file_client(full_path)
             file_client.delete_file()
             logger.info(f"Deleted file from {self.lake_type.value}: {full_path}")
-        except:
+        except Exception:
             try:
                 dir_client = self._get_fs_client().get_directory_client(full_path)
                 dir_client.delete_directory()
@@ -235,12 +235,12 @@ class DatalakeClient:
             file_client = self._get_fs_client().get_file_client(full_path)
             file_client.get_file_properties()
             return True
-        except:
+        except Exception:
             try:
                 dir_client = self._get_fs_client().get_directory_client(full_path)
                 dir_client.get_directory_properties()
                 return True
-            except:
+            except Exception:
                 return False
     
     @traced(

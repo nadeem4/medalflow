@@ -134,7 +134,7 @@ class BaseSQLEngine:
                 f"Failed to connect to {platform}",
                 service=platform,
                 cause=e
-            )
+            ) from e
     
     @contextmanager
     def _get_connection(self):
@@ -234,7 +234,7 @@ class BaseSQLEngine:
                 extra={**payload, "duration.seconds": f"{duration:.6f}", "error": str(exc)},
                 exc_info=True,
             )
-            raise query_execution_error(query, exc)
+            raise query_execution_error(query, exc) from exc
     
     @traced(
         span_name="medalflow.compute.sql.fetch_dataframe",
@@ -270,7 +270,7 @@ class BaseSQLEngine:
                 extra={**payload, "duration.seconds": f"{duration:.6f}", "error": str(exc)},
                 exc_info=True,
             )
-            raise query_execution_error(query, exc)
+            raise query_execution_error(query, exc) from exc
     
     @traced(
         span_name="medalflow.compute.sql.fetch_scalar",
@@ -322,7 +322,7 @@ class BaseSQLEngine:
                 extra={**payload, "duration.seconds": f"{duration:.6f}", "error": str(exc)},
                 exc_info=True,
             )
-            raise query_execution_error(query, exc)
+            raise query_execution_error(query, exc) from exc
     
     @traced(
         span_name="medalflow.compute.sql.fetch_all",
@@ -359,7 +359,7 @@ class BaseSQLEngine:
                 extra={**payload, "duration.seconds": f"{duration:.6f}", "error": str(exc)},
                 exc_info=True,
             )
-            raise query_execution_error(query, exc)
+            raise query_execution_error(query, exc) from exc
     
     def test_connection(self) -> bool:
         """Test if connection to the engine is working.
@@ -422,7 +422,7 @@ class BaseSQLEngine:
                             extra={**query_payload, "error": str(exc)},
                             exc_info=True,
                         )
-                        raise query_execution_error(query, exc)
+                        raise query_execution_error(query, exc) from exc
                 
                 conn.commit()
                 
@@ -440,7 +440,7 @@ class BaseSQLEngine:
                 extra={**payload, "error": str(exc)},
                 exc_info=True,
             )
-            raise query_execution_error("Batch execution failed", exc)
+            raise query_execution_error("Batch execution failed", exc) from exc
     
     def __del__(self):
         """Clean up engine on deletion."""

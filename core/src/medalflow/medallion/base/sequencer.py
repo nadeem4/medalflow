@@ -17,7 +17,10 @@ if TYPE_CHECKING:
     from medalflow.settings import _Settings
 
 
-class _BaseSequencer(ABC):
+# B024: ABC here marks the class as not-for-direct-instantiation. Every method
+# has a working default, so there is genuinely nothing to mark @abstractmethod;
+# adding one would invent a contract the layer sequencers do not currently have.
+class _BaseSequencer(ABC):  # noqa: B024
     """Base class for all ETL sequencers in the medalflow platform.
     
     This abstract base class provides the core functionality for discovering methods
@@ -457,7 +460,7 @@ class _BaseSequencer(ABC):
         """
         operations = []
         
-        for method_name, method, metadata, sql in discovered_methods:
+        for method_name, _method, metadata, sql in discovered_methods:
             if not sql:  
                 self.logger.info(
                     "sequencer.operation_missing_sql",
