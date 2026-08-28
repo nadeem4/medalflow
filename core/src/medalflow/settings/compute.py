@@ -62,7 +62,7 @@ class ComputeSettings(SecretProviderMixin):
     sql_max_overflow: int = Field(default=10, ge=0)
 
     database_scoped_cred_name: str = Field(
-        default="cte_adls_creds", description="Database Scoped Credential"
+        default="adls_creds", description="Database Scoped Credential"
     )
     raw_external_data_source_name_override: Optional[str] = Field(
         default=None,

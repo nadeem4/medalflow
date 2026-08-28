@@ -153,10 +153,7 @@ def feature_not_enabled_error(feature_name: str, message: str = "", **kwargs) ->
     Returns:
         CTEError with FEATURE_DISABLED code
     """
-    full_message = (
-        f"{feature_name} is not enabled. "
-        f"Please reach out to CMAA team to enable this feature. {message}"
-    ).strip()
+    full_message = f"{feature_name} is not enabled. {message}".strip()
 
     details = kwargs.get("details", {})
     details["config_key"] = f"feature.{feature_name}"
