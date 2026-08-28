@@ -1,4 +1,4 @@
-"""Offline settings for the end-to-end suite.
+"""Offline settings shared by the whole suite.
 
 Booting `_Settings` today needs 20 environment variables. That is not a test
 smell — it is the bug Phase 3 fixes: `CTEBaseSettings` declares `tenant_id`,
