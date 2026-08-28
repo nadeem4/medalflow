@@ -600,35 +600,3 @@ class BaseQueryBuilder(ABC):
             column_list = "*"
         
         return f"SELECT {column_list} FROM {full_name} WHERE NOT ({where_clause})"
-    
-    def _validate_sql_expression(self, expression: str, expression_type: str = "expression") -> None:
-        """Validate a SQL expression for injection.
-        
-        Less strict than identifier validation since expressions can contain
-        SQL keywords, but still checks for dangerous patterns.
-        
-        Args:
-            expression: SQL expression to validate
-            expression_type: Type for error messages
-            
-        Raises:
-            ValueError: If expression contains dangerous patterns
-        """
-        if not expression:
-            return
-        
-        # Check for dangerous patterns that shouldn't be in expressions
-        dangerous_patterns = [
-            r';\s*DROP\s+TABLE',
-            r';\s*DROP\s+DATABASE',
-            r';\s*DELETE\s+FROM',
-            r';\s*TRUNCATE',
-            r'EXEC\s*\(',
-            r'EXECUTE\s+IMMEDIATE',
-            r'xp_cmdshell'
-        ]
-        
-        expression_upper = expression.upper()
-        for pattern in dangerous_patterns:
-            if re.search(pattern, expression_upper):
-                raise ValueError(f"Potentially dangerous {expression_type}: {expression}")

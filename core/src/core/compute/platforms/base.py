@@ -8,7 +8,7 @@ from core.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 from core.constants.sql import QueryType
 from core.compute.engines.base import BaseSQLEngine
 from core.query_builder.base import BaseQueryBuilder
-from core.compute.types import OperationResult, BatchOperationResult
+from core.compute.types import OperationResult
 from core.common.exceptions import query_execution_error
 from core.operations import (
     BaseOperation,
@@ -361,34 +361,6 @@ class _BasePlatform(ABC):
                 query_executed=query,
             )
     
-    def _supports_transactions(self) -> bool:
-        """Check if platform supports transactions.
-        
-        Default is False. Override in platforms that support it.
-        """
-        return False
-    
-    def _begin_transaction(self) -> None:
-        """Begin a transaction.
-        
-        Override in platforms that support transactions.
-        """
-        pass
-    
-    def _commit_transaction(self) -> None:
-        """Commit a transaction.
-        
-        Override in platforms that support transactions.
-        """
-        pass
-    
-    def _rollback_transaction(self) -> None:
-        """Rollback a transaction.
-        
-        Override in platforms that support transactions.
-        """
-        pass
-    
     def test_connection(self) -> Dict[str, bool]:
         """Test connections for all available engines.
         
@@ -404,12 +376,5 @@ class _BasePlatform(ABC):
             except Exception as e:
                 logger.error(f"SQL connection test failed: {e}")
                 results["sql"] = False
-        
-        
+
         return results
-    
-    
-    def cleanup(self) -> None:
-        """Clean up resources."""
-        self._sql_engine = None
-        self._query_builder = None

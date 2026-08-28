@@ -1,49 +1,40 @@
-"""Platform abstractions for multi-engine compute support.
+"""Platform abstractions for compute support.
 
-This module provides the platform abstraction layer that enables MedalFlow to work
-seamlessly across different compute platforms like Azure Synapse Analytics and
-Azure Synapse.
+This module provides the platform abstraction layer that lets MedalFlow run
+operations without the medallion layer knowing which compute service executes
+them. Azure Synapse Analytics is the only platform currently implemented.
 
 Platforms serve as the central orchestration point for:
     - Engine management (SQL)
     - Query builder selection
-    - Engine selection logic (AUTO mode)
+    - Engine selection for an operation
     - Connection testing and validation
 
 Architecture:
-    - BasePlatform: Abstract base class defining the platform interface
-    - Platform implementations: Synapse (and extensible for others)
-    - Each platform manages its own engines and query builders
+    - _BasePlatform: Abstract base class defining the platform interface
+    - _SynapsePlatform: the Synapse implementation
+    - Each platform builds its own engine and query builder in
+      ``_initialize_dependencies``
 
-The Factory Pattern:
-    Platforms are created through PlatformFactory, which uses settings to
-    configure the appropriate platform instance.
-
-Key Features:
-    - Lazy loading of engines (created only when needed)
-    - Automatic engine selection based on query context
-    - Platform-specific optimizations
-    - Unified interface across different platforms
+Creating a platform:
+    Platforms are built by ``core.compute.create_platform()``, which reads
+    ``settings.compute.compute_type``.
 
 Example:
-    from core.compute import PlatformFactory
-    from core.operations import QueryContext
-    
-    # Create platform from settings
-    platform = PlatformFactory.create_platform("synapse")
-    
-    # Platform automatically selects best engine
-    context = QueryContext(
-        preferred_engine=EngineType.AUTO,
-        estimated_rows=50_000_000,
-        has_complex_transformations=True
+    from core.compute import create_platform
+    from core.operations import CreateTable
+
+    platform = create_platform()
+
+    result = platform.execute_operation(
+        CreateTable(
+            schema_name="silver",
+            object_name="customers",
+            select_query="SELECT * FROM bronze.raw_customers",
+        )
     )
-    engine_type = platform.select_engine(context)  # Returns SPARK
-    
-    # Get platform info
-    info = platform.get_info()
-    print(f"Platform: {info['name']}")
-    print(f"Supported engines: {info['supported_engines']}")
+    print(f"Succeeded: {result.success}")
+    print(f"Engine used: {result.engine_used}")
 """
 
 from .base import _BasePlatform

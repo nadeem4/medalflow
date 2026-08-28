@@ -53,10 +53,10 @@ Security Features:
 
 Example Usage:
     >>> # Engines are managed internally by platforms
-    >>> from core.compute import PlatformFactory, ExecuteSQL
+    >>> from core.compute import create_platform, ExecuteSQL
     >>> from core.constants.compute import ResultFormat
     >>> 
-    >>> platform = PlatformFactory.create_platform("synapse")
+    >>> platform = create_platform()
     >>> 
     >>> # Execute operations through the platform
     >>> # Engines are not directly accessible
@@ -64,7 +64,7 @@ Example Usage:
     >>> # Execute a DDL query
     >>> op = ExecuteSQL(
     ...     sql="CREATE SCHEMA IF NOT EXISTS bronze",
-    ...     schema="dbo",
+    ...     schema_name="dbo",
     ...     object_name="bronze"
     ... )
     >>> result = platform.execute(op)
@@ -73,7 +73,7 @@ Example Usage:
     >>> op = ExecuteSQL(
     ...     sql="SELECT * FROM bronze.customers WHERE region = 'US'",
     ...     returns_results=True,
-    ...     schema="bronze",
+    ...     schema_name="bronze",
     ...     object_name="customers"
     ... )
     >>> result = platform.execute(op)
@@ -84,7 +84,7 @@ Example Usage:
     ...     sql="SELECT COUNT(*) FROM bronze.customers",
     ...     returns_results=True,
     ...     result_format=ResultFormat.SCALAR,
-    ...     schema="bronze",
+    ...     schema_name="bronze",
     ...     object_name="customers"
     ... )
     >>> result = platform.execute(op)
@@ -100,7 +100,7 @@ Error Handling:
     >>> op = ExecuteSQL(
     ...     sql="SELECT * FROM invalid_table",
     ...     returns_results=True,
-    ...     schema="dbo",
+    ...     schema_name="dbo",
     ...     object_name="invalid_table"
     ... )
     >>> result = platform.execute(op)
