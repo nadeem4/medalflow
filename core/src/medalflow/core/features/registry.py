@@ -64,6 +64,13 @@ class FeatureRegistry:
         Returns None if the feature is disabled. Managers are lazily
         instantiated on first access and cached for subsequent calls.
 
+        Two different things return None here and only one of them is cached.
+        A feature switched off in settings is a decision: it is answered once
+        and remembered. A manager that *failed* to construct or initialize --
+        a Key Vault timeout, an ADLS blip -- is not; caching that would
+        disable the feature for the whole process lifetime with no retry path,
+        so the failure is reported and the next call tries again.
+
         Args:
             feature_name: Name of the feature to get
 
@@ -94,8 +101,9 @@ class FeatureRegistry:
                     self._instances[feature_name] = manager
 
             except Exception as e:
+                # Deliberately not cached - see the note in the docstring.
                 logger.error(f"Failed to initialize feature manager '{feature_name}': {e}")
-                self._instances[feature_name] = None
+                return None
 
         return self._instances[feature_name]
 

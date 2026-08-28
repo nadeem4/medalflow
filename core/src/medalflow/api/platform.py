@@ -18,7 +18,7 @@ def _get_metrics() -> MetricsCollector:
 
 def execute(
     operation: dict,
-    compute_environment: ComputeEnvironment.ETL,
+    compute_environment: ComputeEnvironment = ComputeEnvironment.ETL,
     *,
     ctx: Optional[dict[str, Any]] = None,
 ) -> OperationResult:
