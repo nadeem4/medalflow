@@ -1,15 +1,15 @@
 [tool.poetry]
 name = "medalflow"
 version = "2.0.0"
-description = "MedalFlow: metadata-driven, multi-cloud ETL orchestration with auto-generated DAGs"
+description = "Declare medallion (Bronze/Silver/Gold) data models as Python classes; MedalFlow extracts dependencies from your SQL and compiles them into a staged execution plan."
 authors = ["nadeem4.nk13@gmail.com"]
 readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/nadeem4/medalflow.git"
 repository = "https://github.com/nadeem4/medalflow.git"
-keywords = ["etl", "metadata", "multi-cloud", "synapse", "databricks", "fabric", "auto-dag"]
+keywords = ["etl", "elt", "medallion-architecture", "data-engineering", "dag", "sql", "synapse"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
