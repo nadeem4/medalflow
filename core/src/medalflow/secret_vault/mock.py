@@ -70,13 +70,6 @@ class MockSecrets:
 
         return SecretStr(value) if value is not None else None
 
-    def clear_cache(self) -> None:
-        """Clear the secret cache.
-
-        Mock secrets are not cached, so this is a no-op kept to satisfy
-        the SecretProvider protocol.
-        """
-
     def add_mock_secret(self, secret_name: str, value: str) -> None:
         """Add or update a mock secret value.
 

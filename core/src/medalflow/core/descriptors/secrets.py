@@ -8,12 +8,17 @@ accessed, improving performance and allowing objects to be created even
 when secret providers are not immediately available.
 """
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from pydantic import SecretStr
 
+from medalflow.common.exceptions import CTEError, ErrorCode
+from medalflow.logging import get_logger
+
 if TYPE_CHECKING:
     from medalflow.core.mixins.injection import SecretProviderMixin
+
+logger = get_logger(__name__)
 
 
 class SecretField:
@@ -24,8 +29,9 @@ class SecretField:
     the secret provider. This allows secret names to be configured via
     environment variables or code.
 
-    The descriptor caches values per instance and secret name combination,
-    only loading secrets when first accessed.
+    A successful lookup is cached on the *instance* (in ``obj.__dict__``), so
+    the cache dies with the object it belongs to. A failed lookup is never
+    cached: the provider is asked again on the next access.
 
     By default, returns the plain string value from SecretStr for convenience.
     Set return_secret_str=True to return the SecretStr object itself.
@@ -34,7 +40,6 @@ class SecretField:
         return_secret_str: Whether to return SecretStr or plain string
         attr_name: The attribute name this descriptor is assigned to
         secret_name_attr: The corresponding secret name field (e.g., "etl_odbc_secret_name")
-        _cache: Dictionary mapping (instance_id, secret_name) to cached values
 
     Example:
         >>> class MySettings(SecretProviderMixin, BaseSettings):
@@ -61,7 +66,6 @@ class SecretField:
             return_secret_str: If True, return SecretStr object; if False, return plain string
         """
         self.return_secret_str = return_secret_str
-        self._cache: dict[tuple[int, str], Optional[Any]] = {}
 
     def __set_name__(self, owner: type, name: str) -> None:
         """Store the attribute name when descriptor is attached to a class.
@@ -73,6 +77,10 @@ class SecretField:
         self.attr_name = name
         self.secret_name_attr = f"{name}_secret_name"
 
+    def _cache_attr(self) -> str:
+        """Name of the per-instance slot holding this field's cached value."""
+        return f"_secret_cache_{self.attr_name}"
+
     def __get__(
         self, obj: Optional["SecretProviderMixin"], objtype: Optional[type] = None
     ) -> Optional[Union[str, SecretStr]]:
@@ -83,11 +91,13 @@ class SecretField:
             objtype: The type of the instance (not used)
 
         Returns:
-            The secret value as a string (default) or SecretStr (if return_secret_str=True),
-            or None if the secret is not available or field doesn't exist
+            The secret value as a string (default) or SecretStr (if
+            return_secret_str=True). ``None`` means "no provider is attached" --
+            the managed-identity path -- never "the lookup failed".
 
         Raises:
             ValueError: If secret name field exists but is empty or None
+            CTEError: If the attached provider failed to return the secret
         """
         if obj is None:
             return self  # Accessing via class, return descriptor itself
@@ -103,34 +113,39 @@ class SecretField:
                 f"Please set '{self.secret_name_attr}'."
             )
 
-        # Check cache
-        cache_key = (id(obj), secret_name)
+        cache_attr = self._cache_attr()
+        cached = obj.__dict__.get(cache_attr)
+        if cached is not None and cached[0] == secret_name:
+            return cached[1]
 
-        if cache_key not in self._cache:
-            # Try to load from secret provider
-            if hasattr(obj, "_secret_provider") and obj._secret_provider:
-                try:
-                    secret_value = obj._secret_provider.get_secret(secret_name)
+        provider = getattr(obj, "_secret_provider", None)
+        if provider is None:
+            # No provider: the managed-identity path. Distinct from a failure,
+            # which raises, and deliberately not cached so attaching a provider
+            # later still works.
+            logger.debug(
+                "No secret provider attached; '%s' (%s) resolves to None",
+                self.attr_name,
+                secret_name,
+            )
+            return None
 
-                    # Convert to appropriate format
-                    if secret_value and not self.return_secret_str:
-                        if isinstance(secret_value, SecretStr):
-                            self._cache[cache_key] = secret_value.get_secret_value()
-                        else:
-                            self._cache[cache_key] = secret_value
-                    else:
-                        self._cache[cache_key] = secret_value
+        try:
+            secret_value = provider.get_secret(secret_name)
+        except Exception as error:
+            # Loud, uncached, and re-raised: a transient Key Vault blip must not
+            # become a permanent None that ends up in a connection string.
+            raise CTEError(
+                f"Failed to load secret '{secret_name}' for field '{self.attr_name}'",
+                error_code=ErrorCode.CONNECTION_ERROR,
+                details={"secret_name": secret_name, "field": self.attr_name},
+                cause=error,
+            ) from error
 
-                except Exception:
-                    self._cache[cache_key] = None
-            else:
-                self._cache[cache_key] = None
+        if isinstance(secret_value, SecretStr) and not self.return_secret_str:
+            value: Optional[Union[str, SecretStr]] = secret_value.get_secret_value()
+        else:
+            value = secret_value
 
-        return self._cache[cache_key]
-
-    def clear_cache(self) -> None:
-        """Clear the cached values for all instances.
-
-        This can be useful for testing or when secrets need to be reloaded.
-        """
-        self._cache.clear()
+        obj.__dict__[cache_attr] = (secret_name, value)
+        return value

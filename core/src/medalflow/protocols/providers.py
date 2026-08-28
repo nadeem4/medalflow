@@ -19,6 +19,10 @@ class SecretProvider(Protocol):
 
     The protocol is marked as runtime_checkable to allow isinstance()
     checks at runtime, which is useful for validation and testing.
+
+    ``get_secret`` is the whole contract. Caching is not part of it: the only
+    cache that matters lives on :class:`~medalflow.core.descriptors.SecretField`,
+    one layer above, which a provider cannot reach.
     """
 
     def get_secret(self, secret_name: str, default: Optional[str] = None) -> Optional[SecretStr]:
@@ -33,13 +37,5 @@ class SecretProvider(Protocol):
 
         Raises:
             ValueError: If the secret cannot be retrieved and no default is provided
-        """
-        ...
-
-    def clear_cache(self) -> None:
-        """Clear any cached secrets.
-
-        This method should clear any internal caches to force
-        fresh retrieval of secrets on the next access.
         """
         ...
