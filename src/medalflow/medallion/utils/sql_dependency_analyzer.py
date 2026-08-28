@@ -40,6 +40,15 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+# Statements that produce a table the DAG can hang an edge on. `exp.Drop` is
+# deliberately absent: a DROP neither produces nor consumes rows, and reporting
+# its target as either invents an edge.
+_WRITE_EXPRESSIONS = (exp.Create, exp.Insert, exp.Update, exp.Merge)
+
+# SQL Server's system catalog. Guarded DDL probes it (`sys.external_tables`,
+# `sys.schemas`); it is never a data dependency.
+_CATALOG_SCHEMA = "sys"
+
 
 class SQLDependencyAnalyzer:
     """Analyzes SQL queries to extract table dependencies using SQLGlot parser.
@@ -100,53 +109,87 @@ class SQLDependencyAnalyzer:
         if not sql or not sql.strip():
             raise ValueError("SQL query must be a non-empty string.")
 
-        parsed = sqlglot.parse_one(sql, dialect=self.dialect)
+        reads_from: set[str] = set()
+        writes_to: str | None = None
 
-        # Extract CTEs first (to exclude from source tables)
-        ctes = self._extract_ctes_sqlglot(parsed)
+        # Guarded DDL really is several statements, so parse the plural; the
+        # first statement is not necessarily the interesting one.
+        for statement in sqlglot.parse(sql, dialect=self.dialect):
+            if statement is None:
+                continue
 
-        # Extract source tables (excluding CTEs)
-        reads_from = self._extract_source_tables_sqlglot(parsed, ctes)
-
-        # Extract target table directly from SQL
-        writes_to = self._extract_target_table_sqlglot(parsed)
+            statement_reads, statement_writes = self._analyze_statement(statement)
+            reads_from |= statement_reads
+            if writes_to is None:
+                writes_to = statement_writes
 
         return SQLDependencies(reads_from=reads_from, writes_to=writes_to)
 
-    def _extract_source_tables_sqlglot(self, ast: "exp.Expression", ctes: set[str]) -> set[str]:
-        """Extract all source tables from SQLGlot AST.
+    def _analyze_statement(self, statement: "exp.Expression") -> tuple[set[str], str | None]:
+        """Split one parsed statement into the tables it reads and the one it writes.
+
+        The write expression is searched for anywhere in the tree instead of
+        being assumed to be the root: ``recreate=True`` renders the CETAS
+        inside an ``IF EXISTS (...) DROP EXTERNAL TABLE ...;`` guard, which
+        sqlglot parses as a single ``IfBlock`` whose ``this`` is the guard
+        condition, not the target. Narrowing the read scope to the write
+        expression is also what keeps the guard's catalog probe and its own
+        DROP target out of ``reads_from``.
 
         Args:
-            ast: SQLGlot expression tree
-            ctes: Set of CTE names to exclude
+            statement: One parsed statement
 
         Returns:
-            Set of fully qualified, lowercase table names
+            ``(reads_from, writes_to)`` for that statement
         """
+        write = next(statement.find_all(*_WRITE_EXPRESSIONS), None)
+
+        if write is None:
+            if isinstance(statement, exp.Drop):
+                return set(), None
+            return self._source_tables(statement, target=None), None
+
+        target = self._target_table(write)
+        writes_to = None if target is None else self._qualified_name(self._table_parts(target))
+        return self._source_tables(write, target=target), writes_to
+
+    @staticmethod
+    def _target_table(write: "exp.Expression") -> "exp.Table | None":
+        """Return the table a write expression targets, or None if it has none.
+
+        ``CREATE TABLE t (a INT)`` and ``INSERT INTO t (a)`` both wrap the table
+        in a ``Schema`` node; ``CREATE SCHEMA`` targets no table at all.
+        """
+        target = write.this
+        if isinstance(target, exp.Schema):
+            target = target.this
+        return target if isinstance(target, exp.Table) else None
+
+    def _source_tables(
+        self, scope: "exp.Expression", target: "exp.Table | None" = None
+    ) -> set[str]:
+        """Extract the source tables read within ``scope``.
+
+        Args:
+            scope: Subtree to search -- the write expression when there is one
+            target: The write target, which is not a source of itself
+
+        Returns:
+            Set of qualified, lowercase table names
+        """
+        ctes = self._extract_ctes_sqlglot(scope)
         tables: set[str] = set()
 
-        # Find all table references
-        for table in ast.find_all(exp.Table):
-            if table:
-                full_table_name = self._qualified_name(self._table_parts(table))
-                if self._is_cte(full_table_name, ctes):
-                    continue
+        for table in scope.find_all(exp.Table):
+            if table is target or table.db.lower() == _CATALOG_SCHEMA:
+                continue
 
-                tables.add(full_table_name)
+            full_table_name = self._qualified_name(self._table_parts(table))
+            if self._is_cte(full_table_name, ctes):
+                continue
+
+            tables.add(full_table_name)
         return tables
-
-    def _extract_target_table_sqlglot(self, ast: "exp.Expression") -> str | None:
-        """Extract target table for DML operations from SQLGlot AST.
-
-        Args:
-            ast: SQLGlot expression tree
-
-        Returns:
-            Fully qualified target table name or None
-        """
-        if isinstance(ast.this, exp.Table):
-            return self._qualified_name(self._table_parts(ast.this))
-        return None
 
     def _extract_ctes_sqlglot(self, ast: "exp.Expression") -> set[str]:
         """Extract CTE names from SQLGlot AST.

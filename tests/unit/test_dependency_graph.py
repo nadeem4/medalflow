@@ -143,3 +143,34 @@ def test_operation_reading_its_own_output_is_not_self_dependent():
     dag = builder.build_dag()
 
     assert dag.get_dependencies(op._dag_id) == []
+
+
+# --- phase 3.5: statement shapes the root-only extraction missed -----------
+
+
+def test_create_table_with_a_column_list_still_names_its_target(analyzer):
+    """`CREATE TABLE t (a INT)` wraps the table in a Schema node, not a Table."""
+    deps = analyzer.extract_dependencies(
+        "CREATE EXTERNAL TABLE bronze.Customers (CustomerId INT) "
+        "WITH (DATA_SOURCE = ds, LOCATION = 'bronze/Customers', FILE_FORMAT = ff)"
+    )
+
+    assert deps.writes_to == "bronze.customers"
+    assert deps.reads_from == set()
+
+
+def test_a_drop_is_neither_a_writer_nor_a_reader(analyzer):
+    """A DROP produces and consumes nothing; calling it either invents an edge."""
+    deps = analyzer.extract_dependencies("DROP VIEW IF EXISTS gold.vw_Revenue")
+
+    assert deps.writes_to is None
+    assert deps.reads_from == set()
+
+
+def test_a_guarded_create_schema_does_not_read_the_system_catalog(analyzer):
+    deps = analyzer.extract_dependencies(
+        "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'silver')\n"
+        "BEGIN\n    CREATE SCHEMA silver\nEND"
+    )
+
+    assert deps.reads_from == set()

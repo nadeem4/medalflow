@@ -170,6 +170,7 @@ def plan(orchestrator, analyzer):
     dependencies = {
         operation: analyzer.extract_dependencies(operation.select_query) for operation in operations
     }
+
     class _Analyzer:
         def analyze_operations(self, _operations):
             return dependencies
