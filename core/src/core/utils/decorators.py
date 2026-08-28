@@ -5,9 +5,9 @@ import functools
 import time
 from typing import Any, Callable, Dict, Optional, Tuple, Type, TypeVar, Union
 
+from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
-from core.telemetry import get_tracer
 
 
 F = TypeVar('F', bound=Callable[..., Any])
@@ -65,7 +65,7 @@ def traced(
 
             @functools.wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-                tracer = get_tracer(func.__module__)
+                tracer = trace.get_tracer(func.__module__)
                 name = span_name or f"{func.__module__}.{func.__qualname__}"
 
                 with tracer.start_as_current_span(name, kind=kind) as span:
@@ -85,7 +85,7 @@ def traced(
 
         @functools.wraps(func)
         def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-            tracer = get_tracer(func.__module__)
+            tracer = trace.get_tracer(func.__module__)
             name = span_name or f"{func.__module__}.{func.__qualname__}"
 
             with tracer.start_as_current_span(name, kind=kind) as span:
@@ -440,8 +440,7 @@ def catch_exception(
                     
                     _get_logger().error(
                         f"Exception in {func.__name__}",
-                        error=str(e),
-                        error_type=type(e).__name__
+                        extra={"error": str(e), "error_type": type(e).__name__},
                     )
                 
                 if raise_new:

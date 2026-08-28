@@ -16,7 +16,6 @@ from core.observability.context import (
     merge_telemetry,
     sanitize_extras,
 )
-from core.telemetry import get_tracer
 
 logger = get_logger(__name__)
 
@@ -66,25 +65,29 @@ def operation_instrumentation(
     telemetry_payload.update(sanitize_extras(attributes))
 
     start_time = time.perf_counter()
-    with execution_request_scope(ctx, operation=f"medalflow.operation.{operation_name}"):
-        tracer = get_tracer("medalflow")
-        with tracer.start_as_current_span(f"medalflow.operation.{operation_name}") as span:
-            for key, value in telemetry_payload.items():
-                span.set_attribute(f"medalflow.{key}", value)
-            try:
-                yield telemetry_payload
-                elapsed = time.perf_counter() - start_time
-                metrics.operation_counter.add(1, {**tags, "status": "success"})
-                metrics.duration_histogram.record(elapsed, {**tags, "scope": "operation"})
-            except Exception as exc:
-                elapsed = time.perf_counter() - start_time
-                metrics.operation_counter.add(1, {**tags, "status": "error"})
-                metrics.duration_histogram.record(elapsed, {**tags, "scope": "operation", "status": "error"})
-                span.record_exception(exc)
-                span.set_status(Status(StatusCode.ERROR))
-                logger.error(
-                    "Operation failed",
-                    extra=telemetry_payload,
-                    exc_info=True,
-                )
-                raise
+    # `execution_request_scope` already opens a span with this exact name; reuse
+    # it. Opening a second one nested a same-named child span under every
+    # instrumented operation, doubling span volume and recording each exception
+    # twice.
+    with execution_request_scope(
+        ctx, operation=f"medalflow.operation.{operation_name}"
+    ) as span:
+        for key, value in telemetry_payload.items():
+            span.set_attribute(f"medalflow.{key}", value)
+        try:
+            yield telemetry_payload
+            elapsed = time.perf_counter() - start_time
+            metrics.operation_counter.add(1, {**tags, "status": "success"})
+            metrics.duration_histogram.record(elapsed, {**tags, "scope": "operation"})
+        except Exception as exc:
+            elapsed = time.perf_counter() - start_time
+            metrics.operation_counter.add(1, {**tags, "status": "error"})
+            metrics.duration_histogram.record(elapsed, {**tags, "scope": "operation", "status": "error"})
+            span.record_exception(exc)
+            span.set_status(Status(StatusCode.ERROR))
+            logger.error(
+                "Operation failed",
+                extra=telemetry_payload,
+                exc_info=True,
+            )
+            raise
