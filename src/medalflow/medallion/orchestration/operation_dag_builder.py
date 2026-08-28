@@ -139,10 +139,11 @@ class OperationDAGBuilder:
             dep_info = self.dependencies[op]
 
             # Find dependencies based on tables this operation reads.
-            # `reads_from` and the mapping keys are both fully-qualified
-            # lowercase "schema.table" names, so matching is global and works
-            # across layers: silver SQL reading bronze.customers resolves to the
-            # bronze operation that writes it.
+            # `reads_from` and the mapping keys are both *logical* names:
+            # fully-qualified, lowercase "schema.table" with the deployment
+            # table prefix stripped (docs/adr/000). Matching is therefore global
+            # and works across layers -- silver SQL reading bronze.Customers
+            # resolves to the bronze operation that writes [bronze].[fin_Customers].
             for source_table in dep_info.reads_from:
                 for dep_op_id in self.table_to_operation.get(source_table, []):
                     if dep_op_id != op_id:  # Avoid self-dependencies
