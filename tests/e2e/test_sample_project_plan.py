@@ -24,7 +24,7 @@ from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPl
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
 from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
-from medalflow.operations import CreateTable
+from medalflow.operations import CreateOrAlterView, CreateTable
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -54,21 +54,13 @@ def discovery():
 
 
 @pytest.fixture
-def analyzer():
-    instance = SQLDependencyAnalyzer.__new__(SQLDependencyAnalyzer)
-    instance.settings = None
-    instance.dialect = "tsql"
-    instance.table_prefix = ""
-    return instance
+def analyzer(offline_settings):
+    return SQLDependencyAnalyzer(offline_settings)
 
 
 @pytest.fixture
-def orchestrator():
-    instance = ExecutionPlanOrchestrator.__new__(ExecutionPlanOrchestrator)
-    instance.settings = None
-    instance.plan_builder = ExecutionPlanBuilder()
-    instance.logger = logging.getLogger("e2e-orchestrator")
-    return instance
+def orchestrator(offline_settings):
+    return ExecutionPlanOrchestrator(offline_settings)
 
 
 # --- discovery -------------------------------------------------------------
@@ -122,15 +114,24 @@ def _operations_from_sample_project():
     ):
         method = getattr(model, method_name)
         metadata = method._query_metadata
-        operations.append(
-            CreateTable(
-                operation_type=QueryType.CREATE_TABLE,
-                schema_name=metadata.schema_name,
-                object_name=metadata.table_name,
-                select_query=method(model),
-                recreate=True,
+        if metadata.type == QueryType.CREATE_OR_ALTER_VIEW:
+            operations.append(
+                CreateOrAlterView(
+                    schema_name=metadata.schema_name,
+                    object_name=metadata.table_name,
+                    select_query=method(model),
+                )
             )
-        )
+        else:
+            operations.append(
+                CreateTable(
+                    operation_type=QueryType.CREATE_TABLE,
+                    schema_name=metadata.schema_name,
+                    object_name=metadata.table_name,
+                    select_query=method(model),
+                    recreate=True,
+                )
+            )
     return operations
 
 
@@ -165,19 +166,15 @@ def test_dependencies_are_extracted_from_the_model_sql(analyzer):
 
 
 @pytest.fixture
-def plan(orchestrator, analyzer):
-    operations = _operations_from_sample_project()
-    dependencies = {
-        operation: analyzer.extract_dependencies(operation.select_query) for operation in operations
-    }
+def plan(orchestrator):
+    """The real path: operations -> query builder -> analyzer -> DAG -> plan.
 
-    class _Analyzer:
-        def analyze_operations(self, _operations):
-            return dependencies
-
-    orchestrator.sql_analyzer = _Analyzer()
+    Nothing here supplies dependencies. `create_execution_plan` renders each
+    operation with the configured query builder and reads the edges back out
+    of that SQL, guard, table prefix and all.
+    """
     return orchestrator.create_execution_plan(
-        operations=operations, sequencer_name="sample_project"
+        operations=_operations_from_sample_project(), sequencer_name="sample_project"
     )
 
 
