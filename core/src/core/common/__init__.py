@@ -26,18 +26,9 @@ from core.common.exceptions import (
     CTEError,
     ErrorCode,
     # Helper functions
-    configuration_error,
-    validation_error,
     connection_error,
-    execution_error,
     query_execution_error,
-    compute_error,
-    job_submission_error,
-    job_status_error,
-    platform_not_supported_error,
-    retryable_error,
     feature_not_enabled_error,
-    resource_not_found_error,
 )
 
 from core.utils.decorators import retry_with_backoff
@@ -47,18 +38,9 @@ __all__ = [
     "CTEError",
     "ErrorCode",
     # Helper functions
-    "configuration_error",
-    "validation_error",
     "connection_error",
-    "execution_error",
     "query_execution_error",
-    "compute_error",
-    "job_submission_error",
-    "job_status_error",
-    "platform_not_supported_error",
-    "retryable_error",
     "feature_not_enabled_error",
-    "resource_not_found_error",
     # Utilities
     "retry_with_backoff",
 ]
