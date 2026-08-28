@@ -36,7 +36,7 @@ class ExecutionPlanBuilder:
         self.table_prefix = table_prefix
     
     def build_plan(self,
-                      stages: List[Dict[str, Any]],
+                      stages: List[ExecutionStage],
                       dag: Dict[str, List[str]],
                       lineage: Optional[Dict[str, Any]],
                       class_metadata: Dict[str, Any],
@@ -48,7 +48,7 @@ class ExecutionPlanBuilder:
         executed in parallel within each stage.
         
         Args:
-            stages: List of execution stages from DAG builder
+            stages: List of ExecutionStage objects from the DAG builder
             dag: Dependency graph
             lineage: Lineage information (None if disabled)
             class_metadata: Class-level metadata dictionary
@@ -58,24 +58,6 @@ class ExecutionPlanBuilder:
         Returns:
             DAG-based execution plan with stages and lineage
         """
-        # Convert stage dicts to ExecutionStage objects with BaseOperation objects
-        execution_stages = []
-        for stage_dict in stages:
-            operations = []
-            for query_dict in stage_dict.get('parallel_queries', []):
-                # Operation is directly provided. The stage dict also carries
-                # 'id', 'dependencies' and 'layer', but those are DAG bookkeeping
-                # and are not fields on the operation model — assigning them
-                # raised ValidationError ("Object has no attribute
-                # 'dependencies'"), so the plan is built from the operation
-                # as-is.
-                operations.append(query_dict['operation'])
-            
-            execution_stages.append(ExecutionStage(
-                stage=stage_dict['stage'],
-                operations=operations
-            ))
-        
         # Create LineageInfo object if lineage is provided
         lineage_info = LineageInfo(**lineage) if lineage else None
         
@@ -83,7 +65,7 @@ class ExecutionPlanBuilder:
         execution_plan = ExecutionPlan(
             sequencer_name=sequencer_name,
             metadata=class_metadata,
-            stages=execution_stages,
+            stages=stages,
             dependency_graph=dag,
             lineage=lineage_info,
             total_queries=total_queries
