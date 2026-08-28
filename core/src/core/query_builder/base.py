@@ -173,7 +173,7 @@ class BaseQueryBuilder(ABC):
     def _validate_create_statistics(self, operation: CreateStatistics) -> None:
         """Validate CREATE STATISTICS operation.
         
-        Both Synapse Serverless and Fabric Warehouse only support single-column statistics.
+        Synapse Serverless only supports single-column statistics.
         This method enforces that constraint at the query builder level.
         
         Args:
@@ -192,7 +192,7 @@ class BaseQueryBuilder(ABC):
             raise ValueError(
                 f"Cannot create statistics on {operation.full_object_name}: "
                 f"Multiple columns specified ({', '.join(operation.columns)}). "
-                "Both Synapse and Fabric only support single-column statistics. "
+                "Synapse only supports single-column statistics. "
                 "Create separate statistics for each column."
             )
     

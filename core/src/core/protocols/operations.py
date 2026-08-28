@@ -22,7 +22,7 @@ class ColumnDefinition(BaseModel):
     
     Common Platform-Specific Types:
     
-    **Azure Synapse / Microsoft Fabric Warehouse (T-SQL):**
+    **Azure Synapse (T-SQL):**
         - Strings: NVARCHAR(60), NVARCHAR(MAX), VARCHAR(100), CHAR(10)
         - Numbers: INT, BIGINT, SMALLINT, TINYINT, DECIMAL(18,2), NUMERIC(10,5), FLOAT, REAL
         - Dates: DATETIME2, DATETIME, DATE, TIME, DATETIMEOFFSET

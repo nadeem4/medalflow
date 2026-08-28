@@ -5,14 +5,13 @@ such as operation results, job configurations, and execution metadata.
 Operations themselves have been moved to the operations module.
 """
 
-from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 from pydantic import ConfigDict, Field, model_validator
 
 from core.types.base import CTEBaseModel
-from core.constants.compute import EngineType, JobStatus
+from core.constants.compute import EngineType
 from core.constants.sql import QueryType
 
 
@@ -90,45 +89,3 @@ class BatchOperationResult(CTEBaseModel):
                 f"Results count ({len(self.results)}) doesn't match total operations ({self.total_operations})"
             )
         return self
-
-
-class SparkJobConfig(CTEBaseModel):
-    """Configuration for Spark job execution."""
-    job_name: Optional[str] = Field(default=None)
-    executor_size: Optional[str] = Field(default=None)
-    executor_count: Optional[int] = Field(default=None, gt=0)
-    driver_memory: Optional[str] = Field(default=None, pattern=r'^\d+[kmg]$')
-    executor_memory: Optional[str] = Field(default=None, pattern=r'^\d+[kmg]$')
-    max_retries: int = Field(default=3, ge=0, le=10)
-    timeout_seconds: Optional[int] = Field(default=None, gt=0)
-    spark_conf: Dict[str, Any] = Field(default_factory=dict)
-
-
-class JobResult(CTEBaseModel):
-    """Result of a Spark job execution."""
-    job_id: str = Field(..., min_length=1)
-    status: JobStatus
-    start_time: datetime
-    end_time: Optional[datetime] = Field(default=None)
-    duration_seconds: Optional[float] = Field(default=None, ge=0.0)
-    error_message: Optional[str] = Field(default=None)
-    output_location: Optional[str] = Field(default=None)
-    rows_processed: Optional[int] = Field(default=None, ge=0)
-    
-    @property
-    def is_success(self) -> bool:
-        """Check if job completed successfully."""
-        return self.status == JobStatus.SUCCEEDED
-    
-    @model_validator(mode='after')
-    def validate_timing(self):
-        """Validate timing consistency."""
-        if self.end_time and self.start_time:
-            if self.end_time < self.start_time:
-                raise ValueError("end_time cannot be before start_time")
-            # Calculate duration if not provided
-            if self.duration_seconds is None:
-                delta = self.end_time - self.start_time
-                self.duration_seconds = delta.total_seconds()
-        return self
-

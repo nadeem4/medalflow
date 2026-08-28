@@ -1,12 +1,12 @@
 """Compute engines for executing queries across different platforms.
 
 This module provides the engine abstraction layer for the MedalFlow compute module.
-Engines are responsible for executing SQL and Spark queries on their respective platforms.
+Engines are responsible for executing SQL queries on their respective platforms.
 
 Overview:
     Engines are the execution layer of the compute module. They handle the actual
     communication with compute platforms, manage connections, execute queries/jobs,
-    and handle platform-specific error conditions. Each engine type (SQL, Spark)
+    and handle platform-specific error conditions. Each engine type
     has its own interface and platform-specific implementations.
 
 Architecture:
@@ -14,11 +14,9 @@ Architecture:
     
     1. **Base Interfaces**: Abstract classes defining the engine contract
        - BaseSQLEngine: Synchronous SQL query execution
-       - BaseSparkEngine: Asynchronous Spark job submission
     
     2. **Platform Implementations**: Concrete implementations for each platform
-       - Synapse: SynapseSQLEngine, SynapseSparkEngine
-       - Fabric: FabricSQLEngine, FabricSparkEngine
+       - Synapse: SynapseSQLEngine
 
 Engine Types:
     **SQL Engines**:
@@ -115,15 +113,13 @@ Performance Considerations:
     - Batch operations minimize round trips
     - Result streaming for large datasets
     - Query timeout configuration
-    - Resource limits for Spark jobs
 
 See Also:
     - core.compute.engines.base: Base engine interfaces
     - core.compute.engines.synapse: Azure Synapse implementations
-    - core.compute.engines.fabric: Microsoft Fabric implementations
     - core.compute.platforms: Platform orchestration layer
 """
 
-from core.compute.engines.base import BaseSQLEngine, BaseSparkEngine
+from core.compute.engines.base import BaseSQLEngine
 
-__all__ = ["BaseSQLEngine", "BaseSparkEngine"]
+__all__ = ["BaseSQLEngine"]

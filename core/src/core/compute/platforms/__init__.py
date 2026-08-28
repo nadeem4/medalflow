@@ -2,17 +2,17 @@
 
 This module provides the platform abstraction layer that enables MedalFlow to work
 seamlessly across different compute platforms like Azure Synapse Analytics and
-Microsoft Fabric.
+Azure Synapse.
 
 Platforms serve as the central orchestration point for:
-    - Engine management (SQL and Spark)
+    - Engine management (SQL)
     - Query builder selection
     - Engine selection logic (AUTO mode)
     - Connection testing and validation
 
 Architecture:
     - BasePlatform: Abstract base class defining the platform interface
-    - Platform implementations: Synapse, Fabric (and extensible for others)
+    - Platform implementations: Synapse (and extensible for others)
     - Each platform manages its own engines and query builders
 
 The Factory Pattern:
@@ -30,7 +30,7 @@ Example:
     from core.operations import QueryContext
     
     # Create platform from settings
-    platform = PlatformFactory.create_platform("fabric")
+    platform = PlatformFactory.create_platform("synapse")
     
     # Platform automatically selects best engine
     context = QueryContext(
@@ -48,6 +48,5 @@ Example:
 
 from .base import _BasePlatform
 from .synapse import SynapsePlatform as _SynapsePlatform
-from .fabric import FabricPlatform as _FabricPlatform
 
-__all__ = ["_BasePlatform", "_SynapsePlatform", "_FabricPlatform"]
+__all__ = ["_BasePlatform", "_SynapsePlatform"]

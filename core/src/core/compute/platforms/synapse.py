@@ -17,7 +17,7 @@ import pandas as pd
 
 from core.constants.compute import EngineType
 from core.constants.sql import QueryType
-from core.compute.engines.synapse import SynapseSQLEngine, SynapseSparkEngine
+from core.compute.engines.synapse import SynapseSQLEngine
 from core.compute.platforms.base import _BasePlatform
 from core.query_builder.synapse import SynapseServerlessQueryBuilder
 from core.compute.types import OperationResult
@@ -63,10 +63,6 @@ class SynapsePlatform(_BasePlatform):
         # SQL engine always available (uses ODBC connections)
         engines.append(EngineType.SQL)
         
-        # Spark engine available if configured
-        if self.settings.spark_configured:
-            engines.append(EngineType.SPARK)
-        
         # AUTO is always supported if any engine is available
         engines.append(EngineType.AUTO)
         
@@ -86,7 +82,6 @@ class SynapsePlatform(_BasePlatform):
             
         self._query_builder = get_synapse_query_builder()
         self._datalake_client = get_processed_datalake_client()
-        self._spark_engine: Optional[SynapseSparkEngine] = None
     
     def execute_operation(
         self,

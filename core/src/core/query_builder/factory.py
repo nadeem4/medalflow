@@ -14,7 +14,6 @@ from core.query_builder.base import BaseQueryBuilder
 from core.query_builder.synapse.serverless_builder import (
     SynapseServerlessQueryBuilder
 )
-from core.query_builder.fabric.warehouse_builder import FabricWarehouseQueryBuilder
 
 if TYPE_CHECKING:
     from core.settings.compute import ComputeSettings
@@ -35,7 +34,6 @@ class QueryBuilderFactory:
     Example:
         >>> # Just call - no parameters needed!
         >>> synapse = QueryBuilderFactory.create_synapse_builder()
-        >>> fabric = QueryBuilderFactory.create_fabric_builder()
         >>> auto = QueryBuilderFactory.create()  # Auto-detects platform
     """
     
@@ -66,25 +64,6 @@ class QueryBuilderFactory:
         return SynapseServerlessQueryBuilder(settings)
     
     @staticmethod
-    def create_fabric_builder() -> FabricWarehouseQueryBuilder:
-        """Create a Fabric query builder auto-configured from environment.
-        
-        Fabric builders are simpler as they primarily need the table prefix,
-        which is automatically extracted from settings.
-        
-        Returns:
-            Fully configured FabricWarehouseQueryBuilder instance.
-        
-        Example:
-            >>> # Simple - no parameters!
-            >>> builder = QueryBuilderFactory.create_fabric_builder()
-        """
-        from core.settings import get_settings
-        settings = get_settings()
-        
-        return FabricWarehouseQueryBuilder(settings)
-    
-    @staticmethod
     def create() -> BaseQueryBuilder:
         """Create appropriate query builder based on active compute type.
         
@@ -108,17 +87,15 @@ class QueryBuilderFactory:
         
         if active_type == ComputeType.SYNAPSE:
             return QueryBuilderFactory.create_synapse_builder()
-        elif active_type == ComputeType.FABRIC:
-            return QueryBuilderFactory.create_fabric_builder()
         else:
             raise ValueError(
                 f"Unsupported compute type: {active_type}. "
-                f"Supported types: SYNAPSE, FABRIC"
+                f"Supported types: SYNAPSE"
             )
 
 
 # Union type for all concrete builders
-ConcreteQueryBuilder = Union[SynapseServerlessQueryBuilder, FabricWarehouseQueryBuilder]
+ConcreteQueryBuilder = SynapseServerlessQueryBuilder
 
 
 def get_query_builder() -> ConcreteQueryBuilder:
@@ -129,14 +106,13 @@ def get_query_builder() -> ConcreteQueryBuilder:
     
     Returns:
         Platform-specific query builder (SynapseServerlessQueryBuilder or 
-        FabricWarehouseQueryBuilder) based on active compute settings.
+        based on active compute settings.
     
     Example:
         >>> from core.query_builder.factory import get_query_builder
         >>> 
         >>> builder = get_query_builder()
         >>> # If Synapse is active, IDE shows Synapse-specific methods
-        >>> # If Fabric is active, IDE shows Fabric-specific methods
         >>> 
         >>> # Type narrowing with isinstance for platform-specific features:
         >>> if isinstance(builder, SynapseServerlessQueryBuilder):
@@ -161,15 +137,3 @@ def get_synapse_query_builder() -> SynapseServerlessQueryBuilder:
         >>> builder.build_is_external_table_query("bronze", "table")
     """
     return QueryBuilderFactory.create_synapse_builder()
-
-
-def get_fabric_query_builder() -> FabricWarehouseQueryBuilder:
-    """Get a Fabric query builder with full type information.
-    
-    Use this when you know you're working with Fabric and want
-    full IDE support for Fabric-specific methods.
-    
-    Returns:
-        FabricWarehouseQueryBuilder instance.
-    """
-    return QueryBuilderFactory.create_fabric_builder()

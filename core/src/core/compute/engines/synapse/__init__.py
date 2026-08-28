@@ -48,6 +48,5 @@ Example:
 """
 
 from core.compute.engines.synapse.sql_engine import SynapseSQLEngine
-from core.compute.engines.synapse.spark_engine import SynapseSparkEngine
 
-__all__ = ["SynapseSQLEngine", "SynapseSparkEngine"]
+__all__ = ["SynapseSQLEngine"]
