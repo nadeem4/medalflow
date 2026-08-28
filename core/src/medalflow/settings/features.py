@@ -1,13 +1,16 @@
-from pydantic import Field
-from pydantic_settings import SettingsConfigDict
+"""Feature flags.
+
+Environment variables are namespaced by the parent settings object, e.g.
+``MEDALFLOW_FEATURES__SNAPSHOTS_ENABLED``.
+"""
+
+from pydantic import BaseModel, Field
 
 from medalflow.common.exceptions import feature_not_enabled_error
 
-from .base import CTEBaseSettings
 
-
-class FeatureSettings(CTEBaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False, env_prefix="")
+class FeatureSettings(BaseModel):
+    """Toggles for optional MedalFlow behaviour."""
 
     cte_stats_enabled: bool = Field(
         default=True,
@@ -93,7 +96,7 @@ class FeatureSettings(CTEBaseSettings):
         guidance = {
             feature.replace(
                 "_enabled", ""
-            ): f"Set {feature.upper()}=true to enable {feature.replace('_enabled', '').replace('_', ' ')}."
+            ): f"Set MEDALFLOW_FEATURES__{feature.upper()}=true to enable {feature.replace('_enabled', '').replace('_', ' ')}."
             for feature in self._get_feature_list()
         }
 

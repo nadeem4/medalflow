@@ -23,7 +23,7 @@ from medalflow.medallion.types import TableInfo
 from medalflow.observability.context import ExecutionRequestContext
 from medalflow.operations import Select
 from medalflow.operations.builder import OperationBuilder
-from medalflow.settings.base import CTEBaseSettings
+from medalflow.settings.main import MedalflowSettings
 from medalflow.types.metadata import DiscoveredMethod, QueryMetadata
 
 # --- 1. schema= vs schema_name= -------------------------------------------
@@ -173,11 +173,11 @@ def test_full_object_name_has_a_single_underscore_after_the_prefix(monkeypatch):
     in every log line and error message that used it."""
     import medalflow.settings
 
-    settings = CTEBaseSettings(
-        tenant_id="00000000-0000-0000-0000-000000000000",
+    settings = MedalflowSettings(
         source_system="sap",
         ds_env="dev",
         name="fin",
+        compute={"lake_database_name": "lakedb"},
     )
     monkeypatch.setattr(medalflow.settings, "get_settings", lambda: settings)
 

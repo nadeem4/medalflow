@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from medalflow.medallion.bronze.sequencer import BronzeSequencer
     from medalflow.medallion.gold.sequencer import GoldSequencer
     from medalflow.medallion.silver.sequencer import SilverTransformationSequencer
-    from medalflow.settings import _Settings
+    from medalflow.settings import MedalflowSettings
 
 logger = get_logger(__name__)
 
@@ -47,7 +47,7 @@ class ExecutionPlanOrchestrator:
         plan_builder: Execution plan builder
     """
 
-    def __init__(self, settings: "_Settings"):
+    def __init__(self, settings: "MedalflowSettings"):
         """Initialize the execution plan orchestrator.
 
         Args:

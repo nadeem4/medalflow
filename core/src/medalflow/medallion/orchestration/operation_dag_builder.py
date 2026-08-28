@@ -13,7 +13,7 @@ from medalflow.operations import BaseOperation
 from medalflow.types.metadata import SQLDependencies
 
 if TYPE_CHECKING:
-    from medalflow.settings import _Settings
+    from medalflow.settings import MedalflowSettings
 
 logger = get_logger(__name__)
 
@@ -38,7 +38,7 @@ class OperationDAGBuilder:
         self,
         operations: list[BaseOperation],
         dependencies: dict[BaseOperation, SQLDependencies],
-        settings: "_Settings",
+        settings: "MedalflowSettings",
     ):
         """Initialize the operation DAG builder.
 

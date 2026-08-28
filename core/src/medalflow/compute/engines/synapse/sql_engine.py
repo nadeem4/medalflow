@@ -15,7 +15,7 @@ from medalflow.compute.engines.base import BaseSQLEngine
 from medalflow.constants.compute import ComputeEnvironment
 
 if TYPE_CHECKING:
-    from medalflow.settings import SynapseSettings
+    from medalflow.settings import ComputeSettings
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,10 @@ class SynapseSQLEngine(BaseSQLEngine):
     and only provides Synapse-specific connection settings.
     """
 
-    settings: "SynapseSettings"  # Type narrowing: specify exact settings type
+    settings: "ComputeSettings"  # Type narrowing: specify exact settings type
 
     def __init__(
-        self, settings: "SynapseSettings", environment: ComputeEnvironment = ComputeEnvironment.ETL
+        self, settings: "ComputeSettings", environment: ComputeEnvironment = ComputeEnvironment.ETL
     ):
         """Initialize Synapse SQL engine.
 

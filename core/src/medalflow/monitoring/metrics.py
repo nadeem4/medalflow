@@ -13,7 +13,7 @@ from opentelemetry import metrics as otel_metrics
 from medalflow.__version__ import __version__
 
 if TYPE_CHECKING:
-    from medalflow.settings.main import _Settings as SettingsType
+    from medalflow.settings.main import MedalflowSettings as SettingsType
 else:
     SettingsType = Any
 

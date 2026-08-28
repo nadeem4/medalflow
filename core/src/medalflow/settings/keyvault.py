@@ -1,41 +1,49 @@
 """Key Vault configuration settings.
 
 This module contains only the configuration settings for Azure Key Vault.
-The actual secret retrieval implementation has been moved to the
-secret_vault package for better separation of concerns.
+The actual secret retrieval implementation lives in the ``secret_vault``
+package.
 """
 
 from typing import Optional
 
-from pydantic import Field, SecretStr
-from pydantic_settings import SettingsConfigDict
-
-from .base import CTEBaseSettings
+from pydantic import BaseModel, Field, SecretStr
 
 
-class KeyVaultSettings(CTEBaseSettings):
-    """Configuration settings for Azure Key Vault integration.
+class KeyVaultSettings(BaseModel):
+    """Configuration for Azure Key Vault integration.
 
-    This class contains only the configuration needed to connect to
-    Azure Key Vault. The actual secret retrieval logic is handled by
-    the KeyVaultSecrets provider in the secret_vault package.
+    Environment variables are namespaced by the parent settings object, e.g.
+    ``MEDALFLOW_KEYVAULT__URL``.
 
-    Note: Retry settings (max_retries, retry_delay_seconds) are inherited
-    from CTEBaseSettings. Caching is handled by SecretField descriptors.
+    ``tenant_id`` lives here rather than at the top level because it is used in
+    exactly one place: building a :class:`ClientSecretCredential`, alongside
+    ``client_id`` and ``client_secret``. Deployments using managed identity
+    leave all three unset.
     """
-
-    model_config = SettingsConfigDict(env_prefix="KEYVAULT_", case_sensitive=False)
 
     url: Optional[str] = Field(
         None, description="Azure Key Vault URL (https://vault-name.vault.azure.net/)"
     )
     use_keyvault: bool = Field(default=True, description="Whether to use Key Vault for secrets")
 
+    tenant_id: Optional[str] = Field(
+        None,
+        description="Azure AD tenant ID (GUID) for service principal auth. "
+        "Only needed alongside client_id and client_secret.",
+    )
     client_id: Optional[str] = Field(
         None, description="Azure client ID for Key Vault authentication"
     )
     client_secret: Optional[SecretStr] = Field(
         None, description="Azure client secret for Key Vault authentication"
+    )
+
+    max_retries: int = Field(
+        default=3, ge=0, le=10, description="Maximum number of retry attempts for secret retrieval"
+    )
+    retry_delay_seconds: float = Field(
+        default=1.0, ge=0.1, le=60.0, description="Delay between retry attempts in seconds"
     )
 
     @property

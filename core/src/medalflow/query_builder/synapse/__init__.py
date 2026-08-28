@@ -24,9 +24,9 @@ Example:
     
     # Alternative: Manual configuration (for testing/custom setups)
     from medalflow.query_builder.synapse import SynapseServerlessQueryBuilder
-    from medalflow.settings import _Settings
+    from medalflow.settings import MedalflowSettings
     
-    settings = _Settings()  # Loads from environment or config
+    settings = MedalflowSettings()  # Loads from environment or config
     
     builder = SynapseServerlessQueryBuilder(settings)
 """

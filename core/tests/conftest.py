@@ -1,43 +1,24 @@
 """Offline settings shared by the whole suite.
 
-Booting `_Settings` today needs 20 environment variables. That is not a test
-smell — it is the bug Phase 3 fixes: `CTEBaseSettings` declares `tenant_id`,
-`source_system`, `ds_env` and `name` as required with no defaults, and every
-nested settings model inherits from it while carrying its own `env_prefix`, so
-those four must be re-supplied under each of PROCESSED_LAKE_, INTERNAL_LAKE_
-and KEYVAULT_. When Phase 3 lands "settings boot from a documented
-minimal .env", this block should shrink to a handful of lines.
+Four variables construct settings; the two lake accounts below are placeholders
+so the offline suite exercises the same configured-lake path a real deployment
+takes. Every value is fake.
 
-Every value is a placeholder. `CTE_TEST_MODE=true` with `KEYVAULT_URL` unset
-makes the secret provider `MockSecrets`, so nothing touches Azure — verified
-to make no network calls at all (D6).
+`MEDALFLOW_TEST_MODE=true` with `MEDALFLOW_KEYVAULT__URL` unset makes the secret
+provider `MockSecrets`, so nothing touches Azure -- verified to make no network
+calls at all (D6).
 """
 
 import pytest
 
 OFFLINE_ENV = {
-    "CTE_TEST_MODE": "true",
-    # Base identity, consumed by the unprefixed settings models.
-    "TENANT_ID": "00000000-0000-0000-0000-000000000000",
-    "SOURCE_SYSTEM": "sap",
-    "DS_ENV": "dev",
-    "NAME": "fin",
-    "LAKE_DATABASE_NAME": "lakedb",
-    # Re-declared per nested model because each carries its own env_prefix.
-    "PROCESSED_LAKE_TENANT_ID": "00000000-0000-0000-0000-000000000000",
-    "PROCESSED_LAKE_SOURCE_SYSTEM": "sap",
-    "PROCESSED_LAKE_DS_ENV": "dev",
-    "PROCESSED_LAKE_NAME": "fin",
-    "PROCESSED_LAKE_ACCOUNT_NAME": "devlake",
-    "INTERNAL_LAKE_TENANT_ID": "00000000-0000-0000-0000-000000000000",
-    "INTERNAL_LAKE_SOURCE_SYSTEM": "sap",
-    "INTERNAL_LAKE_DS_ENV": "dev",
-    "INTERNAL_LAKE_NAME": "fin",
-    "INTERNAL_LAKE_ACCOUNT_NAME": "devlake",
-    "KEYVAULT_TENANT_ID": "00000000-0000-0000-0000-000000000000",
-    "KEYVAULT_SOURCE_SYSTEM": "sap",
-    "KEYVAULT_DS_ENV": "dev",
-    "KEYVAULT_NAME": "fin",
+    "MEDALFLOW_TEST_MODE": "true",
+    "MEDALFLOW_SOURCE_SYSTEM": "sap",
+    "MEDALFLOW_DS_ENV": "dev",
+    "MEDALFLOW_NAME": "fin",
+    "MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME": "lakedb",
+    "MEDALFLOW_DATALAKE__PROCESSED__ACCOUNT_NAME": "devlake",
+    "MEDALFLOW_DATALAKE__INTERNAL__ACCOUNT_NAME": "devlake",
 }
 
 

@@ -6,26 +6,24 @@ allowing classes to receive dependencies at runtime rather than construction tim
 
 from typing import TYPE_CHECKING, Optional
 
+from pydantic import BaseModel, PrivateAttr
+
 if TYPE_CHECKING:
     from medalflow.protocols.providers import SecretProvider
 
 
-class SecretProviderMixin:
-    """Mixin for attaching secret providers to instances.
+class SecretProviderMixin(BaseModel):
+    """Mixin for attaching secret providers to pydantic models.
 
     This mixin adds the ability to attach a secret provider (like KeyVault)
-    to an instance, enabling lazy loading of secrets through descriptors.
+    to a model, enabling lazy loading of secrets through
+    :class:`~medalflow.core.descriptors.SecretField` descriptors.
 
-    The mixin follows the composition pattern, allowing classes to work
-    with any secret provider that implements the SecretProvider protocol.
-
-    Attributes:
-        _secret_provider: The attached secret provider instance
-
-    Methods:
-        attach_secrets(): Attach a secret provider for lazy loading
-        has_secret_provider(): Check if a secret provider is attached
-        detach_secrets(): Remove the current secret provider
+    ``_secret_provider`` is declared as a pydantic ``PrivateAttr`` rather than
+    being assigned in ``__init__``. An ``__init__`` override cannot be used
+    here: ``model_post_init`` runs *inside* ``BaseModel.__init__``, so any
+    assignment made after ``super().__init__(...)`` returns would silently undo
+    a provider attached during post-init.
 
     Example:
         >>> class MySettings(SecretProviderMixin, BaseSettings):
@@ -38,45 +36,26 @@ class SecretProviderMixin:
         >>> key = settings.api_key  # Loads from provider
     """
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the mixin with no secret provider attached."""
-        super().__init__(*args, **kwargs)
-        self._secret_provider: Optional["SecretProvider"] = None
+    _secret_provider: Optional["SecretProvider"] = PrivateAttr(default=None)
 
     def attach_secrets(self, provider: "SecretProvider") -> "SecretProviderMixin":
         """Attach a secret provider for lazy loading.
-
-        This method attaches a secret provider that will be used by
-        SecretField descriptors to load secrets on demand.
 
         Args:
             provider: A secret provider instance implementing SecretProvider protocol
 
         Returns:
             Self for method chaining (fluent interface)
-
-        Example:
-            >>> settings = MySettings().attach_secrets(keyvault_provider)
         """
         self._secret_provider = provider
         return self
 
     def has_secret_provider(self) -> bool:
-        """Check if a secret provider is attached.
-
-        Returns:
-            True if a secret provider has been attached, False otherwise
-        """
+        """Check if a secret provider is attached."""
         return self._secret_provider is not None
 
     def detach_secrets(self) -> "SecretProviderMixin":
-        """Detach the current secret provider.
-
-        This can be useful for testing or when switching providers.
-
-        Returns:
-            Self for method chaining
-        """
+        """Detach the current secret provider."""
         self._secret_provider = None
         return self
 
@@ -84,38 +63,24 @@ class SecretProviderMixin:
 class NestedSecretsMixin(SecretProviderMixin):
     """Extended mixin for settings with nested settings objects.
 
-    This mixin extends SecretProviderMixin to automatically propagate
-    the secret provider to nested settings objects that also use
-    SecretProviderMixin.
-
-    This is useful for top-level settings classes that contain
-    multiple nested settings objects, ensuring all of them have
-    access to the same secret provider.
+    Adds :meth:`propagate_secrets`, which hands the attached provider to
+    nested models that also use :class:`SecretProviderMixin`.
 
     Example:
         >>> class MainSettings(NestedSecretsMixin, BaseSettings):
         >>>     compute: ComputeSettings
         >>>     storage: StorageSettings
         >>>
-        >>>     def attach_secrets(self, provider):
-        >>>         super().attach_secrets(provider)
-        >>>         # Propagate to nested settings
+        >>>     def model_post_init(self, __context) -> None:
+        >>>         self.attach_secrets(provider)
         >>>         self.propagate_secrets(self.compute, self.storage)
-        >>>         return self
     """
 
     def propagate_secrets(self, *nested_settings: SecretProviderMixin) -> None:
-        """Propagate secret provider to nested settings objects.
+        """Propagate the attached secret provider to nested settings objects.
 
         Args:
             *nested_settings: Settings objects that should receive the provider
-
-        Example:
-            >>> main_settings.propagate_secrets(
-            >>>     main_settings.compute,
-            >>>     main_settings.storage,
-            >>>     main_settings.auth
-            >>> )
         """
         if self._secret_provider:
             for settings in nested_settings:

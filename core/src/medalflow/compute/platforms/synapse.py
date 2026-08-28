@@ -22,7 +22,7 @@ from medalflow.datalake import get_processed_datalake_client
 from medalflow.logging import get_logger
 from medalflow.operations import BaseOperation, CreateTable
 from medalflow.query_builder import create_query_builder
-from medalflow.settings import ComputeEnvironment, SynapseSettings
+from medalflow.settings import ComputeEnvironment, ComputeSettings
 
 logger = get_logger(__name__)
 
@@ -35,16 +35,16 @@ class SynapsePlatform(_BasePlatform):
     Azure Synapse Analytics platform implementation."""
 
     def __init__(
-        self, settings: SynapseSettings, environment: ComputeEnvironment = ComputeEnvironment.ETL
+        self, settings: ComputeSettings, environment: ComputeEnvironment = ComputeEnvironment.ETL
     ):
         """Initialize Synapse platform.
 
         Args:
-            settings: Synapse settings from configuration
+            settings: Compute settings from configuration
             environment: Compute environment (ETL or CONSUMPTION)
         """
-        if not isinstance(settings, SynapseSettings):
-            raise TypeError("Settings must be SynapseSettings")
+        if not isinstance(settings, ComputeSettings):
+            raise TypeError("Settings must be ComputeSettings")
 
         # Call base constructor which will call _initialize_dependencies
         super().__init__(settings=settings, environment=environment)

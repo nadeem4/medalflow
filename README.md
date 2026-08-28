@@ -45,7 +45,7 @@ Be aware of what is and is not proven today:
 | SQL generation for Azure Synapse serverless | **Works, asserted against golden strings** |
 | Executing a plan against a live warehouse | **Not verified.** No test exercises it; treat it as unproven |
 | Microsoft Fabric, Databricks, Snowflake, Spark | **Not supported.** See the roadmap |
-| Configuration | Currently needs ~24 environment variables. Being reduced to a documented minimal set |
+| Configuration | **Four environment variables construct settings**, six for a real deployment. All are prefixed `MEDALFLOW_`; see [`core/.env.example`](core/.env.example) |
 
 An earlier version of this README claimed four execution platforms and native OpenTelemetry
 export. Neither was true. This document now describes only what the code does.

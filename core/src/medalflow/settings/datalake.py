@@ -1,17 +1,27 @@
+"""Azure Data Lake Storage configuration.
+
+Two lakes are configured: ``processed`` (the medallion data) and ``internal``
+(client configuration files). Environment variables are namespaced by the
+parent settings object, e.g. ``MEDALFLOW_DATALAKE__PROCESSED__ACCOUNT_NAME``.
+"""
+
 from typing import ClassVar, Optional, Union
 
 from pydantic import Field, model_validator
-from pydantic_settings import SettingsConfigDict
 
 from medalflow.constants.datalake import DataLakeAuthMethod, LakeType
 from medalflow.core.descriptors import SecretField
+from medalflow.core.mixins import NestedSecretsMixin, SecretProviderMixin
 from medalflow.protocols import SecretProvider
 
-from .base import CTEBaseSettings
 
+class BaseDataLakeConfig(SecretProviderMixin):
+    """Configuration for a single Azure Data Lake Storage account."""
 
-class BaseDataLakeConfig(CTEBaseSettings):
-    account_name: str = Field(..., description="DataLake account name")
+    account_name: Optional[str] = Field(
+        None,
+        description="DataLake account name. Required to use this lake; see `is_configured`.",
+    )
     file_system_name: Optional[str] = Field(
         None, description="File system name (can be overridden by data source)"
     )
@@ -38,31 +48,9 @@ class BaseDataLakeConfig(CTEBaseSettings):
 
         return self
 
-    def get_file_system_name(self) -> str:
-        """Get file system name, using data source if provided.
-
-        Args:
-            data_source_config: Optional data source configuration
-
-        Returns:
-            File system name (from data source or config)
-
-        Raises:
-            ValueError: If no file system name can be determined
-        """
-
-        return self.source_system
-
     @property
     def connection_string(self) -> Optional[str]:
-        """Calculate and return the connection string for this DataLake.
-
-        Connection strings are calculated based on the account name and auth method.
-        Subclasses provide their own access_key through descriptors.
-
-        Returns:
-            Connection string for Azure DataLake or None
-        """
+        """Connection string for this DataLake, or None if not key-authenticated."""
         if self.auth_method == DataLakeAuthMethod.ACCESS_KEY:
             return (
                 f"DefaultEndpointsProtocol=https;"
@@ -75,34 +63,17 @@ class BaseDataLakeConfig(CTEBaseSettings):
 
     @property
     def is_configured(self) -> bool:
-        """Check if this DataLake is properly configured.
+        """Check if this DataLake is usable.
 
-        A DataLake is considered configured if:
-        - account_name is provided
-        - auth_method is valid (MANAGED_IDENTITY or ACCESS_KEY)
-
-        Returns:
-            True if properly configured, False otherwise
+        A DataLake is considered configured when an account name is supplied.
+        Lakes a project does not use may be left unconfigured.
         """
-        try:
-            if not self.account_name:
-                return False
-
-            if self.auth_method in [
-                DataLakeAuthMethod.ACCESS_KEY,
-                DataLakeAuthMethod.MANAGED_IDENTITY,
-            ]:
-                return True
-            else:
-                return False
-        except Exception:
-            return False
+        return bool(self.account_name)
 
 
 class ProcessedDataLakeConfig(BaseDataLakeConfig):
-    model_config = SettingsConfigDict(env_prefix="PROCESSED_LAKE_")
+    """The lake holding medallion (bronze/silver/gold) data."""
 
-    # Pydantic field for secret name - can be overridden via env var
     access_key_secret_name: str = Field(
         default="PROCESSED-ADLS-ACCOUNT-KEY",
         description="KeyVault secret name for DataLake access key",
@@ -110,17 +81,16 @@ class ProcessedDataLakeConfig(BaseDataLakeConfig):
 
 
 class InternalDataLakeConfig(BaseDataLakeConfig):
-    model_config = SettingsConfigDict(env_prefix="INTERNAL_LAKE_")
+    """The lake holding client configuration files."""
 
-    # Pydantic field for secret name - can be overridden via env var
     access_key_secret_name: str = Field(
         default="CMAA-CONTENT-ADLS-ACCESS-KEY",
         description="KeyVault secret name for DataLake access key",
     )
 
 
-class MultiDataLakeSettings(CTEBaseSettings):
-    model_config = SettingsConfigDict()
+class MultiDataLakeSettings(NestedSecretsMixin):
+    """Both configured data lakes."""
 
     processed: ProcessedDataLakeConfig = Field(
         default_factory=ProcessedDataLakeConfig, description="Processed DataLake configuration"
@@ -135,7 +105,7 @@ class MultiDataLakeSettings(CTEBaseSettings):
         """Get the DataLake configuration for the specified lake type.
 
         Args:
-            lake_type: Type of DataLake (PROCESSED or INTERNAL
+            lake_type: Type of DataLake (PROCESSED or INTERNAL)
 
         Returns:
             Corresponding DataLake configuration instance
@@ -151,10 +121,7 @@ class MultiDataLakeSettings(CTEBaseSettings):
             raise ValueError(f"Unsupported lake type: {lake_type}")
 
     def attach_secrets(self, provider: SecretProvider) -> "MultiDataLakeSettings":
-        """Attach secret provider to all DataLake configurations.
-
-        This method propagates the secret provider to all nested DataLake
-        configurations, enabling lazy secret loading.
+        """Attach a secret provider to both DataLake configurations.
 
         Args:
             provider: Secret provider instance (KeyVault or mock)
@@ -163,8 +130,6 @@ class MultiDataLakeSettings(CTEBaseSettings):
             Self for method chaining
         """
         super().attach_secrets(provider)
-
-        self.processed.attach_secrets(provider)
-        self.internal.attach_secrets(provider)
+        self.propagate_secrets(self.processed, self.internal)
 
         return self

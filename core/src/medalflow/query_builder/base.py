@@ -23,7 +23,7 @@ from medalflow.operations import (
     Update,
 )
 from medalflow.operations.columns import ColumnDefinition
-from medalflow.settings import _Settings
+from medalflow.settings import MedalflowSettings
 from medalflow.types import RawSQL
 
 
@@ -49,7 +49,7 @@ class BaseQueryBuilder(ABC):
         5. **Platform Awareness**: Respect platform-specific SQL syntax and limitations
     """
 
-    def __init__(self, settings: _Settings):
+    def __init__(self, settings: MedalflowSettings):
         """Initialize query builder with optional table prefix.
 
         Args:

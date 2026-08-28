@@ -31,4 +31,5 @@ internal.upload_csv(df, 'raw/data.csv')
 
 ## Configuration
 
-Configured via environment variables. See `medalflow.settings.datalake` for details.
+Configured via `MEDALFLOW_DATALAKE__PROCESSED__*` and `MEDALFLOW_DATALAKE__INTERNAL__*`
+environment variables. See `medalflow.settings.datalake` for details.
