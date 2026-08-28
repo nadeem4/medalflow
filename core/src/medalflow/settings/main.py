@@ -27,6 +27,7 @@ from medalflow.secret_vault.keyvault import KeyVaultSecrets
 from medalflow.secret_vault.mock import MockSecrets
 
 from .compute import ComputeSettings
+from .conventions import ConventionsSettings
 from .datalake import MultiDataLakeSettings
 from .features import FeatureSettings
 from .keyvault import KeyVaultSettings
@@ -123,6 +124,10 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
     )
     stats: StatsSettings = Field(
         default_factory=StatsSettings, description="Statistics management configuration"
+    )
+    conventions: ConventionsSettings = Field(
+        default_factory=ConventionsSettings,
+        description="Opt-in naming conventions; every one of them defaults to off",
     )
 
     @model_validator(mode="after")

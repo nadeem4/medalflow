@@ -57,9 +57,9 @@ class TransformationMetadata:
     @property
     def silver_table_name(self) -> str:
         """Compute silver table name from sp_name."""
-        if self.sp_name.startswith("Load_"):
-            return self.sp_name.replace("Load_", "")
-        return self.sp_name
+        # removeprefix, not replace: only a leading "Load_" is the marker, so
+        # `Load_Load_Order` is `Load_Order`, not `Order`.
+        return self.sp_name.removeprefix("Load_")
 
     @property
     def module_path(self) -> str:
