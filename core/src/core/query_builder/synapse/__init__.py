@@ -8,11 +8,11 @@ handling external tables, OPENROWSET, and PolyBase operations.
 
 Example:
     # Preferred: Use factory for auto-configuration
-    from core.query_builder import get_synapse_query_builder
+    from core.query_builder import create_query_builder
     from core.operations import CreateTable
     
     # Factory handles all configuration automatically
-    builder = get_synapse_query_builder()
+    builder = create_query_builder()
     
     operation = CreateTable(
         schema="silver",

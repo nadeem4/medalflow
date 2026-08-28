@@ -124,7 +124,7 @@ from core.compute.types import (
 from core.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 
 
-from core.compute.factory import get_platform_factory
+from core.compute.factory import create_platform
 from core.compute.platforms.synapse import SynapsePlatform
 
 
@@ -164,6 +164,6 @@ __all__ = [
 
 
     # Factory
-    "get_platform_factory",
+    "create_platform",
     "SynapsePlatform",
 ]

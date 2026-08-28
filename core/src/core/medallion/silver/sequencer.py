@@ -89,9 +89,9 @@ class SilverTransformationSequencer(_BaseSequencer):
         """
         table_name = metadata.table_name
         enum_name = metadata.filter
-        from core.query_builder.factory import get_query_builder
+        from core.query_builder.factory import create_query_builder
 
-        query_builder = get_query_builder()
+        query_builder = create_query_builder()
 
         enum_table = query_builder.fully_qualified_name("bronze", "Enumeration")
         return f"""SELECT 

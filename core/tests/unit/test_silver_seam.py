@@ -153,7 +153,7 @@ def test_enum_query_uses_the_core_query_builder_module(monkeypatch):
 
     import core.query_builder.factory as factory
 
-    monkeypatch.setattr(factory, "get_query_builder", lambda: _Builder())
+    monkeypatch.setattr(factory, "create_query_builder", lambda: _Builder())
 
     sequencer = SilverTransformationSequencer.__new__(SilverTransformationSequencer)
     sql = sequencer._generate_enum_query(

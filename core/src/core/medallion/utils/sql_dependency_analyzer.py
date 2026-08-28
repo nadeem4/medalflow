@@ -228,10 +228,10 @@ class SQLDependencyAnalyzer:
             >>> print(deps[ops[1]].reads_from)
             {'source_table'}
         """
-        from core.query_builder.factory import QueryBuilderFactory
+        from core.query_builder.factory import create_query_builder
         
         operation_dependencies = {}
-        query_builder = QueryBuilderFactory.create()
+        query_builder = create_query_builder()
         
         for operation in operations:
             try:
