@@ -61,7 +61,15 @@ select = [
     "UP",  # pyupgrade
     "B",   # flake8-bugbear
 ]
-ignore = ["E501"]  # Line too long - handled by black
+ignore = [
+    "E501",   # Line too long - handled by black
+    # UP007 rewrites Optional[X] to X | None. PEP 604 unions are Python 3.10+.
+    # Pydantic evaluates these annotations at class-creation time and no module
+    # uses `from __future__ import annotations`, so the rewrite would raise
+    # TypeError on the Python 3.9 floor declared above. Enable once that floor
+    # moves to 3.10.
+    "UP007",
+]
 
 [tool.mypy]
 python_version = "3.9"
