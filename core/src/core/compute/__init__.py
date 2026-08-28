@@ -113,7 +113,7 @@ from core.operations import (
 )
 
 # Import protocol types
-from core.protocols.operations import ColumnDefinition
+from core.operations.columns import ColumnDefinition
 
 # Import compute-specific types (results and configs)
 from core.compute.types import (

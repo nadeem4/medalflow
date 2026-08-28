@@ -7,6 +7,4 @@ cross-cutting functionality across the application.
 # Import managers to trigger auto-registration
 # Each manager registers itself when imported
 from . import cache
-from . import client_config
-from . import powerbi
 from . import stats

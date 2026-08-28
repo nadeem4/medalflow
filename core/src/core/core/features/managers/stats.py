@@ -8,7 +8,6 @@ from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
 import logging
 import pandas as pd
 
-from core.core.decorators.features import feature_gate
 from core.core.features.base import FeatureManager
 from core.core.features.registry import register_feature
 from core.core.features import get_feature_manager
@@ -20,7 +19,6 @@ from ...types import StatsConfiguration
 logger = logging.getLogger(__name__)
 
 
-@feature_gate
 class StatsManager(StatsProtocol, FeatureManager):
     """Statistics configuration manager with business logic.
     

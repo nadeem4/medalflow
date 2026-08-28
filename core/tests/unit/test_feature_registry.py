@@ -18,7 +18,7 @@ def test_managers_package_imports_cleanly():
     import core.core.features.managers  # noqa: F401
 
 
-@pytest.mark.parametrize("feature", ["cache", "client_config", "powerbi", "stats"])
+@pytest.mark.parametrize("feature", ["cache", "stats"])
 def test_shipped_feature_is_registered(feature):
     """Every manager module that calls register_feature must be reachable.
 
