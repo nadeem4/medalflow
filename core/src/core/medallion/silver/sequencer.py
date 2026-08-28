@@ -1,13 +1,12 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 
 import sqlglot
 from sqlglot import exp
 
 from core.medallion.base.sequencer import _BaseSequencer
 from core.constants.medallion import Layer
-from core.types.metadata import QueryMetadata, DiscoveredMethod
+from core.types.metadata import QueryMetadata
 from core.settings import get_settings
-from core.operations import BaseOperation
 from copy import deepcopy  
 
 
@@ -266,20 +265,3 @@ class SilverTransformationSequencer(_BaseSequencer):
         # Default: treat as string for safety
         else:
             return (f"ISNULL([{col_name}], '')", "''")
-    
-    def _get_queries(self, discovered_methods: List[DiscoveredMethod]) -> List[BaseOperation]:
-        """Extract and transform operations for silver layer.
-        
-        Applies silver-specific transformations to Detail tables and handles
-        filter-based dimensions. The transformations are already applied in
-        _transform_query_result during discovery.
-        
-        Args:
-            discovered_methods: List of discovered methods with metadata and SQL
-            
-        Returns:
-            List[BaseOperation]: List of transformed operations
-        """
-        # Use the base implementation which creates operations
-        # The transformations are already applied to the SQL during discovery
-        return super()._get_queries(discovered_methods)

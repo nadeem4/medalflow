@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Optional
 
 from core.medallion.base.sequencer import _BaseSequencer
-from core.constants.medallion import Layer, SnapshotFrequency
+from core.constants.medallion import Layer
 from core.settings import get_settings
 
 
@@ -31,13 +30,3 @@ class SnapshotSequencer(_BaseSequencer):
             '_snapshot_metadata' - the attribute name for class metadata
         """
         return '_snapshot_metadata'
-    
-    def _requires_class_metadata(self) -> bool:
-        """Snapshot sequencer requires class-level metadata.
-        
-        Returns:
-            True - Snapshot sequencer must have @snapshot_metadata decorator
-        """
-        return True
-    
-    

@@ -15,12 +15,11 @@ from typing import Dict, List, Optional, Any, TYPE_CHECKING
 
 from core.logging import get_logger
 from core.observability.context import sanitize_extras
-from core.medallion.types import ExecutionPlan, ExecutionStage, LineageInfo
+from core.medallion.types import ExecutionPlan
 from core.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
 from core.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
 from core.operations import BaseOperation
 from .operation_dag_builder import OperationDAGBuilder
-from core.constants import Layer
 
 if TYPE_CHECKING:
     from core.settings import _Settings
@@ -242,26 +241,3 @@ class ExecutionPlanOrchestrator:
         """
 
         return self.create_plan_from_sequencers(silver_sequencers)
-    
-        
-    
-    
-    
-    
-    def optimize_plan(self, plan: ExecutionPlan) -> ExecutionPlan:
-        """Optimize an execution plan for better performance.
-        
-        This method applies various optimizations to an execution plan:
-        - Merges compatible operations in the same stage
-        - Reorders operations within stages for better cache usage
-        - Identifies operations that can use the same connection
-        
-        Args:
-            plan: The execution plan to optimize
-            
-        Returns:
-            Optimized execution plan
-        """
-        # Future optimization implementation
-        # For now, return the plan as-is
-        return plan

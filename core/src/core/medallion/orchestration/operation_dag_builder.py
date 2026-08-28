@@ -4,11 +4,11 @@ This module provides the OperationDAGBuilder class that builds
 dependency graphs from collections of database operations.
 """
 
-from typing import Dict, List, Optional, Any, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 from core.logging import get_logger
 from core.observability.context import sanitize_extras
-from core.medallion.types import DependencyDAG
+from core.medallion.types import DependencyDAG, ExecutionStage
 from core.types.metadata import SQLDependencies
 from core.operations import BaseOperation
 
@@ -189,7 +189,7 @@ class OperationDAGBuilder:
             extra=sanitize_extras({"node_count": len(adjacency_list)}),
         )
     
-    def create_execution_stages(self) -> List[Dict[str, Any]]:
+    def create_execution_stages(self) -> List[ExecutionStage]:
         """Create execution stages from the DAG.
         
         Uses topological sorting to group operations into stages where:
@@ -197,7 +197,7 @@ class OperationDAGBuilder:
         - Stages must be executed sequentially
         
         Returns:
-            List of execution stages with operation details
+            List of ExecutionStage objects ready for the execution plan
             
         Raises:
             ValueError: If DAG has cycles or cannot be sorted
@@ -220,25 +220,12 @@ class OperationDAGBuilder:
                     )
                     continue
                 
-                operation = self.operation_map[node_id]
-                
-                # Create stage operation info
-                stage_op_info = {
-                    'operation': operation,
-                    'id': node_id,
-                    'dependencies': self.dag.get_dependencies(node_id),
-                    'layer': operation.schema_name,
-                    'logging_context': operation.logging_context,
-                    'operation_type': operation.operation_type
-                }
-                
-                stage_operations.append(stage_op_info)
+                stage_operations.append(self.operation_map[node_id])
             
             if stage_operations:
-                execution_stages.append({
-                    'stage': stage_num,
-                    'parallel_queries': stage_operations
-                })
+                execution_stages.append(
+                    ExecutionStage(stage=stage_num, operations=stage_operations)
+                )
                 self.logger.debug(
                     "dag.stage.created",
                     extra=sanitize_extras(
@@ -247,40 +234,3 @@ class OperationDAGBuilder:
                 )
         
         return execution_stages
-    
-    def get_operation_dependencies(self, operation: BaseOperation) -> List[BaseOperation]:
-        """Get the operations that a given operation depends on.
-        
-        Args:
-            operation: The operation to get dependencies for
-            
-        Returns:
-            List of operations that must complete before this operation
-        """
-        if not hasattr(operation, '_dag_id'):
-            return []
-        
-        dep_ids = self.dag.get_dependencies(operation._dag_id)
-        return [self.operation_map[dep_id] for dep_id in dep_ids if dep_id in self.operation_map]
-    
-    def get_dependent_operations(self, operation: BaseOperation) -> List[BaseOperation]:
-        """Get the operations that depend on a given operation.
-        
-        Args:
-            operation: The operation to get dependents for
-            
-        Returns:
-            List of operations that depend on this operation
-        """
-        if not hasattr(operation, '_dag_id'):
-            return []
-        
-        adjacency_list = self.dag.get_adjacency_list()
-        dependents = []
-        
-        for node_id, deps in adjacency_list.items():
-            if operation._dag_id in deps:
-                if node_id in self.operation_map:
-                    dependents.append(self.operation_map[node_id])
-        
-        return dependents

@@ -5,10 +5,9 @@ The query_metadata decorator is the primary building block for defining SQL oper
 within sequencer classes, providing execution control and dependency management.
 """
 
-from typing import Any, Callable, List, Optional, Union
+from typing import Callable, List, Optional, Union
 
 from core.constants.compute import EngineType
-from core.constants.medallion import ExecutionMode
 from core.constants.sql import QueryType
 from core.types.metadata import QueryMetadata
 
@@ -17,9 +16,6 @@ def query_metadata(
     type: Union[str, QueryType],
     table_name: str = "",
     schema_name: str = "",
-    execution_type: Union[str, ExecutionMode] = ExecutionMode.SEQUENTIAL,
-    order: float = 0.0,
-    depends_on: Optional[List[str]] = None,
     query: Optional[str] = None,
     name: Optional[str] = None,
     preferred_engine: Union[str, EngineType] = EngineType.SQL,
@@ -44,15 +40,6 @@ def query_metadata(
             Can be empty for operations that don't target a specific table.
         schema_name: Database schema for the target table. If empty, uses the
             default schema from connection settings. Include for cross-schema operations.
-        execution_type: [DEPRECATED - IGNORED] Previously controlled parallel vs sequential 
-            execution. Now all execution order is determined automatically by analyzing
-            data dependencies between queries. Kept for backward compatibility only.
-        order: [DEPRECATED - IGNORED] Previously controlled execution priority.
-            Now execution order is determined by actual data dependencies in the SQL.
-            Kept for backward compatibility only.
-        depends_on: [DEPRECATED - IGNORED] Previously created explicit dependencies.
-            Now dependencies are automatically detected from SQL analysis.
-            Kept for backward compatibility only.
         query: Optional static SQL string. Usually the decorated method returns
             the SQL dynamically, but this allows inline query definition.
             If provided, method return value is ignored.
@@ -84,8 +71,7 @@ def query_metadata(
         >>> @query_metadata(
         ...     type=QueryType.SELECT,
         ...     table_name="CustomerStage",
-        ...     schema_name="staging",
-        ...     order=1.0
+        ...     schema_name="staging"
         ... )
         ... def extract_customers(self) -> str:
         ...     return '''
@@ -94,37 +80,10 @@ def query_metadata(
         ...     WHERE UpdatedDate > ?
         ...     '''
         
-        Parallel dimension loads:
-        >>> @query_metadata(
-        ...     type=QueryType.INSERT,
-        ...     table_name="DimProduct",
-        ...     schema_name="silver",
-        ...     execution_type=ExecutionMode.PARALLEL
-        ... )
-        ... def load_product_dimension(self) -> str:
-        ...     return "SELECT * FROM staging.ProductTransform"
-        
-        Dependent transformations:
-        >>> @query_metadata(
-        ...     type=QueryType.CREATE_TABLE,
-        ...     table_name="CustomerMetrics",
-        ...     order=3.0,
-        ...     depends_on=["extract_customers", "extract_orders"]
-        ... )
-        ... def create_customer_metrics(self) -> str:
-        ...     return '''
-        ...     CREATE TABLE CustomerMetrics AS
-        ...     SELECT c.*, COUNT(o.OrderID) as OrderCount
-        ...     FROM CustomerStage c
-        ...     LEFT JOIN OrderStage o ON c.CustomerID = o.CustomerID
-        ...     GROUP BY c.CustomerID
-        ...     '''
-        
         UPDATE with specific target:
         >>> @query_metadata(
         ...     type=QueryType.UPDATE,
-        ...     name="DimCustomer",
-        ...     order=5.0
+        ...     name="DimCustomer"
         ... )
         ... def update_customer_status(self) -> str:
         ...     return '''
@@ -142,7 +101,6 @@ def query_metadata(
     """
     def decorator(func: Callable) -> Callable:
         query_type = QueryType(type) if isinstance(type, str) else type
-        exec_mode = ExecutionMode(execution_type) if isinstance(execution_type, str) else execution_type
         engine_type = EngineType(preferred_engine) if isinstance(preferred_engine, str) else preferred_engine
         
         
@@ -150,8 +108,6 @@ def query_metadata(
             type=query_type,
             table_name=table_name,
             schema_name=schema_name,
-            execution_type=exec_mode,
-            order=order,
             preferred_engine=engine_type,
             unique_idx=unique_idx,
             filter=filter,
