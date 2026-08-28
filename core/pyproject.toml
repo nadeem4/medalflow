@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "medalflow"
-version = "2.0.0"
+version = "0.1.0.dev0"
 description = "Declare medallion (Bronze/Silver/Gold) data models as Python classes; MedalFlow extracts dependencies from your SQL and compiles them into a staged execution plan."
 authors = ["nadeem4.nk13@gmail.com"]
 readme = "README.md"
