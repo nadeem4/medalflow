@@ -170,16 +170,6 @@ class ComputeSettings(CTEBaseSettings):
         else:
             raise ValueError(f"Unknown compute type: {self.compute_type}")
     
-    def get_active_config(self) -> BaseComputeSettings:
-        """Get configuration for the active compute type.
-        
-        Backward compatibility method - use active_config property instead.
-        """
-        return self.active_config
-    
-    
-    
-    
     @property
     def is_configured(self) -> bool:
         """Check if the active compute platform is properly configured.

@@ -20,11 +20,6 @@ class LakeType(str, Enum):
     
     PROCESSED = "processed"
     INTERNAL = "internal"
-    
-    @classmethod
-    def all(cls) -> list['LakeType']:
-        """Get all lake types as a list."""
-        return list(cls)
 
 
 class DataLakeAuthMethod(str, Enum):

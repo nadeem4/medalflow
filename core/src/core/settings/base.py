@@ -1,8 +1,7 @@
-from typing import Any, Dict, Optional, Tuple, List, TYPE_CHECKING, ClassVar
-from pydantic import Field, field_validator, SecretStr, PrivateAttr
+from typing import Any, Dict, List, TYPE_CHECKING
+from pydantic import Field, field_validator, PrivateAttr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.core.descriptors import SecretField
 from core.core.mixins import SecretProviderMixin
 from core.constants import LayerType
 
@@ -60,19 +59,6 @@ class CTEBaseSettings(SecretProviderMixin, BaseSettings):
         description="Maximum number of worker threads for concurrent operations"
     )
 
-    sp_client_id_secret_name: str = Field(
-        default="SP-CLIENT-ID",
-        description="KeyVault secret name for Service Principal Client ID. This will be use to retrieve the actual client ID from Key Vault. This wil be used to authenticate to Azure services (Power BI)."
-    )
-    sp_client_secret_secret_name: str = Field(
-        default="SP-CLIENT-SECRET",
-        description="KeyVault secret name for Service Principal Client Secret. This will be use to retrieve the actual client secret from Key Vault. This wil be used to authenticate to Azure services (Power BI)."
-    )
-
-    sp_client_id: ClassVar[SecretField] = SecretField()
-    sp_client_secret: ClassVar[SecretField] = SecretField(return_secret_str=True)
-    
-    
     layer_type: LayerType = Field(
         default=LayerType.BASE,
         description="Type of layer structure: 'base' (default) or 'custom'. This setting deetermines the silver, gold, and snapshots package names."
@@ -160,59 +146,6 @@ class CTEBaseSettings(SecretProviderMixin, BaseSettings):
         super().model_post_init(__context)
 
 
-    def get_effective_client_id(self) -> Optional[str]:
-        """Get the effective client ID for authentication.
-
-        Returns the client ID from the secret descriptor. This method
-        provides backward compatibility for code using the old pattern.
-
-        Returns:
-            Optional[str]: The client ID string, or None if not loaded
-            
-        Example:
-            ```python
-            client_id = settings.get_effective_client_id()
-            if client_id:
-                # Use for authentication
-                auth_config = {"client_id": client_id}
-            ```
-        """
-        return self.sp_client_id
-
-    def get_effective_client_secret(self) -> Optional[SecretStr]:
-        """Get the effective client secret for this settings instance.
-
-        Returns the client secret from the secret descriptor.
-
-        Returns:
-            The client secret to use for authentication, or None if not loaded
-        """
-        return self.sp_client_secret
-
-    def get_effective_credentials(self) -> Tuple[Optional[str], Optional[SecretStr]]:
-        """Get the complete client credentials for authentication.
-
-        Returns both client ID and client secret as a tuple. This is useful
-        when both values are needed together for authentication scenarios.
-        
-        Returns:
-            Tuple[Optional[str], Optional[SecretStr]]: 
-                - client_id: The client ID string or None
-                - client_secret: The client secret (still wrapped in SecretStr) or None
-                
-        Example:
-            ```python
-            client_id, client_secret = settings.get_effective_credentials()
-            if client_id and client_secret:
-                credential = ClientSecretCredential(
-                    tenant_id=settings.tenant_id,
-                    client_id=client_id,
-                    client_secret=client_secret.get_secret_value()
-                )
-            ```
-        """
-        return self.get_effective_client_id(), self.get_effective_client_secret()
-    
     @property
     def base_path(self) -> str:
         """Get the base path for this data source.

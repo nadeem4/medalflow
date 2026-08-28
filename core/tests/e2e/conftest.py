@@ -1,11 +1,11 @@
 """Offline settings for the end-to-end suite.
 
-Booting `_Settings` today needs 24 environment variables. That is not a test
+Booting `_Settings` today needs 20 environment variables. That is not a test
 smell — it is the bug Phase 3 fixes: `CTEBaseSettings` declares `tenant_id`,
 `source_system`, `ds_env` and `name` as required with no defaults, and every
 nested settings model inherits from it while carrying its own `env_prefix`, so
-those four must be re-supplied under each of PROCESSED_LAKE_, INTERNAL_LAKE_,
-KEYVAULT_ and POWERBI_. When Phase 3 lands "settings boot from a documented
+those four must be re-supplied under each of PROCESSED_LAKE_, INTERNAL_LAKE_
+and KEYVAULT_. When Phase 3 lands "settings boot from a documented
 minimal .env", this block should shrink to a handful of lines.
 
 Every value is a placeholder. `CTE_TEST_MODE=true` with `KEYVAULT_URL` unset
@@ -38,10 +38,6 @@ OFFLINE_ENV = {
     "KEYVAULT_SOURCE_SYSTEM": "sap",
     "KEYVAULT_DS_ENV": "dev",
     "KEYVAULT_NAME": "fin",
-    "POWERBI_TENANT_ID": "00000000-0000-0000-0000-000000000000",
-    "POWERBI_SOURCE_SYSTEM": "sap",
-    "POWERBI_DS_ENV": "dev",
-    "POWERBI_NAME": "fin",
 }
 
 

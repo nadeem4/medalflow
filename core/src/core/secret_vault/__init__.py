@@ -9,9 +9,7 @@ easy testing, while maintaining type safety through Python's typing system.
 """
 
 from core.protocols.providers import SecretProvider
-from .factory import create_secret_provider
 
 __all__ = [
     "SecretProvider",
-    "create_secret_provider",
 ]

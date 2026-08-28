@@ -10,7 +10,6 @@ from core.constants import LayerType
 from .keyvault import KeyVaultSettings
 from .features import FeatureSettings
 from .processing import ProcessingSettings
-from .powerbi import PowerBISettings
 from .stats import StatsSettings
 from .base import CTEBaseSettings
 from core.secret_vault.keyvault import KeyVaultSecrets
@@ -74,10 +73,6 @@ class _Settings(CTEBaseSettings):
     processing: ProcessingSettings = Field(
         default_factory=ProcessingSettings,
         description="Data processing configuration"
-    )
-    powerbi: PowerBISettings = Field(
-        default_factory=PowerBISettings,
-        description="Power BI integration configuration"
     )
     stats: StatsSettings = Field(
         default_factory=StatsSettings,
@@ -262,13 +257,6 @@ class _Settings(CTEBaseSettings):
             logger.debug("Attached secret provider to datalake settings")
         except Exception as e:
             logger.warning(f"Failed to attach secrets to datalake: {e}")
-        
-        # Attach to powerbi settings
-        try:
-            self.powerbi.attach_secrets(provider)
-            logger.debug("Attached secret provider to powerbi settings")
-        except Exception as e:
-            logger.warning(f"Failed to attach secrets to powerbi: {e}")
         
     
 

@@ -2,7 +2,7 @@
 
 `core/core/features/managers/__init__.py` imported a `configuration` module
 that has never existed. Because a package body aborts at the failing import,
-the two imports after it (`powerbi`, `stats`) never ran, so those managers
+the imports after it (including `stats`) never ran, so those managers
 never registered — and `auto_discover` swallowed the ImportError as a warning
 and set `_initialized = True`, so it never retried. `get_feature_manager('stats')`
 then raised `ValueError: Unknown feature`, which broke every sequencer
