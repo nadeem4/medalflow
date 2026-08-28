@@ -8,7 +8,7 @@ Operations themselves have been moved to the operations module.
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import Field
 
 from core.types.base import CTEBaseModel
 from core.constants.compute import EngineType
@@ -59,33 +59,3 @@ class OperationResult(CTEBaseModel):
         """Get fully qualified object name."""
         return f"{self.schema_name}.{self.object_name}"
 
-
-class BatchOperationResult(CTEBaseModel):
-    """Result of batch operation execution."""
-    total_operations: int = Field(..., ge=0)
-    successful_operations: int = Field(..., ge=0)
-    failed_operations: int = Field(..., ge=0)
-    results: List[OperationResult] = Field(default_factory=list)
-    total_duration_seconds: float = Field(..., ge=0.0)
-    used_transaction: bool = Field(default=False)
-    
-    @property
-    def success_rate(self) -> float:
-        """Calculate success rate as percentage."""
-        if self.total_operations == 0:
-            return 0.0
-        return (self.successful_operations / self.total_operations) * 100
-    
-    @model_validator(mode='after')
-    def validate_operation_counts(self):
-        """Ensure operation counts are consistent."""
-        if self.successful_operations + self.failed_operations != self.total_operations:
-            raise ValueError(
-                f"Operation counts don't match: "
-                f"{self.successful_operations} + {self.failed_operations} != {self.total_operations}"
-            )
-        if len(self.results) != self.total_operations:
-            raise ValueError(
-                f"Results count ({len(self.results)}) doesn't match total operations ({self.total_operations})"
-            )
-        return self

@@ -8,7 +8,7 @@ from core.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 from core.constants.sql import QueryType
 from core.compute.engines.base import BaseSQLEngine
 from core.query_builder.base import BaseQueryBuilder
-from core.compute.types import OperationResult, BatchOperationResult
+from core.compute.types import OperationResult
 from core.common.exceptions import query_execution_error
 from core.operations import (
     BaseOperation,
@@ -115,32 +115,35 @@ class _BasePlatform(ABC):
                 and operation.metadata
                 and operation.metadata.create_stats
             ):
-                stats_op = CreateStatistics(
-                    schema_name=operation.schema_name,
-                    object_name=operation.object_name,
-                    stats_name=f"stats_{operation.object_name}_auto",
-                    with_fullscan=True,
-                    auto_discover=True,
-                )
-                stats_telemetry = {**telemetry_payload, **stats_op.telemetry_fields()}
                 try:
-                    stats_query = self._query_builder.build_query(stats_op)
-                    stats_result = self._execute_with_sql(stats_query, stats_op, stats_telemetry)
-                    if not stats_result.success:
-                        logger.warning(
-                            "Failed to create statistics",
-                            extra={**stats_telemetry, "error_message": stats_result.error_message or "unknown"},
-                        )
-                    else:
-                        logger.info(
-                            "Successfully created statistics",
-                            extra=stats_telemetry,
-                        )
+                    stats_operations = self._build_auto_statistics(operation)
                 except Exception as stats_error:
                     logger.warning(
-                        "Error creating statistics",
-                        extra={**stats_telemetry, "error": str(stats_error)},
+                        "Error discovering statistics columns",
+                        extra={**telemetry_payload, "error": str(stats_error)},
                     )
+                    stats_operations = []
+
+                for stats_op in stats_operations:
+                    stats_telemetry = {**telemetry_payload, **stats_op.telemetry_fields()}
+                    try:
+                        stats_query = self._query_builder.build_query(stats_op)
+                        stats_result = self._execute_with_sql(stats_query, stats_op, stats_telemetry)
+                        if not stats_result.success:
+                            logger.warning(
+                                "Failed to create statistics",
+                                extra={**stats_telemetry, "error_message": stats_result.error_message or "unknown"},
+                            )
+                        else:
+                            logger.info(
+                                "Successfully created statistics",
+                                extra=stats_telemetry,
+                            )
+                    except Exception as stats_error:
+                        logger.warning(
+                            "Error creating statistics",
+                            extra={**stats_telemetry, "error": str(stats_error)},
+                        )
 
             return result
 
@@ -165,6 +168,44 @@ class _BasePlatform(ABC):
             )
     
     
+    def _build_auto_statistics(self, operation: CreateTable) -> List[CreateStatistics]:
+        """Build the auto-statistics operations for a freshly created table.
+
+        Column discovery lives in ``CreateStatistics``' model validator, which
+        raises when nothing is discovered. Auto-stats is best effort, so that
+        case yields an empty list rather than failing the CREATE TABLE.
+
+        Discovery returns a *list* of columns, but Synapse only supports
+        single-column statistics (see
+        ``BaseQueryBuilder._validate_create_statistics``), so the discovered
+        columns fan out to one operation each.
+        """
+        try:
+            discovered = CreateStatistics(
+                schema_name=operation.schema_name,
+                object_name=operation.object_name,
+                auto_discover=True,
+            )
+        except ValueError:
+            logger.debug(
+                "No statistics columns discovered",
+                extra={"operation.schema": operation.schema_name,
+                       "operation.object": operation.object_name},
+            )
+            return []
+
+        return [
+            CreateStatistics(
+                schema_name=operation.schema_name,
+                object_name=operation.object_name,
+                stats_name=f"stats_{operation.object_name}_{column}",
+                columns=[column],
+                with_fullscan=True,
+                auto_discover=False,
+            )
+            for column in discovered.columns
+        ]
+
     def execute(self, operation_dict: dict, telemetry: Optional[Dict[str, str]] = None) -> OperationResult:
         operation = OperationBuilder.create_operation_from_dict(operation_dict)
 
@@ -320,34 +361,6 @@ class _BasePlatform(ABC):
                 query_executed=query,
             )
     
-    def _supports_transactions(self) -> bool:
-        """Check if platform supports transactions.
-        
-        Default is False. Override in platforms that support it.
-        """
-        return False
-    
-    def _begin_transaction(self) -> None:
-        """Begin a transaction.
-        
-        Override in platforms that support transactions.
-        """
-        pass
-    
-    def _commit_transaction(self) -> None:
-        """Commit a transaction.
-        
-        Override in platforms that support transactions.
-        """
-        pass
-    
-    def _rollback_transaction(self) -> None:
-        """Rollback a transaction.
-        
-        Override in platforms that support transactions.
-        """
-        pass
-    
     def test_connection(self) -> Dict[str, bool]:
         """Test connections for all available engines.
         
@@ -363,12 +376,5 @@ class _BasePlatform(ABC):
             except Exception as e:
                 logger.error(f"SQL connection test failed: {e}")
                 results["sql"] = False
-        
-        
+
         return results
-    
-    
-    def cleanup(self) -> None:
-        """Clean up resources."""
-        self._sql_engine = None
-        self._query_builder = None

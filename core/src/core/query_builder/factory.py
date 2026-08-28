@@ -23,7 +23,7 @@ def create_query_builder() -> SynapseServerlessQueryBuilder:
 
     Example:
         >>> builder = create_query_builder()
-        >>> builder.build_is_external_table_query("bronze", "table")
+        >>> sql = builder.build_query(operation)
     """
     from core.settings import get_settings
 

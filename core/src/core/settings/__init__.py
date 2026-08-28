@@ -60,7 +60,6 @@ Quick Start:
 
 Minimal Required Configuration:
     - TENANT_ID: Azure AD tenant ID
-    - CLIENT_NAME: Client/tenant identifier
     - SOURCE_SYSTEM: Source ERP system
     - DS_ENV: Data source environment
     - NAME: Table prefix and package name
@@ -68,7 +67,8 @@ Minimal Required Configuration:
     - COMPUTE_TYPE: Platform type (synapse)
     - Platform-specific settings (e.g., SYNAPSE_LAKE_DATABASE_NAME)
 
-For detailed documentation, see the README.md file in this directory.
+For the authoritative list of options, read the settings classes themselves;
+each field carries its own description.
 """
 
 # Main settings and functions

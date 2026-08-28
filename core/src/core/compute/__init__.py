@@ -1,7 +1,7 @@
 """MedalFlow compute module for platform-agnostic data processing.
 
-This module provides abstractions for working with different compute platforms
-(Synapse) and SQL engines in a unified, operation-based way.
+This module provides abstractions for working with a compute platform
+(Synapse) and its SQL engine in a unified, operation-based way.
 
 Overview:
     The compute module implements a clean operation-based architecture where
@@ -11,87 +11,76 @@ Overview:
 
 Architecture:
     The module is organized into several layers:
-    
+
     1. **Operations Layer**: Data classes representing database operations
        - CreateTable, Insert, Update, Delete, Merge, etc.
-       - Platform-agnostic operation definitions
-    
+       - Platform-agnostic operation definitions (see core.operations)
+
     2. **Platform Layer**: Manages platform-specific execution
-       - BasePlatform: Protocol defining platform interface
+       - _BasePlatform: Abstract base defining the platform interface
        - SynapsePlatform: Azure Synapse implementation
-    
+
     3. **Engine Layer**: Handles actual query execution
-       - BaseEngine: Abstract base for all engines
-       - SQLEngine: SQL query execution (platform-specific)
-    
+       - BaseSQLEngine: Abstract base for SQL engines
+       - SynapseSQLEngine: SQL query execution against the configured pool
+
     4. **Query Builder Layer**: Generates platform-specific SQL
        - BaseQueryBuilder: Abstract interface for query builders
-       - Platform-specific builders for SQL generation
-    
+       - SynapseServerlessQueryBuilder: T-SQL generation
+
     5. **Factory Layer**: Creates platform instances
-       - PlatformFactory: Manages platform registration and creation
+       - create_platform(): builds the platform named by
+         ``settings.compute.compute_type``
 
 Key Features:
     - **Operation-Based**: All operations are data, platforms handle execution
-    - **Platform Abstraction**: Write once, run on multiple platforms
-    - **Batch Operations**: Execute multiple operations efficiently
-    - **Transaction Support**: Where platform supports it
-    - **Type Safety**: Full type hints and validation
-    - **Extensibility**: Easy to add new platforms via factory pattern
+    - **Platform Abstraction**: The medallion layer never sees platform details
+    - **Type Safety**: Full type hints and pydantic validation
 
 Configuration:
-    The compute module is configured through environment variables with the
-    CTE_COMPUTE__ prefix. Key settings include:
-    
-    - CTE_COMPUTE__COMPUTE_TYPE: Platform type (synapse)
-    - CTE_COMPUTE__SYNAPSE__CONNECTION__ENDPOINT: Synapse SQL endpoint
-    
-    See core.settings.ComputeSettings for full configuration options.
+    The compute module is configured through ``core.settings.ComputeSettings``,
+    which reads its values from the environment. See that class for the full
+    set of options, including the platform selector ``compute_type``.
 
 Example Usage:
-    
-    >>> from core.compute import PlatformFactory, CreateTable, Insert
+
+    >>> from core.compute import create_platform, CreateTable, Insert
     >>> from core.compute import CreateStatistics
-    >>> 
+    >>>
     >>> # Get platform (configured via settings)
-    >>> platform = PlatformFactory.create_platform()
-    >>> 
+    >>> platform = create_platform()
+    >>>
     >>> # Create table
     >>> create_op = CreateTable(
-    ...     schema="silver",
+    ...     schema_name="silver",
     ...     object_name="customers",
     ...     select_query="SELECT * FROM bronze.raw_customers WHERE active = 1"
     ... )
-    >>> result = platform.execute(create_op)
+    >>> result = platform.execute_operation(create_op)
     >>> print(f"Table created: {result.success}")
-    >>> 
+    >>>
     >>> # Insert data
     >>> insert_op = Insert(
-    ...     schema="silver",
+    ...     schema_name="silver",
     ...     object_name="customers",
     ...     source_query="SELECT * FROM staging.new_customers"
     ... )
-    >>> result = platform.execute(insert_op)
+    >>> result = platform.execute_operation(insert_op)
     >>> print(f"Rows inserted: {result.rows_affected}")
-    >>> 
-    >>> # Create statistics
+    >>>
+    >>> # Create statistics (Synapse allows one column per statistic)
     >>> stats_op = CreateStatistics(
-    ...     schema="silver",
+    ...     schema_name="silver",
     ...     object_name="customers",
-    ...     columns=["customer_id", "region"]
+    ...     columns=["customer_id"]
     ... )
-    >>> result = platform.execute(stats_op)
-    >>> 
-    >>> # Batch operations
-    >>> operations = [create_op, insert_op, stats_op]
-    >>> batch_result = platform.execute_batch(operations, transaction=True)
-    >>> print(f"Success rate: {batch_result.success_rate}%")
+    >>> result = platform.execute_operation(stats_op)
 
 See Also:
     - core.settings.ComputeSettings: Configuration options
     - core.compute.platforms: Platform implementations
     - core.compute.engines: Engine implementations
-    - core.compute.types: Operation definitions
+    - core.compute.types: Operation result types
 """
 
 # Import operations from new location
@@ -116,10 +105,7 @@ from core.operations import (
 from core.operations.columns import ColumnDefinition
 
 # Import compute-specific types (results and configs)
-from core.compute.types import (
-    OperationResult,
-    BatchOperationResult,
-)
+from core.compute.types import OperationResult
 
 from core.constants.compute import ComputeEnvironment, EngineType, ResultFormat
 
@@ -153,7 +139,6 @@ __all__ = [
     
     # Results (public)
     "OperationResult",
-    "BatchOperationResult",
     
     # Constants (public)
     "ComputeEnvironment",

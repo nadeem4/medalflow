@@ -87,16 +87,10 @@ class BaseOperation(CTEBaseModel):
 
     @property
     def full_object_name(self) -> str:
-        """Get the full object name with prefix (no schema)."""
+        """Get the schema-qualified object name, including the table prefix."""
         prefix = self.get_table_prefix()
-        full_name = f"{self.schema_name}.{prefix}_{self.object_name}"
-        return full_name
-    
-    @property
-    def full_object_name_no_schema(self) -> str:
-        """Get the full object name with prefix (no schema)."""
-        prefix = self.get_table_prefix()
-        return f"{prefix}_{self.object_name}"
+        # settings.table_prefix already ends in "_", so no separator here.
+        return f"{self.schema_name}.{prefix}{self.object_name}"
 
     def attach_context(
         self,

@@ -22,7 +22,6 @@ Design Principles:
 
 Available Builders:
     - SynapseServerlessQueryBuilder: For Synapse Serverless SQL pools
-    - SynapseSQLQueryBuilder: For Synapse Dedicated SQL pools
 
 Example:
     >>> from core.query_builder import create_query_builder
@@ -33,7 +32,7 @@ Example:
     >>> 
     >>> # Generate CREATE TABLE SQL
     >>> operation = CreateTable(
-    ...     schema="silver",
+    ...     schema_name="silver",
     ...     object_name="customers",
     ...     select_query="SELECT * FROM bronze.raw_customers"
     ... )

@@ -24,6 +24,7 @@ from core.medallion.types import TableInfo
 from core.observability.context import ExecutionRequestContext
 from core.operations import Select
 from core.operations.builder import OperationBuilder
+from core.settings.base import CTEBaseSettings
 from core.types.metadata import DiscoveredMethod, QueryMetadata
 
 
@@ -163,3 +164,31 @@ def test_create_operation_from_dict_rejects_unregistered_query_type(monkeypatch)
                 "object_name": "Customer",
             }
         )
+
+
+# --- 4. full_object_name doubled the prefix separator ----------------------
+
+
+def test_full_object_name_has_a_single_underscore_after_the_prefix(monkeypatch):
+    """`settings.table_prefix` is already `f"{name}_"`, but `full_object_name`
+    appended another underscore, so NAME=fin produced `silver.fin__Customers`
+    in every log line and error message that used it."""
+    import core.settings
+
+    settings = CTEBaseSettings(
+        tenant_id="00000000-0000-0000-0000-000000000000",
+        source_system="sap",
+        ds_env="dev",
+        name="fin",
+    )
+    monkeypatch.setattr(core.settings, "get_settings", lambda: settings)
+
+    operation = Select(
+        operation_type=QueryType.SELECT,
+        schema_name="silver",
+        object_name="Customers",
+        columns=["*"],
+    )
+
+    assert settings.table_prefix == "fin_"
+    assert operation.full_object_name == "silver.fin_Customers"
