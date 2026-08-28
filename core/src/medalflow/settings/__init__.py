@@ -44,6 +44,8 @@ Groups
 - ``keyvault`` -- Azure Key Vault connection and credentials (``keyvault.py``)
 - ``features`` -- feature flags (``features.py``)
 - ``stats``    -- statistics management (``stats.py``)
+- ``conventions`` -- opt-in naming conventions, all off by default
+  (``conventions.py``)
 
 Quick start
 -----------

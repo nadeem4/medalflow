@@ -33,6 +33,11 @@ def test_bronze_select_operation_sets_schema_name():
     """bronze/sequencer.py:130 passed `schema=`, so schema_name was never set."""
     sequencer = BronzeSequencer.__new__(BronzeSequencer)
     sequencer.source_schema = "dbo"
+    # The soft-delete convention is read off settings now (Phase 3, task 8);
+    # unconfigured, it contributes no WHERE clause.
+    sequencer.settings = MedalflowSettings(
+        source_system="sap", ds_env="dev", name="fin", compute={"lake_database_name": "lakedb"}
+    )
 
     operation = sequencer._create_select_operation(
         TableInfo(table_name="Customer", schema_name="dbo", full_table_name="dbo.Customer")

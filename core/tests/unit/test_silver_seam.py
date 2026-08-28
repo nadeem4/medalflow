@@ -17,6 +17,7 @@ from medalflow.medallion.silver.metadata_discovery import (
     TransformationMetadata,
 )
 from medalflow.medallion.silver.sequencer import SilverTransformationSequencer
+from medalflow.settings.main import MedalflowSettings
 from medalflow.types.metadata import QueryMetadata
 
 # --- api seam: sequencer_class must be instantiated ------------------------
@@ -141,6 +142,22 @@ def test_bronze_plan_passes_settings_and_csv_table_names(api_module, monkeypatch
 # --- silver sequencer: import path and logger kwargs -----------------------
 
 
+def _settings(**conventions):
+    """Offline settings carrying only the conventions a test opts into.
+
+    The enum table and the temp-Detail promotion are `conventions` entries as
+    of Phase 3 task 8, so a sequencer built with `__new__` needs `.settings`
+    before either path will run.
+    """
+    return MedalflowSettings(
+        source_system="sap",
+        ds_env="dev",
+        name="fin",
+        compute={"lake_database_name": "lakedb"},
+        conventions=conventions,
+    )
+
+
 def test_enum_query_uses_the_core_query_builder_module(monkeypatch):
     """`from query_builder.factory import ...` — no such top-level package."""
 
@@ -148,11 +165,23 @@ def test_enum_query_uses_the_core_query_builder_module(monkeypatch):
         def fully_qualified_name(self, schema, object_name):
             return "[bronze].[Enumeration]"
 
+        def quote_string(self, value):
+            return "'{}'".format(value.replace("'", "''"))
+
     import medalflow.query_builder.factory as factory
 
     monkeypatch.setattr(factory, "create_query_builder", lambda: _Builder())
 
     sequencer = SilverTransformationSequencer.__new__(SilverTransformationSequencer)
+    sequencer.settings = _settings(
+        enum_table={
+            "schema_name": "bronze",
+            "table_name": "Enumeration",
+            "name_column": "Enum",
+            "value_column": "EnumValue",
+            "value_id_column": "EnumValueID",
+        }
+    )
     sql = sequencer._generate_enum_query(
         QueryMetadata(type=QueryType.SELECT, table_name="Status", filter="StatusEnum")
     )
@@ -168,9 +197,13 @@ def test_detail_table_transformation_logs_without_crashing(caplog):
     its kwargs, so with the default WARNING level the bad call is never
     reached. It fires the moment a deployment turns INFO logging on — so the
     test enables INFO.
+
+    The promotion itself is opt-in now, so the convention is configured here
+    to reach the logging call at all. What it asserts is unchanged.
     """
     caplog.set_level(logging.INFO, logger="test-silver")
     sequencer = SilverTransformationSequencer.__new__(SilverTransformationSequencer)
+    sequencer.settings = _settings(detail_tables={"table_suffix": "Detail"})
     sequencer.logger = logging.getLogger("test-silver")
     sequencer.transform_detail_to_silver = lambda sql: sql + " /*transformed*/"
 

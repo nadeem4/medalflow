@@ -84,7 +84,7 @@ class InternalDataLakeConfig(BaseDataLakeConfig):
     """The lake holding client configuration files."""
 
     access_key_secret_name: str = Field(
-        default="CMAA-CONTENT-ADLS-ACCESS-KEY",
+        default="INTERNAL-ADLS-ACCESS-KEY",
         description="KeyVault secret name for DataLake access key",
     )
 

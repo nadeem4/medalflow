@@ -141,6 +141,34 @@ class StatsManager(StatsProtocol, FeatureManager):
             return config.get_table_columns(table_name.lower())
         return None
 
+    def should_create_stats(self, table_name: str, layer: str = "bronze") -> bool:
+        """Check whether statistics are configured for a table.
+
+        Declared by `StatsProtocol`, which `StatsManager` uses as a base
+        class -- so until this existed it was inherited as the protocol's `...`
+        body and answered None to a question typed `bool`.
+
+        Args:
+            table_name: Name of the table
+            layer: Data layer ('bronze', 'silver', etc.)
+
+        Returns:
+            True if the table has at least one column configured
+        """
+        return bool(self.get_stats_columns(table_name, layer))
+
+    def get_configured_tables(self, layer: str = "bronze") -> list[str]:
+        """List the tables configured for statistics in a layer.
+
+        Args:
+            layer: Data layer ('bronze', 'silver', etc.)
+
+        Returns:
+            Table names, empty if the layer has no configuration
+        """
+        config = self.get_stats_config(layer)
+        return config.get_tables() if config else []
+
     def _process_stats(self, schema: str) -> Optional[StatsConfiguration]:
         """Process raw CSV into StatsConfiguration.
 
@@ -162,7 +190,13 @@ class StatsManager(StatsProtocol, FeatureManager):
                 return None
 
             df["schema_name"] = df["schema_name"].str.lower()
-            df["table_name"] = df["table_name"].str.lower().replace(settings.table_prefix, "")
+            # removeprefix, not replace: `Series.replace` compares whole values,
+            # so the prefix was never removed and every later lookup by bare
+            # table name missed -- the stats feature was a no-op for any
+            # prefixed deployment. The prefix is lowered to match the column.
+            df["table_name"] = (
+                df["table_name"].str.lower().str.removeprefix(settings.table_prefix.lower())
+            )
             df["stats_column_name"] = df["stats_column_name"].str.lower()
 
             # Filter for the specified schema

@@ -44,7 +44,6 @@ class MockSecrets:
             "SYN-DB-MASTER-KEY": "mock-master-key-xxxxx",
             # Data Lake secrets
             "PROCESSED-ADLS-ACCOUNT-KEY": "mock_processed_key_xxxxx",
-            "CMAA-CONTENT-ADLS-ACCESS-KEY": "mock_internal_key_xxxxx",
             "PROCESSED-ADLS-ACCESS-KEY": "mock_processed_access_key_xxxxx",
             "INTERNAL-ADLS-ACCESS-KEY": "mock_internal_access_key_xxxxx",
             # Service Principal secrets

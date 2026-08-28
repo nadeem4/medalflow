@@ -121,15 +121,35 @@ class BronzeSequencer(_BaseSequencer):
         Returns:
             Select operation for the source data
         """
-        where_clause = None if table.table_name.endswith("Metadata") else "IsDelete IS NULL"
-
         return Select(
             operation_type=QueryType.SELECT,
             schema_name=self.source_schema,
             object_name=table.table_name,
             columns=["*"],
-            where_clause=where_clause,
+            where_clause=self._soft_delete_filter(table.table_name),
         )
+
+    def _soft_delete_filter(self, table_name: str) -> Optional[str]:
+        """WHERE clause hiding soft-deleted rows, if that convention is configured.
+
+        Bronze used to filter every source table on a hardcoded ``IsDelete IS
+        NULL`` and exempt every table whose name ended in ``Metadata`` -- two
+        assumptions about one warehouse's schema, applied to all of them. Both
+        now come from ``conventions.soft_delete``, and unset means bronze reads
+        its sources whole.
+
+        Args:
+            table_name: Unqualified source table name
+
+        Returns:
+            The configured predicate, or None when the convention is unset or
+            the table is exempt from it
+        """
+        convention = self.settings.conventions.soft_delete
+        if convention is None or not convention.applies_to(table_name):
+            return None
+
+        return convention.predicate
 
     def get_queries(self) -> list[BaseOperation]:
         tables = self.lake_db.get_tables(table_names=self.requested_table_names)
