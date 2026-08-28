@@ -1,4 +1,10 @@
-"""Simple Azure Data Lake Storage client."""
+"""Simple Azure Data Lake Storage client.
+
+``DatalakeClient`` is MedalFlow's implementation of the storage seam,
+:class:`medalflow.protocols.StorageClient` -- the ``delete`` / ``read_csv``
+pair the framework actually calls. Everything else on this class is a
+convenience for application code.
+"""
 from typing import Optional
 
 import pandas as pd
@@ -14,6 +20,21 @@ from medalflow.utils.decorators import traced
 from .types import FileInfo
 
 logger = get_logger(__name__)
+
+
+def _is_not_found(error: Exception) -> bool:
+    """Tell "the path is not there" apart from every other storage failure.
+
+    Args:
+        error: Exception raised by the Azure SDK
+
+    Returns:
+        True only for a 404 / ResourceNotFoundError
+    """
+    if type(error).__name__ == "ResourceNotFoundError":
+        return True
+
+    return getattr(error, "status_code", None) == 404
 
 
 class DatalakeClient:
@@ -94,7 +115,9 @@ class DatalakeClient:
         attributes = {
             "storage.system": "azure.datalake",
             "storage.account": self.config.account_name,
-            "storage.file_system": self.config.file_system_name,
+            # The instance attribute, not `config.file_system_name`: the latter is
+            # a settings field nothing sets, and every real I/O call uses this one.
+            "storage.file_system": self.file_system_name,
             "storage.operation": operation,
             "medalflow.storage.lake_type": self.lake_type.value,
         }
@@ -193,27 +216,46 @@ class DatalakeClient:
         ),
     )
     def delete(self, path: str):
-        """Delete a file or directory (no error if doesn't exist)."""
-        if not self.exists(path):
-            logger.debug(f"Path doesn't exist, nothing to delete: {path}")
-            return
+        """Delete a file or directory (no error if doesn't exist).
 
+        There is no existence pre-check. It cost a second round trip, and
+        because `exists` used to report False for any failure at all, a
+        transient blip turned this into a silent no-op while the caller
+        believed the path had been cleared.
+
+        Args:
+            path: Path to delete
+
+        Raises:
+            CTEError: If the path exists but could not be deleted
+        """
         full_path = self._get_full_path(path)
 
         try:
-            file_client = self._get_fs_client().get_file_client(full_path)
-            file_client.delete_file()
+            self._get_fs_client().get_file_client(full_path).delete_file()
             logger.info(f"Deleted file from {self.lake_type.value}: {full_path}")
-        except Exception:
-            try:
-                dir_client = self._get_fs_client().get_directory_client(full_path)
-                dir_client.delete_directory()
-                logger.info(f"Deleted directory from {self.lake_type.value}: {full_path}")
-            except Exception as e:
-                logger.error(
-                    f"Failed to delete from {self.lake_type.value}: {full_path}", exc_info=True
-                )
-                raise CTEError(f"Failed to delete {path}: {e}") from e
+            return
+        except Exception as file_error:
+            file_missing = _is_not_found(file_error)
+            logger.debug(
+                "Deleting %s as a file failed (%s: %s); retrying as a directory",
+                full_path,
+                type(file_error).__name__,
+                file_error,
+            )
+
+        try:
+            self._get_fs_client().get_directory_client(full_path).delete_directory()
+            logger.info(f"Deleted directory from {self.lake_type.value}: {full_path}")
+        except Exception as dir_error:
+            if file_missing and _is_not_found(dir_error):
+                logger.debug(f"Nothing to delete at {full_path}")
+                return
+
+            logger.error(
+                f"Failed to delete from {self.lake_type.value}: {full_path}", exc_info=True
+            )
+            raise CTEError(f"Failed to delete {path}: {dir_error}") from dir_error
 
     @traced(
         span_name="medalflow.datalake.exists",
@@ -229,21 +271,34 @@ class DatalakeClient:
             path: Path to check
 
         Returns:
-            True if path exists, False otherwise
+            True if path exists, False if it is definitely absent
+
+        Raises:
+            CTEError: If the lookup failed for any reason other than a missing
+                path. Expired credentials, a 403 and a 429 used to be reported
+                as "does not exist".
         """
         full_path = self._get_full_path(path)
 
         try:
-            file_client = self._get_fs_client().get_file_client(full_path)
-            file_client.get_file_properties()
+            self._get_fs_client().get_file_client(full_path).get_file_properties()
             return True
-        except Exception:
-            try:
-                dir_client = self._get_fs_client().get_directory_client(full_path)
-                dir_client.get_directory_properties()
-                return True
-            except Exception:
+        except Exception as error:
+            file_error = error
+
+        try:
+            self._get_fs_client().get_directory_client(full_path).get_directory_properties()
+            return True
+        except Exception as dir_error:
+            if _is_not_found(file_error) and _is_not_found(dir_error):
                 return False
+
+            logger.error(
+                f"Failed to check existence in {self.lake_type.value}: {full_path} "
+                f"(as file: {type(file_error).__name__}: {file_error})",
+                exc_info=True,
+            )
+            raise CTEError(f"Failed to check whether {path} exists: {dir_error}") from dir_error
 
     @traced(
         span_name="medalflow.datalake.list_files",

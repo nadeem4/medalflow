@@ -21,6 +21,7 @@ from medalflow.constants.sql import QueryType
 from medalflow.datalake import get_processed_datalake_client
 from medalflow.logging import get_logger
 from medalflow.operations import BaseOperation, CreateTable
+from medalflow.protocols import StorageClient
 from medalflow.query_builder import create_query_builder
 from medalflow.settings import ComputeEnvironment, ComputeSettings
 
@@ -74,7 +75,7 @@ class SynapsePlatform(_BasePlatform):
         self._sql_engine = SynapseSQLEngine(self.settings, self.environment)
 
         self._query_builder = create_query_builder()
-        self._datalake_client = get_processed_datalake_client()
+        self._datalake_client: StorageClient = get_processed_datalake_client()
 
     def execute_operation(
         self,

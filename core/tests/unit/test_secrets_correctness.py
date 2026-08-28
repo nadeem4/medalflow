@@ -169,7 +169,9 @@ def test_mock_provider_satisfies_the_protocol():
 
 
 def test_protocol_does_not_declare_clear_cache():
-    assert "clear_cache" not in getattr(SecretProvider, "__protocol_attrs__", set())
+    declared = {name for name in vars(SecretProvider) if not name.startswith("_")}
+
+    assert declared == {"get_secret"}
 
 
 # --- 3f: every imported third-party package is declared ----------------------

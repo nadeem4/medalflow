@@ -22,6 +22,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from medalflow.constants import LayerType
 from medalflow.core.mixins import NestedSecretsMixin
+from medalflow.secret_vault.env import ENV_PREFIX, EnvSecretProvider
 from medalflow.secret_vault.keyvault import KeyVaultSecrets
 from medalflow.secret_vault.mock import MockSecrets
 
@@ -194,7 +195,7 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
 
         Returns:
             A KeyVault provider if Key Vault is configured, a mock provider in
-            test mode, otherwise None (secrets then degrade to None).
+            test mode, otherwise the zero-dependency environment provider.
         """
         logger = logging.getLogger(__name__)
 
@@ -210,7 +211,8 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
             logger.info("Using mock secret provider for test mode")
             return MockSecrets()
 
-        return None
+        logger.info("Key Vault is not configured; reading secrets from %s* variables", ENV_PREFIX)
+        return EnvSecretProvider()
 
     @property
     def secrets(self) -> Optional["SecretProvider"]:
