@@ -73,8 +73,6 @@ class _Settings(CTEBaseSettings):
         default_factory=StatsSettings, description="Statistics management configuration"
     )
 
-    _secret_provider: Optional["SecretProvider"] = None
-
     @property
     def secrets(self) -> Optional["SecretProvider"]:
         """Get the secret provider helper with lazy loading.

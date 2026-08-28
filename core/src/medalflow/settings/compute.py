@@ -142,10 +142,6 @@ class ComputeSettings(CTEBaseSettings):
             self._synapse = SynapseSettings()
             if self._secret_provider:
                 self._synapse.attach_secrets(self._secret_provider)
-            else:
-                raise ValueError(
-                    "Secret provider must be attached before accessing Synapse settings"
-                )
         return self._synapse
 
     @property
