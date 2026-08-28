@@ -18,8 +18,8 @@ import logging
 
 import pytest
 
-from core.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
-from core.medallion.silver.metadata_discovery import SilverMetadataDiscovery
+from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
+from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 
 
 class _BrokenSequencer:

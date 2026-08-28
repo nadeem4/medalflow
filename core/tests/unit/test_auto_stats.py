@@ -21,12 +21,12 @@ query-builder collaborators are stubs, so nothing touches a warehouse.
 
 import pytest
 
-from core.constants.compute import EngineType
-from core.constants.sql import QueryType
-from core.compute.platforms.base import _BasePlatform
-from core.operations import CreateStatistics, CreateTable
-from core.settings.base import CTEBaseSettings
-from core.types.metadata import QueryMetadata
+from medalflow.constants.compute import EngineType
+from medalflow.constants.sql import QueryType
+from medalflow.compute.platforms.base import _BasePlatform
+from medalflow.operations import CreateStatistics, CreateTable
+from medalflow.settings.base import CTEBaseSettings
+from medalflow.types.metadata import QueryMetadata
 
 
 class _StubQueryBuilder:
@@ -80,7 +80,7 @@ def platform():
 @pytest.fixture(autouse=True)
 def offline_table_prefix(monkeypatch):
     """`full_object_name` resolves live settings; keep that offline (D6)."""
-    import core.settings
+    import medalflow.settings
 
     settings = CTEBaseSettings(
         tenant_id="00000000-0000-0000-0000-000000000000",
@@ -88,19 +88,19 @@ def offline_table_prefix(monkeypatch):
         ds_env="dev",
         name="fin",
     )
-    monkeypatch.setattr(core.settings, "get_settings", lambda: settings)
+    monkeypatch.setattr(medalflow.settings, "get_settings", lambda: settings)
     return settings
 
 
 @pytest.fixture
 def stats_columns(monkeypatch):
     """Control what auto-discovery finds, without a feature registry."""
-    import core.core.features
+    import medalflow.core.features
 
     def install(columns):
         manager = _StubStatsManager(columns) if columns else None
         monkeypatch.setattr(
-            core.core.features,
+            medalflow.core.features,
             "get_feature_manager",
             lambda feature_name: manager if feature_name == "stats" else None,
         )

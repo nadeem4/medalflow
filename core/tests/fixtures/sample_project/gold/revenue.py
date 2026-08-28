@@ -1,8 +1,8 @@
 """Gold model reading a silver model — the silver -> gold edge."""
 
-from core.constants.sql import QueryType
-from core.medallion.base.decorators import query_metadata
-from core.medallion.gold import GoldSequencer, gold_metadata
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.base.decorators import query_metadata
+from medalflow.medallion.gold import GoldSequencer, gold_metadata
 
 
 @gold_metadata(schema_name="gold", description="Revenue reporting view")

@@ -95,7 +95,7 @@ jobs:
         run: poetry install --with dev --no-root
 
       # pyodbc is declared `optional = true` in pyproject but imported
-      # unconditionally at src/core/compute/engines/base.py:11, and no extra
+      # unconditionally at src/medalflow/compute/engines/base.py:11, and no extra
       # exposes it — so `poetry install` never brings it in. Without it every
       # import fails on "No module named 'pyodbc'", masking the real Phase 1
       # breakage. Phase 3 moves pyodbc behind the `[azure]` extra and this goes.
@@ -150,6 +150,6 @@ jobs:
             poetry run pip install pyodbc
           fi
 
-      # Blocking as of Phase 1. Phase 2 renames the imports to `medalflow`.
+      # Blocking as of Phase 1. Renamed to `medalflow` in Phase 2.
       - name: Import smoke test
-        run: PYTHONPATH=src poetry run python -c "import core; import core.medallion; import core.api"
+        run: PYTHONPATH=src poetry run python -c "import medalflow; import medalflow.medallion; import medalflow.api"

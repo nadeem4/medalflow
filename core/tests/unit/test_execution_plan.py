@@ -12,12 +12,12 @@ import logging
 
 import pytest
 
-from core.constants.sql import QueryType
-from core.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
-from core.medallion.types import ExecutionPlan
-from core.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
-from core.operations import Select
-from core.types.metadata import SQLDependencies
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
+from medalflow.medallion.types import ExecutionPlan
+from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
+from medalflow.operations import Select
+from medalflow.types.metadata import SQLDependencies
 
 
 class _StubAnalyzer:

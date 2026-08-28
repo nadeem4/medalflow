@@ -17,15 +17,15 @@ import logging
 
 import pytest
 
-from core.constants.sql import QueryType
-from core.medallion.base.sequencer import _BaseSequencer
-from core.medallion.bronze.sequencer import BronzeSequencer
-from core.medallion.types import TableInfo
-from core.observability.context import ExecutionRequestContext
-from core.operations import Select
-from core.operations.builder import OperationBuilder
-from core.settings.base import CTEBaseSettings
-from core.types.metadata import DiscoveredMethod, QueryMetadata
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.base.sequencer import _BaseSequencer
+from medalflow.medallion.bronze.sequencer import BronzeSequencer
+from medalflow.medallion.types import TableInfo
+from medalflow.observability.context import ExecutionRequestContext
+from medalflow.operations import Select
+from medalflow.operations.builder import OperationBuilder
+from medalflow.settings.base import CTEBaseSettings
+from medalflow.types.metadata import DiscoveredMethod, QueryMetadata
 
 
 # --- 1. schema= vs schema_name= -------------------------------------------
@@ -173,7 +173,7 @@ def test_full_object_name_has_a_single_underscore_after_the_prefix(monkeypatch):
     """`settings.table_prefix` is already `f"{name}_"`, but `full_object_name`
     appended another underscore, so NAME=fin produced `silver.fin__Customers`
     in every log line and error message that used it."""
-    import core.settings
+    import medalflow.settings
 
     settings = CTEBaseSettings(
         tenant_id="00000000-0000-0000-0000-000000000000",
@@ -181,7 +181,7 @@ def test_full_object_name_has_a_single_underscore_after_the_prefix(monkeypatch):
         ds_env="dev",
         name="fin",
     )
-    monkeypatch.setattr(core.settings, "get_settings", lambda: settings)
+    monkeypatch.setattr(medalflow.settings, "get_settings", lambda: settings)
 
     operation = Select(
         operation_type=QueryType.SELECT,

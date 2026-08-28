@@ -3,9 +3,9 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-FILTERS = PROJECT_ROOT / "src" / "core" / "logging" / "filters.py"
+FILTERS = PROJECT_ROOT / "src" / "medalflow" / "logging" / "filters.py"
 
-spec = spec_from_file_location("core.logging.filters_test", FILTERS)
+spec = spec_from_file_location("medalflow.logging.filters_test", FILTERS)
 filters = module_from_spec(spec)
 assert spec and spec.loader
 spec.loader.exec_module(filters)  # type: ignore[assignment]

@@ -20,12 +20,12 @@ from pathlib import Path
 
 import pytest
 
-from core.constants.sql import QueryType
-from core.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
-from core.medallion.silver.metadata_discovery import SilverMetadataDiscovery
-from core.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
-from core.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
-from core.operations import CreateTable
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
+from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
+from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
+from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
+from medalflow.operations import CreateTable
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -238,7 +238,7 @@ def test_plan_validates(plan):
 
 @pytest.fixture
 def query_builder(offline_settings):
-    from core.query_builder.factory import create_query_builder
+    from medalflow.query_builder.factory import create_query_builder
 
     return create_query_builder()
 
@@ -273,7 +273,7 @@ def test_generated_sql_for_the_silver_model(query_builder):
 
 
 def test_generated_sql_quotes_and_prefixes_the_bronze_source(query_builder):
-    from core.operations import Select
+    from medalflow.operations import Select
 
     operation = Select(
         operation_type=QueryType.SELECT,

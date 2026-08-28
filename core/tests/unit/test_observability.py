@@ -9,7 +9,7 @@ the pair, and each exception recorded twice (once by each span).
 import pytest
 from opentelemetry import trace
 
-from core.observability.context import ExecutionRequestContext, execution_request_scope
+from medalflow.observability.context import ExecutionRequestContext, execution_request_scope
 
 
 class _RecordingSpan:
@@ -100,7 +100,7 @@ class _FakeMetrics:
 
 def test_instrumented_operation_opens_one_span_not_two(opened_spans):
     """The duplicate was a same-named child span under every operation."""
-    from core.observability.instrumentation import operation_instrumentation
+    from medalflow.observability.instrumentation import operation_instrumentation
 
     ctx = ExecutionRequestContext(request_id="req-1")
     metrics = _FakeMetrics()

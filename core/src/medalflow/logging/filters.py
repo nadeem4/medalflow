@@ -1,0 +1,98 @@
+"""Logging filters for context injection.
+
+This module provides filters that inject context variables into log records,
+enabling correlation of logs across requests and operations.
+"""
+
+from __future__ import annotations
+
+import logging
+from contextvars import ContextVar
+from typing import Any, Dict, Optional
+from medalflow.__version__ import __version__
+
+request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
+
+_service_name: Optional[str] = "medalflow"
+_service_version: Optional[str] = __version__
+_environment: Optional[str] = None
+_static_fields: Dict[str, Any] = {}
+
+class ContextFilter(logging.Filter):
+    """Logging filter that adds context variables to log records.
+
+    This filter extracts values from context variables and adds them to
+    log records, enabling log correlation across async operations.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Add context variables to the log record.
+
+        Args:
+            record: Log record to enhance
+
+        Returns:
+            Always True (doesn't filter out any records)
+        """
+        setattr(record, "request_id", request_id_var.get())
+        setattr(record, "user_id", user_id_var.get())
+        setattr(record, "sdk_name", "medalflow")
+        setattr(record, "core_version", __version__)
+
+        if _service_name:
+            setattr(record, "service", _service_name)
+        if _service_version:
+            setattr(record, "service_version", _service_version)
+        if _environment:
+            setattr(record, "environment", _environment)
+
+        for key, value in _static_fields.items():
+            if not hasattr(record, key):
+                setattr(record, key, value)
+
+
+        return True
+
+
+def set_logging_context(
+    *,
+    environment: Optional[str] = None,
+    service_name: Optional[str] = None,
+    service_version: Optional[str] = None,
+    extra: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Set static logging context fields for all log records."""
+    global _service_name, _service_version, _environment, _static_fields
+
+    if service_name is not None:
+        _service_name = service_name
+    if service_version is not None:
+        _service_version = service_version
+
+    if environment:
+        _environment = environment
+    else:
+        _environment = None
+
+    if extra is None:
+        _static_fields = {}
+    else:
+        _static_fields = dict(extra)
+
+
+def set_request_context(
+    request_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> None:
+    """Set request context variables."""
+    if request_id is not None:
+        request_id_var.set(request_id)
+    if user_id is not None:
+        user_id_var.set(user_id)
+
+
+def clear_request_context() -> None:
+    """Clear all request context variables."""
+    request_id_var.set(None)
+    user_id_var.set(None)
