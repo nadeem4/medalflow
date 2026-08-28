@@ -20,6 +20,9 @@ Architecture:
        - _BasePlatform: Abstract base defining the platform interface
        - SynapsePlatform: Azure Synapse implementation
 
+       This is the **compute seam**, one of MedalFlow's three integration
+       points (compute, storage, secrets -- see :mod:`medalflow.protocols`).
+
     3. **Engine Layer**: Handles actual query execution
        - BaseSQLEngine: Abstract base for SQL engines
        - SynapseSQLEngine: SQL query execution against the configured pool

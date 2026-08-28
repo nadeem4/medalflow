@@ -17,11 +17,12 @@ See ``.env.example`` at the repository root for the full minimal set.
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from medalflow.constants import LayerType
 from medalflow.core.mixins import NestedSecretsMixin
+from medalflow.secret_vault.env import ENV_PREFIX, EnvSecretProvider
 from medalflow.secret_vault.keyvault import KeyVaultSecrets
 from medalflow.secret_vault.mock import MockSecrets
 
@@ -33,6 +34,9 @@ from .stats import StatsSettings
 
 if TYPE_CHECKING:
     from medalflow.protocols.providers import SecretProvider
+
+# app_env values that mean "real data, real secrets".
+PRODUCTION_ENVIRONMENTS = frozenset({"prod", "production"})
 
 
 class MedalflowSettings(NestedSecretsMixin, BaseSettings):
@@ -70,7 +74,8 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
     test_mode: bool = Field(
         default=False,
         validation_alias=AliasChoices("MEDALFLOW_TEST_MODE", "CTE_TEST_MODE"),
-        description="Run with mock secrets instead of Azure Key Vault. "
+        description="Run with mock secrets instead of Azure Key Vault. Refused when "
+        "app_env names a production environment. "
         "CTE_TEST_MODE is a deprecated alias for MEDALFLOW_TEST_MODE.",
     )
 
@@ -119,6 +124,26 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
     stats: StatsSettings = Field(
         default_factory=StatsSettings, description="Statistics management configuration"
     )
+
+    @model_validator(mode="after")
+    def refuse_test_mode_in_production(self) -> "MedalflowSettings":
+        """Stop mock secrets from ever standing in for real ones in production.
+
+        Returns:
+            Self, unchanged, when the combination is allowed
+
+        Raises:
+            ValueError: If test mode is requested while app_env names production
+        """
+        if self.test_mode and self.app_env.strip().lower() in PRODUCTION_ENVIRONMENTS:
+            raise ValueError(
+                f"test_mode substitutes mock secrets for real ones and cannot run with "
+                f"app_env={self.app_env!r}. Unset MEDALFLOW_TEST_MODE (or the deprecated "
+                f"CTE_TEST_MODE alias), or point MEDALFLOW_APP_ENV at a non-production "
+                f"environment."
+            )
+
+        return self
 
     @field_validator("configured_models")
     @classmethod
@@ -170,7 +195,7 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
 
         Returns:
             A KeyVault provider if Key Vault is configured, a mock provider in
-            test mode, otherwise None (secrets then degrade to None).
+            test mode, otherwise the zero-dependency environment provider.
         """
         logger = logging.getLogger(__name__)
 
@@ -186,7 +211,8 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
             logger.info("Using mock secret provider for test mode")
             return MockSecrets()
 
-        return None
+        logger.info("Key Vault is not configured; reading secrets from %s* variables", ENV_PREFIX)
+        return EnvSecretProvider()
 
     @property
     def secrets(self) -> Optional["SecretProvider"]:

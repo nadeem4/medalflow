@@ -24,7 +24,13 @@ pydantic-settings = "^2.1.0"
 pandas = "^2.0.0"
 sqlalchemy = "^2.0.0"
 azure-identity = "^1.15.0"
+azure-keyvault-secrets = "^4.7.0"
 azure-storage-file-datalake = "^12.14.0"
+# adlfs backs the `abfs://` URLs pandas is handed in datalake/client.py, and
+# pyarrow is named explicitly as the parquet engine there. Both were imported
+# at runtime without ever being declared.
+adlfs = ">=2023.10.0"
+pyarrow = ">=14.0.0"
 opentelemetry-api = "^1.22.0"
 sqlglot = "^23.0.0"
 pyodbc = {version = "^5.0.0", optional = true}
@@ -85,7 +91,10 @@ ignore_missing_imports = true
 minversion = "7.0"
 addopts = "-ra -q --strict-markers"
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "." so shared helpers in tests/conftest.py are importable regardless of how
+# pytest is invoked: `python -m pytest` puts CWD on sys.path, the `pytest`
+# console script (what CI runs) does not.
+pythonpath = ["src", "."]
 
 [tool.coverage.run]
 source = ["src/medalflow"]
