@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 
 def get_processed_datalake_client() -> DatalakeClient:
     """Get a client for the Processed lake.
-    
+
     Returns:
         DatalakeClient configured for Processed lake
     """
@@ -19,7 +19,7 @@ def get_processed_datalake_client() -> DatalakeClient:
 
 def get_internal_datalake_client() -> DatalakeClient:
     """Get a client for the Internal lake.
-    
+
     Returns:
         DatalakeClient configured for Internal lake
     """

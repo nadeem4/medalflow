@@ -62,10 +62,7 @@ def execution_request_scope(
     """Apply logging + tracing scope for a request/operation."""
     ctx.telemetry_base = ctx.to_telemetry_dict()
 
-    set_request_context(
-        request_id=ctx.request_id,
-        user_id=ctx.user_id
-    )
+    set_request_context(request_id=ctx.request_id, user_id=ctx.user_id)
 
     tracer = trace.get_tracer("medalflow")
     span_name = operation or "medalflow.request"

@@ -176,9 +176,7 @@ def test_detail_table_transformation_logs_without_crashing(caplog):
 
     sql, metadata = sequencer._transform_query_result(
         "SELECT 1",
-        QueryMetadata(
-            type=QueryType.CREATE_TABLE, table_name="OrderDetail", schema_name="temp"
-        ),
+        QueryMetadata(type=QueryType.CREATE_TABLE, table_name="OrderDetail", schema_name="temp"),
     )
 
     assert metadata.schema_name == "silver"

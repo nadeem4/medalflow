@@ -12,5 +12,5 @@ __all__ = [
     "get_silver_execution_plan_for_models",
     "get_execution_plan_for_sps",
     "execute",
-    "test_connection"
+    "test_connection",
 ]

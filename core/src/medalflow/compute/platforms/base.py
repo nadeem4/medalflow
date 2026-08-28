@@ -28,60 +28,59 @@ logger = get_logger(__name__)
 
 class _BasePlatform(ABC):
     """Internal implementation detail. Do not use directly.
-    
+
     This class is not part of the public API and may change without notice.
-    
+
     Base class for compute platforms.
-    
+
     A platform represents a specific compute service (Synapse)
     and handles all database operations in a platform-agnostic way.
     """
-    
+
     def __init__(
         self,
-        settings: 'BaseComputeSettings',
-        environment: ComputeEnvironment = ComputeEnvironment.ETL
+        settings: "BaseComputeSettings",
+        environment: ComputeEnvironment = ComputeEnvironment.ETL,
     ):
         """Initialize platform with settings.
-        
+
         Args:
             settings: Platform-specific compute settings
             environment: Compute environment (ETL or CONSUMPTION)
         """
         self.settings = settings
         self.environment = environment
-        
+
         # Initialize engines to None - will be set by _initialize_dependencies
         self._sql_engine: Optional[BaseSQLEngine] = None
         self._query_builder: Optional[BaseQueryBuilder] = None
-        
+
         # Initialize platform-specific dependencies
         self._initialize_dependencies()
-    
+
     @abstractmethod
     def name(self) -> str:
         """Get platform name."""
         pass
-    
+
     @abstractmethod
     def supported_engines(self) -> list[EngineType]:
         """Get list of supported engine types."""
         pass
-    
+
     @abstractmethod
     def _initialize_dependencies(self) -> None:
         """Initialize platform-specific dependencies.
-        
+
         This method is called during platform initialization to set up
         all required dependencies such as SQL engines,
         query builders, and data lake clients.
-        
+
         Concrete platforms must implement this method to create their
         specific dependencies.
         """
         pass
-    
-    
+
     def execute_operation(
         self,
         operation: BaseOperation,
@@ -122,11 +121,16 @@ class _BasePlatform(ABC):
                     stats_telemetry = {**telemetry_payload, **stats_op.telemetry_fields()}
                     try:
                         stats_query = self._query_builder.build_query(stats_op)
-                        stats_result = self._execute_with_sql(stats_query, stats_op, stats_telemetry)
+                        stats_result = self._execute_with_sql(
+                            stats_query, stats_op, stats_telemetry
+                        )
                         if not stats_result.success:
                             logger.warning(
                                 "Failed to create statistics",
-                                extra={**stats_telemetry, "error_message": stats_result.error_message or "unknown"},
+                                extra={
+                                    **stats_telemetry,
+                                    "error_message": stats_result.error_message or "unknown",
+                                },
                             )
                         else:
                             logger.info(
@@ -160,8 +164,7 @@ class _BasePlatform(ABC):
                 error_message=str(exc),
                 error_type=type(exc).__name__,
             )
-    
-    
+
     def _build_auto_statistics(self, operation: CreateTable) -> list[CreateStatistics]:
         """Build the auto-statistics operations for a freshly created table.
 
@@ -183,8 +186,10 @@ class _BasePlatform(ABC):
         except ValueError:
             logger.debug(
                 "No statistics columns discovered",
-                extra={"operation.schema": operation.schema_name,
-                       "operation.object": operation.object_name},
+                extra={
+                    "operation.schema": operation.schema_name,
+                    "operation.object": operation.object_name,
+                },
             )
             return []
 
@@ -200,33 +205,33 @@ class _BasePlatform(ABC):
             for column in discovered.columns
         ]
 
-    def execute(self, operation_dict: dict, telemetry: Optional[dict[str, str]] = None) -> OperationResult:
+    def execute(
+        self, operation_dict: dict, telemetry: Optional[dict[str, str]] = None
+    ) -> OperationResult:
         operation = OperationBuilder.create_operation_from_dict(operation_dict)
 
         return self.execute_operation(operation, telemetry=telemetry)
-    
+
     def execute_sql_query(
         self,
         sql: str,
         return_results: bool = True,
         result_format: ResultFormat = ResultFormat.DATAFRAME,
     ) -> OperationResult:
-        
         operation = ExecuteSQL(
             sql=sql,
             returns_results=return_results,
             result_format=result_format if return_results else ResultFormat.DATAFRAME,
-            schema_name="",  
-            object_name="" 
+            schema_name="",
+            object_name="",
         )
-        
+
         return self.execute_operation(operation)
-    
-    
+
     def _get_sql_engine(self) -> BaseSQLEngine:
         """Get SQL engine instance (internal use only).
-        
-        Note: Concrete platform implementations should ensure sql_engine 
+
+        Note: Concrete platform implementations should ensure sql_engine
         is always provided by the builder as a required dependency.
         """
         if self._sql_engine is None:
@@ -234,11 +239,10 @@ class _BasePlatform(ABC):
                 "SQL engine not configured. Use platform builder to create platform with dependencies."
             )
         return self._sql_engine
-    
-    
+
     def _get_query_builder(self) -> BaseQueryBuilder:
         """Get query builder instance (internal use only).
-        
+
         Note: Concrete platform implementations should ensure query_builder
         is always provided by the builder as a required dependency.
         """
@@ -247,14 +251,13 @@ class _BasePlatform(ABC):
                 "Query builder not configured. Use platform builder to create platform with dependencies."
             )
         return self._query_builder
-    
-    
+
     def _select_engine_for_operation(self, operation: BaseOperation) -> EngineType:
         """Select the appropriate engine for an operation.
-        
+
         Args:
             operation: The operation to execute
-            
+
         Returns:
             Selected engine type
         """
@@ -265,29 +268,26 @@ class _BasePlatform(ABC):
                 logger.warning(
                     f"Requested engine {operation.engine_hint} not available, using AUTO"
                 )
-        
+
         if operation.operation_type in [
             QueryType.CREATE_STATISTICS,
             QueryType.CREATE_SCHEMA,
             QueryType.CREATE_OR_ALTER_VIEW,
         ]:
             return EngineType.SQL
-        
-        
+
         if isinstance(operation, (Insert, Update, Delete)):
             pass
-        
+
         if EngineType.SQL in self.supported_engines():
             return EngineType.SQL
-        
+
         engines = [e for e in self.supported_engines() if e != EngineType.AUTO]
         if engines:
             return engines[0]
-        
-        raise ValueError(f"No engines available for platform {self.name()}")
-    
 
-    
+        raise ValueError(f"No engines available for platform {self.name()}")
+
     def _execute_with_sql(
         self,
         query: str,
@@ -354,15 +354,15 @@ class _BasePlatform(ABC):
                 error_type=type(exc).__name__,
                 query_executed=query,
             )
-    
+
     def test_connection(self) -> dict[str, bool]:
         """Test connections for all available engines.
-        
+
         Returns:
             Dictionary of engine type to connection status
         """
         results = {}
-        
+
         if EngineType.SQL in self.supported_engines():
             try:
                 sql_engine = self._get_sql_engine()

@@ -25,7 +25,7 @@ from medalflow.operations.copy import Copy, ExecuteSQL
 # DDL operations
 from medalflow.operations.ddl import CreateSchema, CreateTable, DropSchema, DropTable
 
-# DML operations  
+# DML operations
 from medalflow.operations.dml import Delete, Insert, Merge, Select, Update
 
 # Statistics operations
@@ -39,7 +39,7 @@ __all__ = [
     "BaseOperation",
     # DDL
     "CreateTable",
-    "DropTable", 
+    "DropTable",
     "CreateSchema",
     "DropSchema",
     # DML
@@ -59,5 +59,5 @@ __all__ = [
     # Context
     "QueryContext",
     # Builder
-    "OperationBuilder"
+    "OperationBuilder",
 ]

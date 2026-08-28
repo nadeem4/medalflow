@@ -25,7 +25,7 @@ from medalflow.constants.datalake import (
     LakeType,
 )
 
-# Medallion constants  
+# Medallion constants
 from medalflow.constants.medallion import CalendarType, ExecutionMode, Layer, SnapshotFrequency
 
 # SQL/Query constants
@@ -41,7 +41,7 @@ from .core import LayerType
 __all__ = [
     # Compute
     "ComputeType",
-    "ComputeEnvironment", 
+    "ComputeEnvironment",
     "EngineType",
     # Medallion
     "QueryType",
@@ -54,5 +54,5 @@ __all__ = [
     "DataLakeAuthMethod",
     # Validation
     "ValidationLevel",
-    "LayerType"
+    "LayerType",
 ]

@@ -13,5 +13,5 @@ __all__ = [
     "resolve_request_context",
     "merge_telemetry",
     "sanitize_extras",
-    "operation_instrumentation"
+    "operation_instrumentation",
 ]

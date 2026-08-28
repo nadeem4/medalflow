@@ -16,7 +16,6 @@ from .mixins import NestedSecretsMixin, SecretProviderMixin
 __all__ = [
     # Descriptors
     "SecretField",
-    
     # Mixins
     "SecretProviderMixin",
     "NestedSecretsMixin",

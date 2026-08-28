@@ -90,5 +90,3 @@ __all__ = [
     # Public API - only expose the settings accessor
     "get_settings",
 ]
-
-

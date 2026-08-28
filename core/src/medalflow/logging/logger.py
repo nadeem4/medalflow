@@ -36,7 +36,6 @@ def _build_reserved_keys() -> set[str]:
 _RESERVED_LOG_RECORD_KEYS = _build_reserved_keys()
 
 
-
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
@@ -45,7 +44,7 @@ class CustomJsonFormatter(logging.Formatter):
     """JSON formatter that enriches log entries with context and trace data."""
 
     def format(self, record: logging.LogRecord) -> str:
-        log_record: dict[str, Any] = { }
+        log_record: dict[str, Any] = {}
 
         if hasattr(record, "resource"):
             log_record.update(dict(record.resource.attributes))
@@ -54,7 +53,9 @@ class CustomJsonFormatter(logging.Formatter):
             if key not in _RESERVED_LOG_RECORD_KEYS and key not in log_record:
                 log_record[key] = value
 
-        log_record["timestamp"] = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
+        log_record["timestamp"] = datetime.fromtimestamp(
+            record.created, tz=timezone.utc
+        ).isoformat()
         log_record["level"] = record.levelname
         log_record["logger"] = record.name
         log_record["message"] = record.getMessage()
@@ -67,7 +68,6 @@ class CustomJsonFormatter(logging.Formatter):
 
         if record.exc_info:
             log_record["exception"] = self.formatException(record.exc_info)
-
 
         return json.dumps(log_record, default=str)
 

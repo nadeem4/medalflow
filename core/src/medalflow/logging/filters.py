@@ -20,6 +20,7 @@ _service_version: Optional[str] = __version__
 _environment: Optional[str] = None
 _static_fields: dict[str, Any] = {}
 
+
 class ContextFilter(logging.Filter):
     """Logging filter that adds context variables to log records.
 
@@ -51,7 +52,6 @@ class ContextFilter(logging.Filter):
         for key, value in _static_fields.items():
             if not hasattr(record, key):
                 setattr(record, key, value)
-
 
         return True
 

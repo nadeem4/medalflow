@@ -44,14 +44,12 @@ from .registry import (
 
 __all__ = [
     # Base class
-    'FeatureManager',
-    
+    "FeatureManager",
     # Main functions
-    'get_feature_manager',
-    'get_available_features',
-    'register_feature',
-    
+    "get_feature_manager",
+    "get_available_features",
+    "register_feature",
     # Protocols (for type annotations)
-    'CacheProtocol',
-    'StatsProtocol',
+    "CacheProtocol",
+    "StatsProtocol",
 ]

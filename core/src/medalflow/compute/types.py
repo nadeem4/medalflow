@@ -17,11 +17,11 @@ from medalflow.types.base import CTEBaseModel
 
 class OperationResult(CTEBaseModel):
     """Result of an operation execution.
-    
+
     Provides comprehensive information about the operation outcome,
     including success status, timing, and any error details.
     This is compute-specific as it contains execution metadata.
-    
+
     Attributes:
         success: Whether the operation completed successfully
         operation_type: Type of operation that was executed
@@ -36,26 +36,25 @@ class OperationResult(CTEBaseModel):
         query_executed: Actual SQL query that was run
         statistics: Additional metrics (platform-specific)
     """
+
     success: bool
     operation_type: QueryType
     schema_name: str = Field(..., min_length=1, max_length=128)
     object_name: str = Field(..., min_length=1, max_length=128)
     duration_seconds: float = Field(..., ge=0.0)
-    
+
     # Optional details
     rows_affected: Optional[int] = Field(default=None, ge=0)
     data: Optional[Union[pd.DataFrame, list[dict[str, Any]], Any]] = Field(
-        default=None,
-        description="Query result data - DataFrame, list of dicts, or scalar value"
+        default=None, description="Query result data - DataFrame, list of dicts, or scalar value"
     )
     error_message: Optional[str] = Field(default=None)
     error_type: Optional[str] = Field(default=None)
     engine_used: Optional[EngineType] = Field(default=None)
     query_executed: Optional[str] = Field(default=None)
     statistics: dict[str, Any] = Field(default_factory=dict)
-    
+
     @property
     def full_object_name(self) -> str:
         """Get fully qualified object name."""
         return f"{self.schema_name}.{self.object_name}"
-

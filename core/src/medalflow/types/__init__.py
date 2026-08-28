@@ -22,17 +22,17 @@ from .metadata import (
 
 __all__ = [
     # Base model
-    'CTEBaseModel',
+    "CTEBaseModel",
     # Layer metadata
-    'BronzeMetadata',
-    'SilverMetadata',
-    'GoldMetadata',
-    'SnapshotMetadata',
-    'TransformationMetadata',
-    'ClassMetadata',
+    "BronzeMetadata",
+    "SilverMetadata",
+    "GoldMetadata",
+    "SnapshotMetadata",
+    "TransformationMetadata",
+    "ClassMetadata",
     # Query metadata
-    'QueryMetadata',
-    'DiscoveredMethod',
-    'SQLDependencies',
-    'QueryAnalysis',
+    "QueryMetadata",
+    "DiscoveredMethod",
+    "SQLDependencies",
+    "QueryAnalysis",
 ]

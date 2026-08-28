@@ -1,5 +1,3 @@
-
-
 import asyncio
 import functools
 import time
@@ -8,8 +6,8 @@ from typing import Any, Callable, Optional, TypeVar
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
-F = TypeVar('F', bound=Callable[..., Any])
-T = TypeVar('T')
+F = TypeVar("F", bound=Callable[..., Any])
+T = TypeVar("T")
 
 logger = None
 
@@ -19,6 +17,7 @@ def _get_logger():
     global logger
     if logger is None:
         from medalflow.logging import get_logger
+
         logger = get_logger(__name__)
     return logger
 
@@ -141,7 +140,7 @@ def retry_with_backoff(
     retry_condition: Optional[Callable[[Exception], bool]] = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for retrying operations with exponential backoff.
-    
+
     This decorator automatically retries failed operations with an exponentially
     increasing delay between attempts. It works with both synchronous and
     asynchronous functions. The delay between retries follows the formula:
@@ -152,7 +151,7 @@ def retry_with_backoff(
         initial_delay: Initial delay in seconds between retries. Default is 1.0.
         max_delay: Maximum delay in seconds (caps exponential growth). Default is 60.0.
         exponential_base: Base for exponential backoff calculation. Default is 2.0.
-        retry_on: Tuple of exception types to retry on. If None, retries on all 
+        retry_on: Tuple of exception types to retry on. If None, retries on all
             exceptions. Use this to limit retries to specific error types like
             (ConnectionError, TimeoutError).
         retry_condition: Optional function that takes an exception and returns True
@@ -171,7 +170,7 @@ def retry_with_backoff(
         >>> def unreliable_operation():
         ...     # May fail occasionally
         ...     return fetch_data()
-        
+
         Retry only on specific exceptions:
         >>> @retry_with_backoff(
         ...     max_retries=5,
@@ -179,11 +178,11 @@ def retry_with_backoff(
         ... )
         >>> async def fetch_data():
         ...     return await api_call()
-        
+
         Custom retry condition based on exception content:
         >>> def should_retry(exc: Exception) -> bool:
         ...     return "temporary" in str(exc).lower()
-        ... 
+        ...
         >>> @retry_with_backoff(
         ...     retry_condition=should_retry,
         ...     initial_delay=2.0,
@@ -191,18 +190,19 @@ def retry_with_backoff(
         ... )
         >>> def database_operation():
         ...     return db.execute_query()
-        
+
         Combining with other decorators:
         >>> @retry_with_backoff(max_retries=3)
         >>> async def complex_operation():
         ...     return await process_data()
-    
+
     Notes:
         - The decorator automatically detects if the decorated function is async
         - Retry attempts are logged at WARNING level
         - Final failure is logged at ERROR level
         - Total attempts = max_retries + 1 (initial attempt + retries)
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs) -> T:
@@ -214,11 +214,9 @@ def retry_with_backoff(
                     return await func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e
-                    
-                    should_retry = _should_retry_exception(
-                        e, retry_on, retry_condition
-                    )
-                    
+
+                    should_retry = _should_retry_exception(e, retry_on, retry_condition)
+
                     if should_retry and attempt < max_retries:
                         _get_logger().warning(
                             f"Attempt {attempt + 1} failed for {func.__name__}: {e}. "
@@ -236,7 +234,7 @@ def retry_with_backoff(
             # This should never be reached, but just in case
             if last_exception:
                 raise last_exception
-            
+
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs) -> T:
             delay = initial_delay
@@ -247,11 +245,9 @@ def retry_with_backoff(
                     return func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e
-                    
-                    should_retry = _should_retry_exception(
-                        e, retry_on, retry_condition
-                    )
-                    
+
+                    should_retry = _should_retry_exception(e, retry_on, retry_condition)
+
                     if should_retry and attempt < max_retries:
                         _get_logger().warning(
                             f"Attempt {attempt + 1} failed for {func.__name__}: {e}. "
@@ -275,5 +271,5 @@ def retry_with_backoff(
             return async_wrapper
         else:
             return sync_wrapper
-            
+
     return decorator

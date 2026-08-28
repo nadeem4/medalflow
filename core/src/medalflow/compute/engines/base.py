@@ -23,12 +23,12 @@ logger = get_logger(__name__)
 
 class BaseSQLEngine:
     """SQLAlchemy-based SQL execution engine for all platforms.
-    
+
     This concrete implementation provides full SQL engine functionality using
     SQLAlchemy, which supports Synapse and many
     other platforms. Platform-specific engines inherit from this class and only
     need to provide customization through hooks.
-    
+
     Features:
         - Automatic connection pooling with SQLAlchemy
         - Optimized fetch methods (scalar, all, dataframe)
@@ -36,12 +36,12 @@ class BaseSQLEngine:
         - Comprehensive error handling and logging
         - ODBC-based connections for maximum compatibility
         - Platform customization through hooks
-    
+
     Platform Customization:
         Subclasses can override these hooks:
         - _apply_connection_settings(): Apply platform-specific SET commands
         - get_connection_info(): Return platform-specific connection details
-    
+
     Supported Platforms:
         Any SQLAlchemy-compatible database including:
         - Azure Synapse
@@ -51,20 +51,24 @@ class BaseSQLEngine:
         - MySQL
         - SQL Server
         - And many more...
-    
+
     Example:
         >>> # For Synapse
         >>> engine = SynapseSQLEngine(settings, ComputeEnvironment.ETL)
         >>> df = engine.fetch_dataframe("SELECT * FROM table")
-        >>> 
+        >>>
         >>> # For new platform (e.g., Snowflake)
         >>> class SnowflakeSQLEngine(BaseSQLEngine):
         ...     pass  # Just works with ODBC!
     """
-    
-    def __init__(self, settings: 'BaseComputeSettings', environment: ComputeEnvironment = ComputeEnvironment.ETL):
+
+    def __init__(
+        self,
+        settings: "BaseComputeSettings",
+        environment: ComputeEnvironment = ComputeEnvironment.ETL,
+    ):
         """Initialize SQL engine.
-        
+
         Args:
             settings: Platform settings inheriting from BaseComputeSettings
             environment: Compute environment (ETL or CONSUMPTION)
@@ -74,26 +78,26 @@ class BaseSQLEngine:
         self._engine: Optional[Engine] = None
         self._connection_info: dict[str, Any] = {
             "platform": self.__class__.__name__.replace("SQLEngine", "").lower(),
-            "environment": environment.value
+            "environment": environment.value,
         }
-    
+
     @property
     def engine(self) -> Engine:
         """Get or create SQLAlchemy engine with lazy initialization.
-        
+
         Returns:
             Engine: Configured SQLAlchemy engine
         """
         if self._engine is None:
             self._engine = self._create_engine()
         return self._engine
-    
+
     def _create_engine(self) -> Engine:
         """Create SQLAlchemy engine with connection pooling.
-        
+
         Returns:
             Engine: Configured SQLAlchemy engine
-            
+
         Raises:
             ValueError: If no ODBC connection string is configured
             ConnectionError: If engine creation fails
@@ -101,16 +105,18 @@ class BaseSQLEngine:
         try:
             # Disable pyodbc pooling as SQLAlchemy handles it
             pyodbc.pooling = False
-            
+
             # Get ODBC connection string from settings
             odbc_str = self.settings.get_odbc_string(self.environment)
             if not odbc_str:
-                raise ValueError(f"No ODBC connection string configured for {self.environment.value}")
-            
+                raise ValueError(
+                    f"No ODBC connection string configured for {self.environment.value}"
+                )
+
             # URL encode the connection string
             params = parse.quote_plus(odbc_str)
             url = f"mssql+pyodbc:///?odbc_connect={params}"
-            
+
             # Create engine with connection pool
             engine = create_engine(
                 url,
@@ -121,25 +127,23 @@ class BaseSQLEngine:
                 pool_timeout=self.settings.sql_pool_timeout,
                 connect_args={
                     "autocommit": True,  # Most platforms work better with autocommit
-                }
+                },
             )
-            
+
             platform = self._connection_info.get("platform", "SQL")
             logger.info(f"Created {platform} engine for {self.environment.value} environment")
             return engine
-            
+
         except Exception as e:
             platform = self._connection_info.get("platform", "SQL")
             raise connection_error(
-                f"Failed to connect to {platform}",
-                service=platform,
-                cause=e
+                f"Failed to connect to {platform}", service=platform, cause=e
             ) from e
-    
+
     @contextmanager
     def _get_connection(self):
         """Get a database connection from the pool.
-        
+
         Yields:
             Connection: Database connection with platform-specific settings applied
         """
@@ -150,17 +154,17 @@ class BaseSQLEngine:
             yield conn
         finally:
             conn.close()
-    
+
     def _apply_connection_settings(self, conn: Connection) -> None:
         """Apply platform-specific connection settings.
-        
+
         Override this method in subclasses to apply platform-specific
         SET commands or other connection configuration.
-        
+
         Args:
             conn: SQLAlchemy Connection object
         """
-        pass 
+        pass
 
     def _span_attributes(
         self,
@@ -235,7 +239,7 @@ class BaseSQLEngine:
                 exc_info=True,
             )
             raise query_execution_error(query, exc) from exc
-    
+
     @traced(
         span_name="medalflow.compute.sql.fetch_dataframe",
         attribute_getter=lambda self, query, telemetry=None: self._span_attributes(
@@ -245,7 +249,9 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def fetch_dataframe(self, query: str, telemetry: Optional[dict[str, str]] = None) -> pd.DataFrame:
+    def fetch_dataframe(
+        self, query: str, telemetry: Optional[dict[str, str]] = None
+    ) -> pd.DataFrame:
         """Execute query and return results as pandas DataFrame."""
         start_time = time.time()
         payload: dict[str, str] = dict(telemetry or {})
@@ -271,7 +277,7 @@ class BaseSQLEngine:
                 exc_info=True,
             )
             raise query_execution_error(query, exc) from exc
-    
+
     @traced(
         span_name="medalflow.compute.sql.fetch_scalar",
         attribute_getter=lambda self, query, telemetry=None: self._span_attributes(
@@ -283,16 +289,16 @@ class BaseSQLEngine:
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
     def fetch_scalar(self, query: str, telemetry: Optional[dict[str, str]] = None) -> Any:
         """Execute query and return single scalar value.
-        
+
         Used for queries that return a single value (COUNT, MAX, etc).
-        
+
         Args:
             query: SQL query that returns single value
             telemetry: Optional context for logging/telemetry
-            
+
         Returns:
             Single value from query result
-            
+
         Raises:
             QueryExecutionError: If query execution fails
             ValueError: If query returns more than one value
@@ -300,21 +306,25 @@ class BaseSQLEngine:
         start_time = time.time()
         payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))
-        
+
         try:
             with self._get_connection() as conn:
                 result = conn.execute(text(query))
-                
+
                 # Use scalar_one_or_none for efficient single value retrieval
                 value = result.scalar_one_or_none()
-                
+
             duration = time.time() - start_time
             logger.info(
                 "Scalar fetched",
-                extra={**payload, "duration.seconds": f"{duration:.6f}", "value_is_null": str(value is None)},
+                extra={
+                    **payload,
+                    "duration.seconds": f"{duration:.6f}",
+                    "value_is_null": str(value is None),
+                },
             )
             return value
-            
+
         except Exception as exc:
             duration = time.time() - start_time
             logger.error(
@@ -323,7 +333,7 @@ class BaseSQLEngine:
                 exc_info=True,
             )
             raise query_execution_error(query, exc) from exc
-    
+
     @traced(
         span_name="medalflow.compute.sql.fetch_all",
         attribute_getter=lambda self, query, telemetry=None: self._span_attributes(
@@ -333,17 +343,19 @@ class BaseSQLEngine:
         ),
     )
     @retry(max_retries=3, initial_delay=1, exponential_base=2)
-    def fetch_all(self, query: str, telemetry: Optional[dict[str, str]] = None) -> list[dict[str, Any]]:
+    def fetch_all(
+        self, query: str, telemetry: Optional[dict[str, str]] = None
+    ) -> list[dict[str, Any]]:
         """Execute query and fetch all results as list of dictionaries."""
         start_time = time.time()
         payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))
-        
+
         try:
             with self._get_connection() as conn:
                 result = conn.execute(text(query))
                 rows = result.mappings().all()
-                
+
             duration = time.time() - start_time
             payload["row_count"] = str(len(rows))
             logger.info(
@@ -351,7 +363,7 @@ class BaseSQLEngine:
                 extra={**payload, "duration.seconds": f"{duration:.6f}"},
             )
             return rows
-            
+
         except Exception as exc:
             duration = time.time() - start_time
             logger.error(
@@ -360,10 +372,10 @@ class BaseSQLEngine:
                 exc_info=True,
             )
             raise query_execution_error(query, exc) from exc
-    
+
     def test_connection(self) -> bool:
         """Test if connection to the engine is working.
-        
+
         Returns:
             True if connection is successful, False otherwise
         """
@@ -379,15 +391,15 @@ class BaseSQLEngine:
                 exc_info=True,
             )
             return False
-    
+
     def get_connection_info(self) -> dict[str, Any]:
         """Get connection information for debugging/logging.
-        
+
         Returns:
             Dictionary with connection details (server, database, etc.)
         """
         return self._connection_info.copy()
-    
+
     @traced(
         span_name="medalflow.compute.sql.execute_batch",
         attribute_getter=lambda self, queries, telemetry=None: self._span_attributes(
@@ -403,7 +415,7 @@ class BaseSQLEngine:
         start_time = time.time()
         payload: dict[str, str] = dict(telemetry or {})
         payload.setdefault("db.platform", str(self._connection_info.get("platform", "sql")))
-        
+
         try:
             with self._get_connection() as conn:
                 total = len(queries)
@@ -413,7 +425,7 @@ class BaseSQLEngine:
                         "batch.index": str(index),
                         "batch.total": str(total),
                     }
-                    
+
                     try:
                         conn.execute(text(query))
                     except Exception as exc:
@@ -423,15 +435,19 @@ class BaseSQLEngine:
                             exc_info=True,
                         )
                         raise query_execution_error(query, exc) from exc
-                
+
                 conn.commit()
-                
+
             duration = time.time() - start_time
             logger.info(
                 "Batch execution completed",
-                extra={**payload, "duration.seconds": f"{duration:.6f}", "query_count": str(len(queries))},
+                extra={
+                    **payload,
+                    "duration.seconds": f"{duration:.6f}",
+                    "query_count": str(len(queries)),
+                },
             )
-            
+
         except CTEError:
             raise
         except Exception as exc:
@@ -441,7 +457,7 @@ class BaseSQLEngine:
                 exc_info=True,
             )
             raise query_execution_error("Batch execution failed", exc) from exc
-    
+
     def __del__(self):
         """Clean up engine on deletion."""
         if self._engine:

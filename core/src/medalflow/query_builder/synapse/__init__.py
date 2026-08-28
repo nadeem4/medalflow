@@ -33,6 +33,4 @@ Example:
 
 from medalflow.query_builder.synapse.serverless_builder import SynapseServerlessQueryBuilder
 
-__all__ = [
-    "SynapseServerlessQueryBuilder"
-]
+__all__ = ["SynapseServerlessQueryBuilder"]

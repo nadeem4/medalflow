@@ -16,7 +16,7 @@ from .bronze.decorators import bronze_metadata
 from .bronze.sequencer import BronzeSequencer
 from .gold.decorators import gold_metadata, view_metadata
 
-# Import Gold layer components  
+# Import Gold layer components
 from .gold.sequencer import GoldSequencer
 from .orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from .silver.decorators import silver_metadata
@@ -30,7 +30,7 @@ from .snapshot.sequencer import SnapshotSequencer
 from .types import ExecutionPlan
 
 __all__ = [
-    "SilverTransformationSequencer", 
+    "SilverTransformationSequencer",
     "GoldSequencer",
     "SnapshotSequencer",
     "BronzeSequencer",
@@ -48,5 +48,4 @@ __all__ = [
     "EngineType",
     "ExecutionPlanOrchestrator",
     "ExecutionPlan",
-   
 ]

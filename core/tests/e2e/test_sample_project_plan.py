@@ -168,15 +168,14 @@ def test_dependencies_are_extracted_from_the_model_sql(analyzer):
 def plan(orchestrator, analyzer):
     operations = _operations_from_sample_project()
     dependencies = {
-        operation: analyzer.extract_dependencies(operation.select_query)
-        for operation in operations
+        operation: analyzer.extract_dependencies(operation.select_query) for operation in operations
     }
     # A CREATE TABLE writes the table it is named for; the analyzer only sees
     # the SELECT body, which is what a real query builder would also emit.
     for operation in operations:
-        dependencies[operation].writes_to = (
-            f"{operation.schema_name}.{operation.object_name}".lower()
-        )
+        dependencies[
+            operation
+        ].writes_to = f"{operation.schema_name}.{operation.object_name}".lower()
 
     class _Analyzer:
         def analyze_operations(self, _operations):
@@ -192,9 +191,7 @@ def test_plan_has_one_stage_per_dependency_level(plan):
     assert plan.total_queries == 4
     assert len(plan.stages) == 4
 
-    staged = [
-        [operation.object_name for operation in stage.operations] for stage in plan.stages
-    ]
+    staged = [[operation.object_name for operation in stage.operations] for stage in plan.stages]
     assert staged == [["Customers"], ["DimCustomer"], ["FactOrders"], ["vw_Revenue"]]
 
 

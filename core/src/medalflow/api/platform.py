@@ -9,8 +9,6 @@ from medalflow.settings import get_settings
 _metrics_collector: Optional[MetricsCollector] = None
 
 
-
-
 def _get_metrics() -> MetricsCollector:
     global _metrics_collector
     if _metrics_collector is None:
@@ -62,4 +60,3 @@ def test_connection(compute_env: ComputeEnvironment = ComputeEnvironment.ETL) ->
     """Test connectivity to the configured compute platform."""
     platform = create_platform(compute_env)
     return platform.test_connection()
-

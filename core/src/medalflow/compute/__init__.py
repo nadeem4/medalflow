@@ -111,8 +111,6 @@ from medalflow.operations import (
 from medalflow.operations.columns import ColumnDefinition
 
 __all__ = [
-
-    
     # Operations (public)
     "BaseOperation",
     "CreateTable",
@@ -127,22 +125,15 @@ __all__ = [
     "CreateStatistics",
     "CreateSchema",
     "ExecuteSQL",
-    
     # Operation metadata (public)
     "ColumnDefinition",
     "QueryContext",
-    
     # Results (public)
     "OperationResult",
-    
     # Constants (public)
     "ComputeEnvironment",
     "EngineType",
     "ResultFormat",
-    
-    
-
-
     # Factory
     "create_platform",
     "SynapsePlatform",

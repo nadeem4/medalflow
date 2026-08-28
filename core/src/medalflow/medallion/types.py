@@ -17,10 +17,10 @@ from medalflow.types.metadata import ClassMetadata
 
 class TableInfo(BaseModel):
     """Information about a database table.
-    
+
     This model represents metadata for a single table in the database,
     including its name, schema, and fully qualified identifier.
-    
+
     Attributes:
         table_name: The name of the table without schema qualification.
             Example: "customer_orders", "product_catalog".
@@ -29,60 +29,51 @@ class TableInfo(BaseModel):
         full_table_name: The fully qualified table name combining schema and table.
             Format: "schema.table_name". Example: "dbo.customer_orders".
     """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
-    table_name: str = Field(
-        ...,
-        description="Name of the table without schema qualification"
-    )
-    schema_name: str = Field(
-        ...,
-        description="Database schema containing the table"
-    )
-    full_table_name: str = Field(
-        ...,
-        description="Fully qualified table name (schema.table_name)"
-    )
-    
+
+    table_name: str = Field(..., description="Name of the table without schema qualification")
+    schema_name: str = Field(..., description="Database schema containing the table")
+    full_table_name: str = Field(..., description="Fully qualified table name (schema.table_name)")
+
     def __str__(self) -> str:
         """String representation of the table info."""
         return self.full_table_name
-    
+
     def __repr__(self) -> str:
         """Developer-friendly representation of the table info."""
         return f"TableInfo(table='{self.table_name}', schema='{self.schema_name}')"
 
 
-
-
 class LineageInfo(CTEBaseModel):
     """Basic lineage information for ETL pipelines.
-    
+
     This type provides a simple structure for tracking lineage information
     in ETL pipelines.
-    
+
     Attributes:
         lineage_data: Dictionary containing lineage information
     """
-    lineage_data: dict[str, Any] = Field(default_factory=dict)
 
+    lineage_data: dict[str, Any] = Field(default_factory=dict)
 
 
 class ExecutionStage(CTEBaseModel):
     """A stage in DAG execution containing parallel operations.
-    
+
     In DAG-based execution, operations are organized into stages where all
     operations within a stage can be executed in parallel. Stages must be
     executed sequentially in order.
-    
+
     Attributes:
         stage: Stage number (1-based) indicating execution order
         operations: List of operations that can run in parallel
     """
+
     stage: int
     operations: list[BaseOperation]
     context: Optional[ExecutionRequestContext] = None
-    
+
     def to_dict(self) -> dict:
         """Override to ensure operations are properly serialized."""
         return {
@@ -98,17 +89,15 @@ class ExecutionStage(CTEBaseModel):
         """Attach context to the stage and contained operations."""
         self.context = ctx
         for _, operation in enumerate(self.operations):
-            operation.attach_context(
-                ctx
-            )
+            operation.attach_context(ctx)
 
 
 class ExecutionPlan(CTEBaseModel):
     """Base class for all execution plans.
-    
+
     Common structure for both traditional and DAG-based execution plans,
     containing metadata, lineage, and query information.
-    
+
     Attributes:
         sequencer_name: Name of the sequencer class that generated this plan
         metadata: Class-level metadata from layer decorators, or the
@@ -116,14 +105,15 @@ class ExecutionPlan(CTEBaseModel):
         lineage: Complete lineage information for the plan, when collected
         total_queries: Total number of queries in the plan
     """
+
     sequencer_name: str
     metadata: Optional[Union[ClassMetadata, dict[str, Any]]] = None
     lineage: Optional[LineageInfo] = None
     total_queries: int
-    stages: list[ExecutionStage]  
+    stages: list[ExecutionStage]
     dependency_graph: dict[str, list[str]]
     context: Optional[ExecutionRequestContext] = None
-    
+
     def to_dict(self) -> dict:
         """Override to ensure stages and nested objects are properly serialized."""
         return {
@@ -134,18 +124,20 @@ class ExecutionPlan(CTEBaseModel):
             "stages": [stage.to_dict() for stage in self.stages],
             "dependency_graph": self.dependency_graph,
             "context": self.context.model_dump() if self.context else None,
-        }  
+        }
 
-    def get_all_operations(self, serialize: bool = False) -> Union[list[list[BaseOperation]], list[list[dict]]]:
+    def get_all_operations(
+        self, serialize: bool = False
+    ) -> Union[list[list[BaseOperation]], list[list[dict]]]:
         """Get all operations grouped by execution stage.
-        
+
         Operations within the same stage (inner list) can be executed in parallel.
         Stages must be executed sequentially in order.
-        
+
         Args:
             serialize: If True, return as List[List[dict]] (serialized for API)
                       If False, return as List[List[BaseOperation]] (for direct execution)
-        
+
         Returns:
             - List[List[BaseOperation]] if serialize=False - operations grouped by stage
             - List[List[dict]] if serialize=True - serialized operations grouped by stage
@@ -173,33 +165,33 @@ class ExecutionPlan(CTEBaseModel):
             stage.attach_context(ctx)
 
 
-
 class DependencyDAG(BaseModel):
     """Directed Acyclic Graph for dependency management.
-    
+
     This class represents a directed acyclic graph of node dependencies,
     providing operations for dependency management, cycle detection, and
     topological sorting for execution planning. It can be used for any
     DAG-based problem including method dependencies, task scheduling,
     build systems, or workflow orchestration.
-    
+
     Attributes:
         adjacency_list: Maps each node to its list of dependencies
     """
+
     adjacency_list: dict[str, list[str]] = Field(default_factory=dict)
-    
+
     def add_node(self, node: str) -> None:
         """Add a node to the DAG without dependencies.
-        
+
         Args:
             node: Name of the node to add
         """
         if node not in self.adjacency_list:
             self.adjacency_list[node] = []
-    
+
     def add_edges(self, from_node: str, to_nodes: list[str]) -> None:
         """Add multiple edges (dependencies) for a node.
-        
+
         Args:
             from_node: The node that has dependencies
             to_nodes: List of nodes that are depended upon
@@ -209,24 +201,24 @@ class DependencyDAG(BaseModel):
         for node in to_nodes:
             if node not in self.adjacency_list[from_node]:
                 self.adjacency_list[from_node].append(node)
-    
+
     def get_dependencies(self, node: str) -> list[str]:
         """Get all direct dependencies for a node.
-        
+
         Args:
             node: The node to get dependencies for
-            
+
         Returns:
             List of nodes that this node depends on
         """
         return self.adjacency_list.get(node, [])
-    
+
     def get_dependents(self, node: str) -> list[str]:
         """Get all nodes that directly depend on this node.
-        
+
         Args:
             node: The node to find dependents for
-            
+
         Returns:
             List of nodes that depend on this node
         """
@@ -235,95 +227,95 @@ class DependencyDAG(BaseModel):
             if node in deps:
                 dependents.append(n)
         return dependents
-    
+
     def has_cycles(self) -> bool:
         """Check if the DAG has cycles using DFS.
-        
+
         Returns:
             True if cycles are detected, False otherwise
         """
         WHITE, GRAY, BLACK = 0, 1, 2
         color = defaultdict(lambda: WHITE)
-        
+
         def has_cycle_from(node: str) -> bool:
             """Check if there's a cycle starting from node."""
             if color[node] == GRAY:
                 return True  # Back edge found (cycle)
             if color[node] == BLACK:
                 return False  # Already processed
-            
+
             color[node] = GRAY
             for neighbor in self.adjacency_list.get(node, []):
                 if has_cycle_from(neighbor):
                     return True
             color[node] = BLACK
             return False
-        
+
         # Check each component for cycles
         for node in self.adjacency_list:
             if color[node] == WHITE:
                 if has_cycle_from(node):
                     return True
-        
+
         return False
-    
+
     def get_execution_stages(self) -> list[list[str]]:
         """Get execution stages where each stage contains nodes that can run in parallel.
-        
+
         Returns:
             List of stages, where each stage is a list of nodes that can execute in parallel
-            
+
         Raises:
             ValueError: If the graph contains cycles
         """
         if self.has_cycles():
             raise ValueError("Cannot create execution stages for a graph with cycles")
-        
+
         stages = []
         in_degree = defaultdict(int)
-        
+
         # Calculate initial in-degrees
         for node in self.adjacency_list:
             in_degree[node] = len(self.adjacency_list[node])
-        
+
         processed = set()
-        
+
         while len(processed) < len(self.adjacency_list):
             # Find all nodes with no remaining dependencies
             current_stage = [
-                node for node in self.adjacency_list
+                node
+                for node in self.adjacency_list
                 if in_degree[node] == 0 and node not in processed
             ]
-            
+
             if not current_stage:
                 # This shouldn't happen if there are no cycles
                 raise ValueError("Could not create execution stages - possible hidden cycle")
-            
+
             stages.append(current_stage)
-            
+
             # Mark these as processed and update in-degrees
             for node in current_stage:
                 processed.add(node)
                 for dependent in self.get_dependents(node):
                     in_degree[dependent] -= 1
-        
+
         return stages
-    
+
     def get_adjacency_list(self) -> dict[str, list[str]]:
         """Get a copy of the adjacency list for external use.
-        
+
         Returns:
             Copy of the adjacency list mapping
         """
         return dict(self.adjacency_list)
-    
 
 
 # Export all medallion types
 __all__ = [
-    'TableInfo',
-    'LineageInfo',
-    'ExecutionStage',
-    'ExecutionPlan',
-    'DependencyDAG',
+    "TableInfo",
+    "LineageInfo",
+    "ExecutionStage",
+    "ExecutionPlan",
+    "DependencyDAG",
 ]

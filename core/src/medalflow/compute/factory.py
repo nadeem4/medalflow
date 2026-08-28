@@ -43,9 +43,7 @@ def create_platform(
     if platform_type == ComputeType.SYNAPSE:
         platform = SynapsePlatform(settings.compute.synapse, environment)
     else:
-        raise ValueError(
-            f"Unsupported compute type: {platform_type}. Supported types: SYNAPSE"
-        )
+        raise ValueError(f"Unsupported compute type: {platform_type}. Supported types: SYNAPSE")
 
     logger.info(
         "Created platform",

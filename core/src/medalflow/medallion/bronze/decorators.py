@@ -13,7 +13,7 @@ def bronze_metadata(
     source_system: str,
     ingestion_mode: str = "incremental",
     description: Optional[str] = None,
-    tags: Optional[list[str]] = None
+    tags: Optional[list[str]] = None,
 ) -> Callable[[type], type]:
     """Decorator for Bronze layer sequencer classes.
 
@@ -38,12 +38,13 @@ def bronze_metadata(
         >>> Customers._bronze_metadata.source_system
         'd365'
     """
+
     def decorator(cls: type) -> type:
         metadata = BronzeMetadata(
             source_system=source_system,
             ingestion_mode=ingestion_mode,
             description=description,
-            tags=tags or []
+            tags=tags or [],
         )
 
         cls._bronze_metadata = metadata

@@ -31,8 +31,6 @@ def create_query_builder() -> SynapseServerlessQueryBuilder:
     active_type = settings.compute.compute_type
 
     if active_type != ComputeType.SYNAPSE:
-        raise ValueError(
-            f"Unsupported compute type: {active_type}. Supported types: SYNAPSE"
-        )
+        raise ValueError(f"Unsupported compute type: {active_type}. Supported types: SYNAPSE")
 
     return SynapseServerlessQueryBuilder(settings)
