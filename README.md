@@ -45,7 +45,7 @@ Be aware of what is and is not proven today:
 | SQL generation for Azure Synapse serverless | **Works, asserted against golden strings** |
 | Executing a plan against a live warehouse | **Not verified.** No test exercises it; treat it as unproven |
 | Microsoft Fabric, Databricks, Snowflake, Spark | **Not supported.** See the roadmap |
-| Configuration | **Four environment variables construct settings**, six for a real deployment. All are prefixed `MEDALFLOW_`; see [`core/.env.example`](core/.env.example) |
+| Configuration | **Four environment variables construct settings**, six for a real deployment. All are prefixed `MEDALFLOW_`; see [`.env.example`](.env.example) |
 
 An earlier version of this README claimed four execution platforms and native OpenTelemetry
 export. Neither was true. This document now describes only what the code does.
@@ -132,17 +132,16 @@ only when it is built test-first against a real dialect.
 Requires Python 3.9+ and [Poetry](https://python-poetry.org/).
 
 ```bash
-cd core
-poetry install --with dev --no-root
+poetry install --with dev
 poetry run pytest
 ```
 
 The suite runs entirely offline — no warehouse, no network, no cloud credentials. CI runs
 lint, the test suite on Python 3.9 and 3.11, and an import smoke test on every pull request.
 
-`core/tests/fixtures/sample_project/` is a miniature MedalFlow project — one bronze table,
+`tests/fixtures/sample_project/` is a miniature MedalFlow project — one bronze table,
 two Silver models (one reading the other) and a Gold model — used by the end-to-end suite in
-`core/tests/e2e/`. It is the clearest worked example of the authoring model until a proper
+`tests/e2e/`. It is the clearest worked example of the authoring model until a proper
 `examples/` project lands.
 
 ## License

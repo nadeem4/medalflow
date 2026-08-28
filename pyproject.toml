@@ -3,12 +3,7 @@ name = "medalflow"
 version = "0.1.0.dev0"
 description = "Declare medallion (Bronze/Silver/Gold) data models as Python classes; MedalFlow extracts dependencies from your SQL and compiles them into a staged execution plan."
 authors = ["nadeem4.nk13@gmail.com"]
-# The one README lives at the repository root, one level up. Pointing at it
-# from here is what makes `pip install .` work from `core/` at all -- without
-# it poetry-core aborts metadata generation on "Readme path does not exist",
-# and the `bare-install` CI job has nothing to install. Phase 6 finishes the
-# packaging metadata.
-readme = "../README.md"
+readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/nadeem4/medalflow.git"
 repository = "https://github.com/nadeem4/medalflow.git"
