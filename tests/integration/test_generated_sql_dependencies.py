@@ -13,16 +13,22 @@ phases:
    (``[silver].[fin_DimCustomer]``) while a model author writes
    ``silver.DimCustomer``, so the two sides could never match (ADR 000).
 
-Nothing here hand-writes ``writes_to`` or stubs the analyzer: operations go
-through the real ``SynapseServerlessQueryBuilder`` and the real
-``analyze_operations``.
+Nothing here hand-writes ``writes_to``: operations go through the real
+``SynapseServerlessQueryBuilder`` and the real ``analyze_operations``. One test
+forces ``extract_dependencies`` to raise, because the point of taking the
+target from the operation is precisely that it survives a parse that fails --
+and a real failure is a sqlglot version away rather than something a fixture
+can conjure.
 """
+
+import logging
 
 import pytest
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
-from medalflow.operations import CreateOrAlterView, CreateTable
+from medalflow.operations import CreateOrAlterView, CreateTable, DropTable
+from sqlglot.errors import ParseError
 
 
 @pytest.fixture
@@ -106,6 +112,45 @@ def test_schemas_that_skip_the_prefix_are_left_alone(analyzer, query_builder):
 
     assert "[gold].[vw_Revenue]" in generated
     assert analyzer.extract_dependencies(generated).writes_to == "gold.vw_revenue"
+
+
+# --- the operation, not the generated SQL, owns the target -----------------
+
+
+def test_the_declared_target_survives_sql_the_parser_cannot_read(analyzer, caplog, monkeypatch):
+    """A parse failure costs the reads. It must never cost the target.
+
+    Re-deriving `writes_to` by parsing SQL the query builder just generated is
+    what made a sqlglot version bump able to erase an operation from the DAG.
+    The operation declares its own target, so the target is taken from there.
+    """
+    operation = _silver_dim_customer()
+
+    def _unreadable(sql):
+        raise ParseError("sqlglot cannot read this statement")
+
+    monkeypatch.setattr(analyzer, "extract_dependencies", _unreadable)
+
+    with caplog.at_level(logging.ERROR):
+        deps = analyzer.analyze_operations([operation])[operation]
+
+    assert deps.writes_to == "silver.dimcustomer"
+    assert deps.reads_from == set()
+    assert [record for record in caplog.records if record.levelno >= logging.ERROR]
+
+
+def test_the_declared_target_is_the_logical_name_not_the_prefixed_one(analyzer):
+    """`silver.DimCustomer`, never `silver.fin_DimCustomer` (ADR 000)."""
+    operation = _silver_dim_customer()
+
+    assert analyzer.analyze_operations([operation])[operation].writes_to == "silver.dimcustomer"
+
+
+def test_an_operation_that_produces_no_object_declares_no_target(analyzer):
+    """A DROP removes an object; naming its target would invent an edge."""
+    operation = DropTable(schema_name="silver", object_name="DimCustomer")
+
+    assert analyzer.analyze_operations([operation])[operation].writes_to is None
 
 
 # --- the whole path: real builder, real analyzer, real DAG -----------------

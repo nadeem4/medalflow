@@ -41,6 +41,10 @@ the DAG.
 - Authoring stays prefix-free. A model's SQL is portable across deployments.
 - The DAG is keyed on logical names, so it is stable across data sources.
 - Stripping must mirror `fully_qualified_name`, not be blind — see below.
+- The convention applies to a target taken from an operation just as it does to
+  one parsed out of SQL: `_declared_target` runs through the same
+  `_qualified_name` helper. See ADR 001, which moved `writes_to` off the parsed
+  side entirely.
 
 ### The `skip_prefix_on_schema` wrinkle
 

@@ -21,8 +21,9 @@ import pytest
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.orchestration.operation_dag_builder import OperationDAGBuilder
 from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
-from medalflow.operations import Select
+from medalflow.operations import CreateSchema, Select
 from medalflow.types.metadata import SQLDependencies
+from sqlglot.errors import ParseError
 
 
 @pytest.fixture
@@ -168,9 +169,48 @@ def test_a_drop_is_neither_a_writer_nor_a_reader(analyzer):
 
 
 def test_a_guarded_create_schema_does_not_read_the_system_catalog(analyzer):
-    deps = analyzer.extract_dependencies(
-        "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'silver')\n"
-        "BEGIN\n    CREATE SCHEMA silver\nEND"
-    )
+    """The builder guards `CREATE SCHEMA` with a `sys.schemas` probe.
+
+    This used to be asserted against the guard as raw SQL. sqlglot 23 -- the
+    version the lock resolves and CI installs -- cannot parse that guard at
+    all, and `extract_dependencies` no longer invents an answer for SQL it
+    could not read a single statement of. So the claim is made where the guard
+    is actually produced: through `analyze_operations` over a real
+    `CreateSchema`, which must report no sources, and no target either,
+    because a schema is not a table anything can read.
+    """
+    operation = CreateSchema(schema_name="silver", object_name="silver")
+
+    deps = analyzer.analyze_operations([operation])[operation]
 
     assert deps.reads_from == set()
+    assert deps.writes_to is None
+
+
+def test_sql_no_statement_of_which_can_be_read_is_not_reported_as_having_no_deps(analyzer):
+    """Silence is not an answer: zero readable statements must raise, not return {}."""
+    with pytest.raises(ParseError):
+        analyzer.extract_dependencies(
+            "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'silver')\n"
+            "BEGIN\n    CREATE SCHEMA silver\nEND"
+        )
+
+
+def test_one_unreadable_statement_does_not_cost_the_others(analyzer):
+    """The recreate guard is unparseable on sqlglot 23; the CETAS after it is not."""
+    deps = analyzer.extract_dependencies(
+        "IF EXISTS (SELECT * FROM sys.external_tables WHERE object_id = OBJECT_ID('x'))\n"
+        "    DROP EXTERNAL TABLE [bronze].[fin_Customers];\n"
+        "CREATE EXTERNAL TABLE [bronze].[fin_Customers] "
+        "WITH (DATA_SOURCE = ds) AS SELECT * FROM dbo.Customers"
+    )
+
+    assert deps.writes_to == "bronze.customers"
+    assert deps.reads_from == {"dbo.customers"}
+
+
+def test_a_semicolon_inside_a_literal_does_not_split_a_statement(analyzer):
+    """Statement splitting is the tokenizer's job, not `str.split(';')`."""
+    deps = analyzer.extract_dependencies("SELECT * FROM bronze.Customers WHERE Note = 'a;b'")
+
+    assert deps.reads_from == {"bronze.customers"}
