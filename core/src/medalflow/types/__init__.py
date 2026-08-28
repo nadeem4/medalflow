@@ -19,10 +19,14 @@ from .metadata import (
     SQLDependencies,
     TransformationMetadata,
 )
+from .sql import RawSQL, SQLFragment
 
 __all__ = [
     # Base model
     "CTEBaseModel",
+    # SQL markers
+    "RawSQL",
+    "SQLFragment",
     # Layer metadata
     "BronzeMetadata",
     "SilverMetadata",

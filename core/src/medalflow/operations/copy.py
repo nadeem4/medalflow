@@ -11,6 +11,7 @@ from pydantic import Field, model_validator
 from medalflow.constants.compute import ResultFormat
 from medalflow.constants.sql import QueryType
 from medalflow.operations.base import BaseOperation
+from medalflow.types import SQLFragment
 
 
 class Copy(BaseOperation):
@@ -38,7 +39,7 @@ class ExecuteSQL(BaseOperation):
     operation_type: Literal[QueryType.EXECUTE_SQL] = Field(
         default=QueryType.EXECUTE_SQL, frozen=True
     )
-    sql: str = Field(..., min_length=1)
+    sql: SQLFragment = Field(...)
     returns_results: bool = Field(
         default=False, description="Whether the SQL query returns results (e.g., SELECT queries)"
     )

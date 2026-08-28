@@ -9,6 +9,7 @@ from pydantic import Field
 
 from medalflow.constants.sql import QueryType
 from medalflow.operations.base import BaseOperation
+from medalflow.types import SQLFragment
 
 
 class CreateOrAlterView(BaseOperation):
@@ -18,7 +19,7 @@ class CreateOrAlterView(BaseOperation):
         default=QueryType.CREATE_OR_ALTER_VIEW, frozen=True
     )
 
-    select_query: str = Field(..., min_length=1)
+    select_query: SQLFragment = Field(...)
     columns: Optional[list[str]] = Field(default=None)  # Column aliases
     with_schemabinding: bool = Field(default=False)
     materialized: bool = Field(default=False)

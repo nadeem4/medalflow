@@ -80,7 +80,7 @@ class SynapseServerlessQueryBuilder(BaseQueryBuilder):
             sql = f"""CREATE EXTERNAL TABLE {full_name}
 WITH (
     DATA_SOURCE = {self.proc_data_source_name},
-    LOCATION = '{location}',
+    LOCATION = {self.quote_string(location)},
     FILE_FORMAT = {file_format}
 )
 AS {operation.select_query}"""
@@ -104,7 +104,7 @@ AS {operation.select_query}"""
 )
 WITH (
     DATA_SOURCE = {self.proc_data_source_name},
-    LOCATION = '{operation.location}',
+    LOCATION = {self.quote_string(operation.location)},
     FILE_FORMAT = {file_format}
 )"""
 
@@ -123,7 +123,7 @@ WITH (
 )
 WITH (
     DATA_SOURCE = {self.proc_data_source_name},
-    LOCATION = '{location}',
+    LOCATION = {self.quote_string(location)},
     FILE_FORMAT = {file_format}
 )"""
 
@@ -133,7 +133,7 @@ WITH (
             )
 
         if operation.recreate:
-            drop_sql = f"IF EXISTS (SELECT * FROM sys.external_tables WHERE object_id = OBJECT_ID('{full_name}'))\n"
+            drop_sql = f"IF EXISTS (SELECT * FROM sys.external_tables WHERE object_id = OBJECT_ID({self.quote_string(full_name)}))\n"
             drop_sql += f"    DROP EXTERNAL TABLE {full_name};\n"
             return drop_sql + sql
 
@@ -144,7 +144,7 @@ WITH (
         full_name = self.fully_qualified_name(operation.schema_name, operation.object_name)
 
         if operation.if_exists:
-            sql = f"IF EXISTS (SELECT * FROM sys.external_tables WHERE object_id = OBJECT_ID('{full_name}'))\n"
+            sql = f"IF EXISTS (SELECT * FROM sys.external_tables WHERE object_id = OBJECT_ID({self.quote_string(full_name)}))\n"
             sql += f"    DROP EXTERNAL TABLE {full_name}"
             return sql
         else:
@@ -263,7 +263,7 @@ WITH (
 
         if operation.if_not_exists:
             # T-SQL doesn't have IF NOT EXISTS for schemas, need to check first
-            return f"""IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '{operation.schema_name}')
+            return f"""IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = {self.quote_string(operation.schema_name)})
 BEGIN
     CREATE SCHEMA {schema_name}{auth_clause}
 END"""
@@ -276,7 +276,7 @@ END"""
 
         if operation.if_exists:
             # T-SQL doesn't have IF EXISTS for DROP SCHEMA, need to check first
-            return f"""IF EXISTS (SELECT * FROM sys.schemas WHERE name = '{operation.schema_name}')
+            return f"""IF EXISTS (SELECT * FROM sys.schemas WHERE name = {self.quote_string(operation.schema_name)})
 BEGIN
     DROP SCHEMA {schema_name}
 END"""
@@ -287,97 +287,54 @@ END"""
         """Build SELECT statement."""
         full_name = self.fully_qualified_name(operation.schema_name, operation.object_name)
 
-        # Build SELECT clause
-        if operation.distinct:
-            select_clause = "SELECT DISTINCT"
-        else:
-            select_clause = "SELECT"
+        # TOP is only usable without an OFFSET, which needs OFFSET...FETCH.
+        top = ""
+        if operation.limit is not None and operation.offset is None:
+            top = f" TOP {operation.limit}"
 
-        # Column list
-        if operation.columns:
-            columns = self.format_column_list(operation.columns)
-        else:
-            columns = "*"
+        select_clause = "SELECT DISTINCT" if operation.distinct else "SELECT"
+        columns = self.format_column_list(operation.columns) if operation.columns else "*"
 
-        # Build FROM clause
-        sql = f"{select_clause} {columns} FROM {full_name}"
+        sql = f"{select_clause}{top} {columns} FROM {full_name}"
 
-        # Add JOIN clause
         if operation.join_clause:
             sql += f" {operation.join_clause}"
 
-        # Add WHERE clause
         if operation.where_clause:
             sql += f" WHERE {operation.where_clause}"
 
-        # Add GROUP BY
         if operation.group_by:
-            group_columns = self.format_column_list(operation.group_by)
-            sql += f" GROUP BY {group_columns}"
+            sql += f" GROUP BY {self.format_column_list(operation.group_by)}"
 
-            # Add HAVING clause (only valid with GROUP BY)
+            # HAVING is only valid with GROUP BY
             if operation.having_clause:
                 sql += f" HAVING {operation.having_clause}"
 
-        # Add ORDER BY
         if operation.order_by:
-            order_columns = ", ".join(operation.order_by)
-            sql += f" ORDER BY {order_columns}"
+            sql += f" ORDER BY {self.format_order_by(operation.order_by)}"
 
-        # Add LIMIT/OFFSET (T-SQL uses OFFSET...FETCH)
-        if operation.limit is not None:
-            if operation.offset is not None:
-                sql += f" OFFSET {operation.offset} ROWS FETCH NEXT {operation.limit} ROWS ONLY"
-            else:
-                # If no offset, use TOP for better performance
-                # Rebuild query with TOP
-                if operation.distinct:
-                    select_clause = f"SELECT DISTINCT TOP {operation.limit}"
-                else:
-                    select_clause = f"SELECT TOP {operation.limit}"
-                sql = f"{select_clause} {columns} FROM {full_name}"
-                if operation.join_clause:
-                    sql += f" {operation.join_clause}"
-                if operation.where_clause:
-                    sql += f" WHERE {operation.where_clause}"
-                if operation.group_by:
-                    group_columns = self.format_column_list(operation.group_by)
-                    sql += f" GROUP BY {group_columns}"
-                    if operation.having_clause:
-                        sql += f" HAVING {operation.having_clause}"
-                if operation.order_by:
-                    order_columns = ", ".join(operation.order_by)
-                    sql += f" ORDER BY {order_columns}"
-        elif operation.offset is not None:
-            # OFFSET without LIMIT requires a large number for FETCH
+        # T-SQL spells LIMIT/OFFSET as OFFSET...FETCH; without an offset the
+        # TOP above already applied the limit.
+        if operation.offset is not None:
             sql += f" OFFSET {operation.offset} ROWS"
+            if operation.limit is not None:
+                sql += f" FETCH NEXT {operation.limit} ROWS ONLY"
 
         return sql
 
     def _build_execute_sql(self, operation: ExecuteSQL) -> str:
-        """Build/validate arbitrary SQL statement."""
-        # Basic validation to prevent obvious injection attempts
-        sql = operation.sql.strip()
+        """Return the caller's SQL, optionally wrapped to apply a row limit.
 
-        # Check for dangerous patterns
-        dangerous_patterns = [
-            r"xp_cmdshell",
-            r"sp_configure",
-            r"sp_addextendedproc",
-            r"sp_execute_external_script",
-        ]
-
-        import re
-
-        sql_upper = sql.upper()
-        for pattern in dangerous_patterns:
-            if re.search(pattern, sql_upper, re.IGNORECASE):
-                raise ValueError(f"Potentially dangerous SQL pattern detected: {pattern}")
+        ``ExecuteSQL.sql`` is raw by design -- that is the point of the
+        operation. It used to be screened against four ``xp_``/``sp_`` names
+        before being returned verbatim anyway, which bought nothing against an
+        infinite grammar and read as protection that was not there.
+        """
+        sql = str(operation.sql).strip()
 
         # For SELECT queries with limit, wrap in subquery
         if operation.returns_results and operation.limit is not None:
-            # Check if it's a SELECT statement
-            if sql_upper.startswith("SELECT"):
+            if sql.upper().startswith("SELECT"):
                 sql = f"SELECT TOP {operation.limit} * FROM ({sql}) AS limited_results"
 
         return sql

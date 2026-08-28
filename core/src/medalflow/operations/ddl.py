@@ -4,13 +4,20 @@ This module contains operation classes for DDL commands like
 CREATE TABLE, DROP TABLE, CREATE SCHEMA, etc.
 """
 
+import re
 from typing import Any, Literal, Optional
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from medalflow.constants.sql import QueryType
 from medalflow.operations.base import BaseOperation
 from medalflow.operations.columns import ColumnDefinition
+from medalflow.types import SQLFragment
+
+#: A `location` is a data lake path, not SQL. Each `/`-separated segment may
+#: hold letters, digits, underscore, dot and hyphen -- which excludes the
+#: quote that would end the LOCATION literal it is emitted into.
+_PATH_SEGMENT = re.compile(r"^[A-Za-z0-9_.\-]*$")
 
 
 class CreateTable(BaseOperation):
@@ -29,7 +36,7 @@ class CreateTable(BaseOperation):
 
     # Table definition options
     columns: Optional[list[ColumnDefinition]] = Field(default=None)
-    select_query: Optional[str] = Field(default=None)
+    select_query: Optional[SQLFragment] = Field(default=None)
     source_table: Optional[str] = Field(default=None)
 
     # External table options
@@ -44,6 +51,23 @@ class CreateTable(BaseOperation):
         default=True,
         description="If True, drop and recreate table if it exists. If False, only create if not exists.",
     )
+
+    @field_validator("location")
+    @classmethod
+    def validate_location_is_a_path(cls, v: Optional[str]) -> Optional[str]:
+        """Reject anything that is not a plain data lake path."""
+        if v is None:
+            return v
+        for segment in v.split("/"):
+            if segment == "..":
+                raise ValueError(f"location may not traverse upwards: {v!r}")
+            if not _PATH_SEGMENT.match(segment):
+                raise ValueError(
+                    f"Invalid location segment {segment!r} in {v!r}. "
+                    "Locations are paths: letters, digits, underscore, dot, "
+                    "hyphen and / only."
+                )
+        return v
 
     @model_validator(mode="after")
     def validate_table_definition(self):

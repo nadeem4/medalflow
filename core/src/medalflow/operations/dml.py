@@ -10,6 +10,7 @@ from pydantic import Field, field_validator, model_validator
 
 from medalflow.constants.sql import QueryType
 from medalflow.operations.base import BaseOperation
+from medalflow.types import SQLFragment
 
 
 class Select(BaseOperation):
@@ -30,12 +31,12 @@ class Select(BaseOperation):
     distinct: bool = Field(default=False)
 
     # Filtering and joins
-    where_clause: Optional[str] = Field(default=None)
-    join_clause: Optional[str] = Field(default=None)
+    where_clause: Optional[SQLFragment] = Field(default=None)
+    join_clause: Optional[SQLFragment] = Field(default=None)
 
     # Grouping and ordering
     group_by: Optional[list[str]] = Field(default=None)
-    having_clause: Optional[str] = Field(default=None)
+    having_clause: Optional[SQLFragment] = Field(default=None)
     order_by: Optional[list[str]] = Field(default=None)
 
     # Limiting results
@@ -55,7 +56,7 @@ class Insert(BaseOperation):
     operation_type: Literal[QueryType.INSERT] = Field(default=QueryType.INSERT, frozen=True)
 
     # Data source (use one)
-    source_query: Optional[str] = Field(default=None)  # INSERT INTO ... SELECT
+    source_query: Optional[SQLFragment] = Field(default=None)  # INSERT INTO ... SELECT
     values: Optional[list[dict[str, Any]]] = Field(default=None)  # Direct values
 
     # Insert options
@@ -75,8 +76,8 @@ class Update(BaseOperation):
 
     operation_type: Literal[QueryType.UPDATE] = Field(default=QueryType.UPDATE, frozen=True)
     set_columns: dict[str, Any] = Field(...)  # Column -> value or expression
-    where_clause: Optional[str] = Field(default=None)
-    from_clause: Optional[str] = Field(default=None)  # For UPDATE with JOIN
+    where_clause: Optional[SQLFragment] = Field(default=None)
+    from_clause: Optional[SQLFragment] = Field(default=None)  # For UPDATE with JOIN
 
     @field_validator("set_columns")
     @classmethod
@@ -91,7 +92,7 @@ class Delete(BaseOperation):
     """Delete data operation."""
 
     operation_type: Literal[QueryType.DELETE] = Field(default=QueryType.DELETE, frozen=True)
-    where_clause: Optional[str] = Field(default=None)  # None = delete all
+    where_clause: Optional[SQLFragment] = Field(default=None)  # None = delete all
 
 
 class Merge(BaseOperation):
@@ -102,12 +103,12 @@ class Merge(BaseOperation):
 
     operation_type: Literal[QueryType.MERGE] = Field(default=QueryType.MERGE, frozen=True)
 
-    source_query: str = Field(..., min_length=1)  # Source data query
-    merge_condition: str = Field(..., min_length=1)  # Join condition
+    source_query: SQLFragment = Field(...)  # Source data query
+    merge_condition: SQLFragment = Field(...)  # Join condition
 
     # Merge actions
     when_matched_update: Optional[dict[str, Any]] = Field(default=None)
-    when_matched_delete: Optional[str] = Field(default=None)  # Condition for delete
+    when_matched_delete: Optional[SQLFragment] = Field(default=None)  # Condition for delete
     when_not_matched_insert: Optional[dict[str, Any]] = Field(default=None)
     when_not_matched_by_source_update: Optional[dict[str, Any]] = Field(default=None)
     when_not_matched_by_source_delete: bool = Field(default=False)
