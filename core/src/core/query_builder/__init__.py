@@ -25,11 +25,11 @@ Available Builders:
     - SynapseSQLQueryBuilder: For Synapse Dedicated SQL pools
 
 Example:
-    >>> from core.query_builder import get_synapse_query_builder
+    >>> from core.query_builder import create_query_builder
     >>> from core.operations import CreateTable
     >>> 
     >>> # Use factory to get configured builder
-    >>> builder = get_synapse_query_builder()
+    >>> builder = create_query_builder()
     >>> 
     >>> # Generate CREATE TABLE SQL
     >>> operation = CreateTable(
@@ -69,16 +69,12 @@ See Also:
 # Re-export key classes for convenience
 from core.query_builder.base import BaseQueryBuilder
 from core.query_builder.factory import (
-    QueryBuilderFactory,
-    get_query_builder,
-    get_synapse_query_builder,
+    create_query_builder,
 )
 from core.query_builder.synapse.serverless_builder import SynapseServerlessQueryBuilder
 
 __all__ = [
     "BaseQueryBuilder",
-    "QueryBuilderFactory",
-    "get_query_builder",
-    "get_synapse_query_builder",
+    "create_query_builder",
     "SynapseServerlessQueryBuilder",
 ]

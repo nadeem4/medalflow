@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from core.compute import get_platform_factory, ComputeEnvironment, OperationResult
+from core.compute import create_platform, ComputeEnvironment, OperationResult
 from core.monitoring.metrics import MetricsCollector
 from core.observability import operation_instrumentation
 from core.observability.context import resolve_request_context
@@ -33,7 +33,7 @@ def execute(
             value is resolved from the serialized operation/context attributes.
         ctx: Optional request context dictionary carrying logging/trace metadata.
     """
-    platform = get_platform_factory().create(compute_environment)
+    platform = create_platform(compute_environment)
     ctx = resolve_request_context(ctx)
     stage = str(operation.get("_cte_stage", "unknown"))
     op_name = str(operation.get("operation_type", "unknown"))
@@ -68,6 +68,6 @@ def execute(
 
 def test_connection(compute_env: ComputeEnvironment = ComputeEnvironment.ETL) -> bool:
     """Test connectivity to the configured compute platform."""
-    platform = get_platform_factory().create(compute_env)
+    platform = create_platform(compute_env)
     return platform.test_connection()
 

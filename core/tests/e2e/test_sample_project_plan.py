@@ -238,9 +238,9 @@ def test_plan_validates(plan):
 
 @pytest.fixture
 def query_builder(offline_settings):
-    from core.query_builder.factory import QueryBuilderFactory
+    from core.query_builder.factory import create_query_builder
 
-    return QueryBuilderFactory.create()
+    return create_query_builder()
 
 
 def test_the_configured_builder_is_synapse_serverless(query_builder):

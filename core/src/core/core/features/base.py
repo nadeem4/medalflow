@@ -6,9 +6,8 @@ to any layer of the application.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, ClassVar, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from core.protocols.features import FeatureManagerProtocol
 
 if TYPE_CHECKING:
     from core.settings.features import FeatureSettings
@@ -16,7 +15,7 @@ if TYPE_CHECKING:
 
 
 
-class FeatureManager(FeatureManagerProtocol, ABC):
+class FeatureManager(ABC):
     """Base class for all feature managers (plugins).
     
     Feature managers are pluggable add-ons that provide
@@ -43,17 +42,6 @@ class FeatureManager(FeatureManagerProtocol, ABC):
         >>>         pass
     """
     
-    _instances: ClassVar[Dict[type, 'FeatureManager']] = {}
-    
-    def __new__(cls):
-        """Singleton pattern - one instance per manager type.
-        
-        This ensures that each feature manager type has only one
-        instance throughout the application lifecycle.
-        """
-        if cls not in cls._instances:
-            cls._instances[cls] = super().__new__(cls)
-        return cls._instances[cls]
     
     @property
     def feature_settings(self) -> 'FeatureSettings':
@@ -112,16 +100,3 @@ class FeatureManager(FeatureManagerProtocol, ABC):
         does nothing.
         """
         pass
-    
-    @classmethod
-    def reset_instance(cls) -> None:
-        """Reset the singleton instance (mainly for testing).
-        
-        This method clears the cached instance, forcing a new instance
-        to be created on next access. Useful for testing scenarios.
-        """
-        if cls in cls._instances:
-            # Call cleanup before removing
-            instance = cls._instances[cls]
-            instance.cleanup()
-            del cls._instances[cls]

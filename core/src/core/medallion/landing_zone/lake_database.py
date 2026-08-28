@@ -1,7 +1,7 @@
 from core.observability.context import sanitize_extras
 from core.logging import get_logger
 from typing import List, Optional, Dict, TYPE_CHECKING
-from core.compute.factory import get_platform_factory
+from core.compute.factory import create_platform
 from core.constants.compute import ComputeEnvironment, ResultFormat
 from core.core.features.registry import get_feature_manager
 from ..types import TableInfo
@@ -42,7 +42,7 @@ class LakeDatabase:
     def _get_platform(self):
         """Lazy load platform."""
         if not self._platform:
-            self._platform = get_platform_factory().create(environment=ComputeEnvironment.ETL)
+            self._platform = create_platform(environment=ComputeEnvironment.ETL)
         return self._platform
     
     def _get_query_to_fetch_tables(self) -> str:

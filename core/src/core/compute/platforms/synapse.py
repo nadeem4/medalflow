@@ -27,7 +27,7 @@ from core.operations import (
 from core.datalake import get_processed_datalake_client
 from core.datalake.client import DatalakeClient
 from core.settings import SynapseSettings, ComputeEnvironment, get_settings
-from core.query_builder import get_synapse_query_builder
+from core.query_builder import create_query_builder
 from core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -80,7 +80,7 @@ class SynapsePlatform(_BasePlatform):
        
         self._sql_engine = SynapseSQLEngine(self.settings, self.environment)
             
-        self._query_builder = get_synapse_query_builder()
+        self._query_builder = create_query_builder()
         self._datalake_client = get_processed_datalake_client()
     
     def execute_operation(

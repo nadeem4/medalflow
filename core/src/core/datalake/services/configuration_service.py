@@ -68,11 +68,7 @@ class DataLakeConfigurationService:
         
         try:
             # Inject into all managers that need CSV loading
-            csv_managers = [
-                'stats',           # StatsManager
-                'powerbi',        # PowerBIManager
-                'client_config'   # ClientConfigManager
-            ]
+            csv_managers = ['stats']
             
             for manager_name in csv_managers:
                 mgr = get_feature_manager(manager_name)
@@ -126,26 +122,6 @@ class DataLakeConfigurationService:
         # Silver grouping has been deprecated - transformations now use
         # ExecutionPlanOrchestrator for dependency-based execution
         
-        # Warm PowerBI config
-        powerbi_mgr = get_feature_manager('powerbi')
-        if powerbi_mgr:
-            try:
-                config = powerbi_mgr.get_refresh_config()
-                results['powerbi_refresh'] = config is not None
-            except Exception as e:
-                self.logger.error(f"Failed to warm PowerBI config: {e}")
-                results['powerbi_refresh'] = False
-        
-        # Warm client configs
-        client_mgr = get_feature_manager('client_config')
-        if client_mgr:
-            try:
-                results['product_attr'] = client_mgr.get_product_attributes() is not None
-                results['tag_attr'] = client_mgr.get_tag_attributes() is not None
-                results['client_uom'] = client_mgr.get_client_uom() is not None
-                results['to_uom'] = client_mgr.get_to_uom() is not None
-            except Exception as e:
-                self.logger.error(f"Failed to warm client configs: {e}")
         
         self.logger.info(f"Cache warming results: {results}")
         return results

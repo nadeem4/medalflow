@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import Field, model_validator
 
 from core.constants.sql import QueryType
-from core.protocols.operations import ColumnDefinition
+from core.operations.columns import ColumnDefinition
 from core.operations.base import BaseOperation
 
 

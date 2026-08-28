@@ -40,9 +40,6 @@ from .registry import (
 from core.protocols.features import (
     CacheProtocol,
     StatsProtocol,
-    SilverGroupingProtocol,
-    PowerBIProtocol,
-    ClientConfigProtocol,
 )
 
 __all__ = [
@@ -57,7 +54,4 @@ __all__ = [
     # Protocols (for type annotations)
     'CacheProtocol',
     'StatsProtocol',
-    'SilverGroupingProtocol',
-    'PowerBIProtocol',
-    'ClientConfigProtocol',
 ]

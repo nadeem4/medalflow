@@ -21,7 +21,7 @@ from core.operations import (
     ExecuteSQL
 )
 
-from core.protocols.operations import ColumnDefinition
+from core.operations.columns import ColumnDefinition
 from core.constants.sql import QueryType
 from core.settings import _Settings
 

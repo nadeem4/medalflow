@@ -23,7 +23,7 @@ from core.types.metadata import SQLDependencies
 class _StubAnalyzer:
     """Returns a precomputed dependency map.
 
-    The real analyzer calls `QueryBuilderFactory.create()`, which needs live
+    The real analyzer calls `create_query_builder()`, which needs live
     warehouse settings. Dependency extraction itself is covered by
     test_dependency_graph.py; this keeps plan assembly offline per D6.
     """

@@ -10,13 +10,12 @@ The core module includes:
 - Decorators: Function and class decorators for common patterns
 """
 
-from .descriptors import SecretField, LazyField
+from .descriptors import SecretField
 from .mixins import SecretProviderMixin, NestedSecretsMixin
 
 __all__ = [
     # Descriptors
     "SecretField",
-    "LazyField",
     
     # Mixins
     "SecretProviderMixin",

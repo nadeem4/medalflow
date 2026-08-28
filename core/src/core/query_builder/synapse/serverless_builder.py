@@ -14,7 +14,7 @@ from core.operations import (
 
 # Import from Layer 1 and Layer 0
 from core.query_builder.base import BaseQueryBuilder
-from core.protocols.operations import ColumnDefinition
+from core.operations.columns import ColumnDefinition
 from core.settings import _Settings
 
 

@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 import logging
 
 from core.operations import BaseOperation, CreateTable, CreateStatistics, Select
-from core.query_builder.factory import QueryBuilderFactory
+from core.query_builder.factory import create_query_builder
 from core.constants.sql import QueryType
 from ..base.sequencer import _BaseSequencer
 from ..landing_zone.lake_database import LakeDatabase
@@ -97,7 +97,7 @@ class BronzeSequencer(_BaseSequencer):
         # Create SELECT operation for source data
         select_op = self._create_select_operation(table)
         
-        query_builder = QueryBuilderFactory.create()
+        query_builder = create_query_builder()
         select_sql = query_builder.build_query(select_op)
         
         # Create CREATE TABLE operation (CTAS)

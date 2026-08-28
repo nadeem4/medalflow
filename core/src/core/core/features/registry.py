@@ -8,7 +8,6 @@ from typing import Dict, Optional, Type, List, Any
 import logging
 
 from .base import FeatureManager
-from core.common.exceptions import CTEError, ErrorCode
 
 
 logger = logging.getLogger(__name__)
@@ -86,24 +85,18 @@ class FeatureRegistry:
             manager_class = self._managers[feature_name]
             
             try:
-                # Create instance (singleton)
                 manager = manager_class()
-                
-                logger.info(f"Initializing feature manager: {feature_name}")
-                manager.initialize()
-                self._instances[feature_name] = manager
-                
-            except CTEError as e:
-                if e.error_code == ErrorCode.FEATURE_DISABLED:
-                    # This is expected when feature is disabled - not an error
+
+                if not manager.is_available():
+                    # Feature is switched off in settings - not an error.
                     logger.debug(f"Feature '{feature_name}' is disabled")
                     self._instances[feature_name] = None
                 else:
-                    # Re-raise other medalflow errors
-                    raise
-                
+                    logger.info(f"Initializing feature manager: {feature_name}")
+                    manager.initialize()
+                    self._instances[feature_name] = manager
+
             except Exception as e:
-                # This is an actual error
                 logger.error(f"Failed to initialize feature manager '{feature_name}': {e}")
                 self._instances[feature_name] = None
         
