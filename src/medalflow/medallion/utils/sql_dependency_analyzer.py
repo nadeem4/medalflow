@@ -265,7 +265,10 @@ class SQLDependencyAnalyzer:
         if not self.table_prefix or not schema:
             return False
 
-        return schema.lower() not in {skipped.lower() for skipped in self.skip_prefix_on_schema}
+        # Compared exactly as `fully_qualified_name` does, mis-cased config and
+        # all: the analyzer has to model what the builder actually emitted, not
+        # what it arguably should have.
+        return schema.lower() not in self.skip_prefix_on_schema
 
     def analyze_operations(
         self, operations: list[BaseOperation]
