@@ -9,8 +9,8 @@ Components:
     - bronze_metadata: Decorator for Bronze layer class configuration
 """
 
-from .sequencer import BronzeSequencer
 from .decorators import bronze_metadata
+from .sequencer import BronzeSequencer
 
 __all__ = [
     "BronzeSequencer",

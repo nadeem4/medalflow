@@ -9,8 +9,8 @@ Components:
     - snapshot_metadata: Decorator for snapshot configuration
 """
 
-from .sequencer import SnapshotSequencer
 from .decorators import snapshot_metadata
+from .sequencer import SnapshotSequencer
 
 __all__ = [
     "SnapshotSequencer",

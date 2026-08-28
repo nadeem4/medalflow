@@ -29,29 +29,27 @@ Example:
     >>>     cache.set('key', 'value')  # IDE knows all methods!
 """
 
-from .base import FeatureManager
-from .registry import (
-    get_feature_manager,
-    get_available_features,
-    register_feature,
-)
-
 # Re-export protocols for convenience
 from medalflow.protocols.features import (
     CacheProtocol,
     StatsProtocol,
 )
 
+from .base import FeatureManager
+from .registry import (
+    get_available_features,
+    get_feature_manager,
+    register_feature,
+)
+
 __all__ = [
     # Base class
-    'FeatureManager',
-    
+    "FeatureManager",
     # Main functions
-    'get_feature_manager',
-    'get_available_features',
-    'register_feature',
-    
+    "get_feature_manager",
+    "get_available_features",
+    "register_feature",
     # Protocols (for type annotations)
-    'CacheProtocol',
-    'StatsProtocol',
+    "CacheProtocol",
+    "StatsProtocol",
 ]

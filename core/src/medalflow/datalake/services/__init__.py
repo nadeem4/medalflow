@@ -10,6 +10,6 @@ from .configuration_service import (
 )
 
 __all__ = [
-    'DataLakeConfigurationService',
-    'get_configuration_service',
+    "DataLakeConfigurationService",
+    "get_configuration_service",
 ]

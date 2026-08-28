@@ -5,7 +5,7 @@ The query_metadata decorator is the primary building block for defining SQL oper
 within sequencer classes, providing execution control and dependency management.
 """
 
-from typing import Callable, List, Optional, Union
+from typing import Callable, Optional, Union
 
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
@@ -19,18 +19,18 @@ def query_metadata(
     query: Optional[str] = None,
     name: Optional[str] = None,
     preferred_engine: Union[str, EngineType] = EngineType.SQL,
-    unique_idx: Optional[List[str]] = None,
+    unique_idx: Optional[list[str]] = None,
     filter: Optional[str] = None,
     create_stats: bool = False,
-    stats_columns: Optional[List[str]] = None
+    stats_columns: Optional[list[str]] = None,
 ) -> Callable[[Callable], Callable]:
     """Decorator for query methods within ETL sequencers.
-    
+
     This decorator attaches execution metadata to methods that generate or define
     SQL queries. The framework uses this metadata to determine execution order,
     parallelization opportunities, and dependency management. Each decorated method
     becomes part of the ETL execution plan.
-    
+
     Args:
         type: Type of SQL operation - can be string or QueryType enum.
             Common values: SELECT, INSERT, UPDATE, DELETE, CREATE, MERGE.
@@ -58,14 +58,14 @@ def query_metadata(
             Default is False.
         stats_columns: Specific columns to create statistics on. If None and create_stats
             is True, statistics will be created on all columns.
-        
+
     Returns:
         Decorated method with QueryMetadata attached. The framework inspects
         this metadata during execution planning.
-        
+
     Raises:
         ValueError: If UPDATE type is used without name parameter.
-        
+
     Example:
         Basic SELECT with staging:
         >>> @query_metadata(
@@ -79,7 +79,7 @@ def query_metadata(
         ...     FROM bronze.customers
         ...     WHERE UpdatedDate > ?
         ...     '''
-        
+
         UPDATE with specific target:
         >>> @query_metadata(
         ...     type=QueryType.UPDATE,
@@ -91,7 +91,7 @@ def query_metadata(
         ...     SET Status = 'Inactive', EndDate = GETDATE()
         ...     WHERE CustomerID NOT IN (SELECT CustomerID FROM CustomerStage)
         ...     '''
-    
+
     Notes:
         - Methods can return SQL strings or None (if query parameter is used)
         - The decorator preserves method signature and docstrings
@@ -99,11 +99,13 @@ def query_metadata(
         - Framework validates dependency graphs for circular references
         - Use descriptive method names as they appear in logs and dependencies
     """
+
     def decorator(func: Callable) -> Callable:
         query_type = QueryType(type) if isinstance(type, str) else type
-        engine_type = EngineType(preferred_engine) if isinstance(preferred_engine, str) else preferred_engine
-        
-        
+        engine_type = (
+            EngineType(preferred_engine) if isinstance(preferred_engine, str) else preferred_engine
+        )
+
         metadata = QueryMetadata(
             type=query_type,
             table_name=table_name,
@@ -112,10 +114,10 @@ def query_metadata(
             unique_idx=unique_idx,
             filter=filter,
             create_stats=create_stats,
-            stats_columns=stats_columns
+            stats_columns=stats_columns,
         )
-        
+
         func._query_metadata = metadata
         return func
-    
+
     return decorator

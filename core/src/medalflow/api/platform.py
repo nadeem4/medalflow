@@ -1,15 +1,12 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
-from medalflow.compute import create_platform, ComputeEnvironment, OperationResult
+from medalflow.compute import ComputeEnvironment, OperationResult, create_platform
 from medalflow.monitoring.metrics import MetricsCollector
 from medalflow.observability import operation_instrumentation
 from medalflow.observability.context import ExecutionRequestContext, resolve_request_context
 from medalflow.settings import get_settings
 
-
 _metrics_collector: Optional[MetricsCollector] = None
-
-
 
 
 def _get_metrics() -> MetricsCollector:
@@ -23,7 +20,7 @@ def execute(
     operation: dict,
     compute_environment: ComputeEnvironment.ETL,
     *,
-    ctx: Optional[Dict[str, Any]] = None,
+    ctx: Optional[dict[str, Any]] = None,
 ) -> OperationResult:
     """Execute a database operation using the configured platform.
 
@@ -38,7 +35,7 @@ def execute(
     stage = str(operation.get("_cte_stage", "unknown"))
     op_name = str(operation.get("operation_type", "unknown"))
 
-    attributes: Dict[str, str] = {}
+    attributes: dict[str, str] = {}
     for key, raw in {
         "schema": operation.get("schema_name"),
         "object": operation.get("object_name"),
@@ -63,4 +60,3 @@ def test_connection(compute_env: ComputeEnvironment = ComputeEnvironment.ETL) ->
     """Test connectivity to the configured compute platform."""
     platform = create_platform(compute_env)
     return platform.test_connection()
-

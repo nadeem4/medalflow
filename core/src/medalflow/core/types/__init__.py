@@ -11,5 +11,5 @@ Types included:
 from .stats import StatsConfiguration
 
 __all__ = [
-    'StatsConfiguration',
+    "StatsConfiguration",
 ]

@@ -24,18 +24,16 @@ Example:
     }
 """
 
-import re
-from typing import Dict, List, Set, Optional, Any, TYPE_CHECKING
-from enum import Enum
+from typing import TYPE_CHECKING, Optional
+
 import sqlglot
 from sqlglot import exp
-from sqlglot.errors import ParseError
 
+from medalflow.constants.sql import QueryType
 from medalflow.logging import get_logger
 from medalflow.observability.context import sanitize_extras
-from medalflow.types.metadata import SQLDependencies
 from medalflow.operations import BaseOperation
-from medalflow.constants.sql import QueryType
+from medalflow.types.metadata import SQLDependencies
 
 if TYPE_CHECKING:
     from medalflow.settings import _Settings
@@ -43,18 +41,17 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-
 class SQLDependencyAnalyzer:
     """Analyzes SQL queries to extract table dependencies using SQLGlot parser.
-    
+
     This analyzer uses SQLGlot's AST (Abstract Syntax Tree) parsing to accurately
     extract table dependencies from SQL queries. It handles complex SQL patterns
     including CTEs, subqueries, joins, and various SQL dialects.
-    
+
     Attributes:
         dialect: SQL dialect to use for parsing (default: tsql for Synapse)
         fallback_on_error: Whether to use regex fallback on parse errors
-    
+
     Example:
         >>> analyzer = SQLDependencyAnalyzer(dialect="tsql")
         >>> sql = '''
@@ -68,29 +65,29 @@ class SQLDependencyAnalyzer:
         >>> print(deps['writes_to'])
         'silver.fact_sales'
     """
-    
+
     def __init__(self, settings: "_Settings"):
         """Initialize the SQL dependency analyzer.
-        
+
         Args:
             dialect: SQL dialect for parsing (tsql, spark, snowflake, etc.)
             fallback_on_error: Use regex fallback if SQLGlot parsing fails
-        """  
-        self.settings = settings      
+        """
+        self.settings = settings
         self.dialect = settings.compute.active_config.dialect
         self.table_prefix = settings.table_prefix
 
     def extract_dependencies(self, sql: str) -> SQLDependencies:
         """Extract source and target tables from SQL query.
-        
+
         Args:
             sql: SQL query string to analyze
-            
+
         Returns:
             SQLDependencies object containing:
                 - reads_from: Set of source table names
                 - writes_to: Target table name (if DML operation)
-                
+
         Example:
             >>> deps = analyzer.extract_dependencies(
             ...     "INSERT INTO t1 SELECT * FROM t2 JOIN t3"
@@ -102,34 +99,31 @@ class SQLDependencyAnalyzer:
         """
         if not sql or not sql.strip():
             raise ValueError("SQL query must be a non-empty string.")
-        
+
         parsed = sqlglot.parse_one(sql, dialect=self.dialect)
-        
+
         # Extract CTEs first (to exclude from source tables)
         ctes = self._extract_ctes_sqlglot(parsed)
-        
+
         # Extract source tables (excluding CTEs)
         reads_from = self._extract_source_tables_sqlglot(parsed, ctes)
-        
+
         # Extract target table directly from SQL
         writes_to = self._extract_target_table_sqlglot(parsed)
-        
-        return SQLDependencies(
-            reads_from=reads_from,
-            writes_to=writes_to
-        )
-    
-    def _extract_source_tables_sqlglot(self, ast: 'exp.Expression', ctes: Set[str]) -> Set[str]:
+
+        return SQLDependencies(reads_from=reads_from, writes_to=writes_to)
+
+    def _extract_source_tables_sqlglot(self, ast: "exp.Expression", ctes: set[str]) -> set[str]:
         """Extract all source tables from SQLGlot AST.
-        
+
         Args:
             ast: SQLGlot expression tree
             ctes: Set of CTE names to exclude
-            
+
         Returns:
             Set of fully qualified, lowercase table names
         """
-        tables: Set[str] = set()
+        tables: set[str] = set()
 
         # Find all table references
         for table in ast.find_all(exp.Table):
@@ -141,64 +135,60 @@ class SQLDependencyAnalyzer:
                 tables.add(full_table_name)
         return tables
 
-    
-    def _extract_target_table_sqlglot(self, ast: 'exp.Expression') -> Optional[str]:
+    def _extract_target_table_sqlglot(self, ast: "exp.Expression") -> Optional[str]:
         """Extract target table for DML operations from SQLGlot AST.
-        
+
         Args:
             ast: SQLGlot expression tree
-            
+
         Returns:
             Fully qualified target table name or None
         """
         if isinstance(ast.this, exp.Table):
             return self._qualified_name(self._table_parts(ast.this))
         return None
-    
-    def _extract_ctes_sqlglot(self, ast: 'exp.Expression') -> Set[str]:
+
+    def _extract_ctes_sqlglot(self, ast: "exp.Expression") -> set[str]:
         """Extract CTE names from SQLGlot AST.
-        
+
         Args:
             ast: SQLGlot expression tree
-            
+
         Returns:
             List of CTE names defined in the query
         """
-        return {cte.alias.lower() for cte in ast.find_all(exp.CTE) if getattr(cte, 'alias', None)}
-        
+        return {cte.alias.lower() for cte in ast.find_all(exp.CTE) if getattr(cte, "alias", None)}
 
-    
-    
-    def _is_cte(self, table_name: str, cte_names: Set[str]) -> bool:
+    def _is_cte(self, table_name: str, cte_names: set[str]) -> bool:
         """Check if table name is a CTE or temporary construct.
-        
+
         Args:
             table_name: Table name to check
             cte_names: Set of CTE names in query
-            
+
         Returns:
             True if table is CTE or temporary
         """
         if not table_name:
             return True
-        
+
         # Check if it's a CTE
-        table_parts = table_name.split('.')
+        table_parts = table_name.split(".")
         if table_parts[-1] in cte_names:
             return True
-        
+
         return False
-    
+
     def _table_parts(self, table: exp.Table) -> dict:
         """Convert a table object to its string representation.
-        
+
         Args:
             table: Table object from SQLGlot AST
-            
+
         Returns:
             String representation of the table name (without alias)
         """
-        return {'database': table.catalog, 'schema': table.db, 'table': table.name}
+        return {"database": table.catalog, "schema": table.db, "table": table.name}
 
     @staticmethod
     def _qualified_name(table_parts: dict) -> str:
@@ -208,20 +198,22 @@ class SQLDependencyAnalyzer:
         ``writes_to``; the DAG builder matches operations on exactly these
         strings, so producers must not diverge from it.
         """
-        return '.'.join(part for part in table_parts.values() if part).lower()
-    
-    def analyze_operations(self, operations: List[BaseOperation]) -> Dict[BaseOperation, SQLDependencies]:
+        return ".".join(part for part in table_parts.values() if part).lower()
+
+    def analyze_operations(
+        self, operations: list[BaseOperation]
+    ) -> dict[BaseOperation, SQLDependencies]:
         """Analyze dependencies for a list of database operations.
-        
+
         This method extracts SQL from operations and analyzes their
         dependencies to understand data flow between operations.
-        
+
         Args:
             operations: List of database operations to analyze
-            
+
         Returns:
             Dictionary mapping operations to their SQL dependencies
-            
+
         Example:
             >>> ops = [CreateTable(...), Insert(...), Update(...)]
             >>> deps = analyzer.analyze_operations(ops)
@@ -229,34 +221,35 @@ class SQLDependencyAnalyzer:
             {'source_table'}
         """
         from medalflow.query_builder.factory import create_query_builder
-        
+
         operation_dependencies = {}
         query_builder = create_query_builder()
-        
+
         for operation in operations:
             try:
                 # Extract SQL from operation using query builder
                 sql = query_builder.build_query(operation)
-                
+
                 # Analyze dependencies directly from SQL
                 deps = self.extract_dependencies(sql)
-                
+
                 # Store dependencies for this operation
                 operation_dependencies[operation] = deps
-                
+
                 logger.debug(
                     "dependency.analyzer.operation_analyzed",
                     extra=sanitize_extras(
                         {
                             "operation_type": str(operation.operation_type),
-                            "schema": getattr(operation, "schema_name", None) or getattr(operation, "schema", None),
+                            "schema": getattr(operation, "schema_name", None)
+                            or getattr(operation, "schema", None),
                             "object": operation.object_name,
                             "sources": list(deps.reads_from),
                             "target": deps.writes_to,
                         }
                     ),
                 )
-                
+
             except Exception as e:
                 logger.warning(
                     "dependency.analyzer.operation_failed",
@@ -272,14 +265,16 @@ class SQLDependencyAnalyzer:
                 # Use fully qualified name as fallback for write operations
                 operation_dependencies[operation] = SQLDependencies(
                     reads_from=set(),
-                    writes_to=f"{operation.schema_name}.{operation.object_name}".lower() if operation.operation_type in [
+                    writes_to=f"{operation.schema_name}.{operation.object_name}".lower()
+                    if operation.operation_type
+                    in [
                         QueryType.CREATE_TABLE,
                         QueryType.INSERT,
                         QueryType.UPDATE,
                         QueryType.MERGE,
-                        QueryType.DELETE
-                    ] else None
+                        QueryType.DELETE,
+                    ]
+                    else None,
                 )
-        
+
         return operation_dependencies
-    

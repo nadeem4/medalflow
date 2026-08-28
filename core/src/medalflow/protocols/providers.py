@@ -5,39 +5,40 @@ throughout the MedalFlow framework. These protocols ensure consistent
 interfaces for different implementations.
 """
 
-from typing import Protocol, Optional, runtime_checkable
+from typing import Optional, Protocol, runtime_checkable
+
 from pydantic import SecretStr
 
 
 @runtime_checkable
 class SecretProvider(Protocol):
     """Protocol defining the interface for secret providers.
-    
+
     All secret providers must implement this interface to ensure
     compatibility with the MedalFlow settings system.
-    
+
     The protocol is marked as runtime_checkable to allow isinstance()
     checks at runtime, which is useful for validation and testing.
     """
-    
+
     def get_secret(self, secret_name: str, default: Optional[str] = None) -> Optional[SecretStr]:
         """Retrieve a secret value.
-        
+
         Args:
             secret_name: Name of the secret to retrieve
             default: Default value if secret not found
-            
+
         Returns:
             SecretStr containing the secret value, or None if not found
-            
+
         Raises:
             ValueError: If the secret cannot be retrieved and no default is provided
         """
         ...
-    
+
     def clear_cache(self) -> None:
         """Clear any cached secrets.
-        
+
         This method should clear any internal caches to force
         fresh retrieval of secrets on the next access.
         """

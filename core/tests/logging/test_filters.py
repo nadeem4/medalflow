@@ -32,8 +32,8 @@ def test_context_filter_respects_static_environment():
     set_logging_context(environment="qa", extra={"region": "us-east"})
     record = _record()
     assert ContextFilter().filter(record)
-    assert getattr(record, "environment") == "qa"
-    assert getattr(record, "region") == "us-east"
+    assert record.environment == "qa"
+    assert record.region == "us-east"
 
 
 def test_context_filter_uses_request_context():

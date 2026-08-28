@@ -4,7 +4,7 @@ This module provides decorators for configuring Bronze layer ETL processes
 with metadata that controls execution behavior and data flow.
 """
 
-from typing import Callable, List, Optional, Type
+from typing import Callable, Optional
 
 from medalflow.types.metadata import BronzeMetadata
 
@@ -13,8 +13,8 @@ def bronze_metadata(
     source_system: str,
     ingestion_mode: str = "incremental",
     description: Optional[str] = None,
-    tags: Optional[List[str]] = None
-) -> Callable[[Type], Type]:
+    tags: Optional[list[str]] = None,
+) -> Callable[[type], type]:
     """Decorator for Bronze layer sequencer classes.
 
     Attaches a :class:`~medalflow.types.metadata.BronzeMetadata` instance to the
@@ -38,12 +38,13 @@ def bronze_metadata(
         >>> Customers._bronze_metadata.source_system
         'd365'
     """
-    def decorator(cls: Type) -> Type:
+
+    def decorator(cls: type) -> type:
         metadata = BronzeMetadata(
             source_system=source_system,
             ingestion_mode=ingestion_mode,
             description=description,
-            tags=tags or []
+            tags=tags or [],
         )
 
         cls._bronze_metadata = metadata

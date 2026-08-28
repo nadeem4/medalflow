@@ -1,12 +1,12 @@
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from medalflow.medallion import (
+    BronzeSequencer,
     ExecutionPlan,
     ExecutionPlanOrchestrator,
-    BronzeSequencer,
     GoldSequencer,
-    SilverMetadataDiscovery,
 )
+from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 from medalflow.observability.context import execution_request_scope, resolve_request_context
 from medalflow.settings import get_settings
 
@@ -16,7 +16,7 @@ def _attach_plan_context(plan: ExecutionPlan, ctx) -> ExecutionPlan:
     return plan
 
 
-def _instantiate_sequencers(transformations) -> List[Any]:
+def _instantiate_sequencers(transformations) -> list[Any]:
     """Turn discovered transformation metadata into sequencer instances.
 
     Discovery yields `TransformationMetadata` dataclasses, but the orchestrator
@@ -28,7 +28,7 @@ def _instantiate_sequencers(transformations) -> List[Any]:
 
 
 def get_bronze_execution_plan(
-    table_names: Optional[List[str]],
+    table_names: Optional[list[str]],
     *,
     ctx: Optional[Any] = None,
 ) -> ExecutionPlan:
@@ -47,7 +47,7 @@ def get_bronze_execution_plan(
 
 
 def get_gold_execution_plan(
-    table_names: Optional[List[str]],
+    table_names: Optional[list[str]],
     *,
     ctx: Optional[Any] = None,
 ) -> ExecutionPlan:

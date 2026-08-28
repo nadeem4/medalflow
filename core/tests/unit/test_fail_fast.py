@@ -17,7 +17,6 @@ import sys
 import textwrap
 
 import pytest
-
 from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 

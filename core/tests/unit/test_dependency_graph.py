@@ -18,7 +18,6 @@ Both are now settled on one shape: flat sets of fully-qualified lowercase
 """
 
 import pytest
-
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.orchestration.operation_dag_builder import OperationDAGBuilder
 from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
@@ -88,9 +87,7 @@ def test_cross_layer_edge_forms_between_bronze_and_silver():
 
     dependencies = {
         bronze: SQLDependencies(reads_from=set(), writes_to="bronze.customers"),
-        silver: SQLDependencies(
-            reads_from={"bronze.customers"}, writes_to="silver.dimcustomer"
-        ),
+        silver: SQLDependencies(reads_from={"bronze.customers"}, writes_to="silver.dimcustomer"),
     }
 
     builder = OperationDAGBuilder([bronze, silver], dependencies, settings=None)
@@ -119,9 +116,7 @@ def test_both_writers_of_a_table_become_dependencies():
     builder = OperationDAGBuilder([create, insert, reader], dependencies, settings=None)
     dag = builder.build_dag()
 
-    assert sorted(dag.get_dependencies(reader._dag_id)) == sorted(
-        [create._dag_id, insert._dag_id]
-    )
+    assert sorted(dag.get_dependencies(reader._dag_id)) == sorted([create._dag_id, insert._dag_id])
 
 
 def test_cycle_detection_still_works():
@@ -142,9 +137,7 @@ def test_cycle_detection_still_works():
 
 def test_operation_reading_its_own_output_is_not_self_dependent():
     op = _select("silver", "Fact")
-    dependencies = {
-        op: SQLDependencies(reads_from={"silver.fact"}, writes_to="silver.fact")
-    }
+    dependencies = {op: SQLDependencies(reads_from={"silver.fact"}, writes_to="silver.fact")}
 
     builder = OperationDAGBuilder([op], dependencies, settings=None)
     dag = builder.build_dag()

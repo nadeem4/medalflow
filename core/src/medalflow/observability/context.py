@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, Optional, Mapping
+from typing import Any, Optional
 
+from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 from pydantic import Field
 
 from medalflow.logging import get_logger
 from medalflow.logging.filters import clear_request_context, set_request_context
-from opentelemetry import trace
 from medalflow.types.base import CTEBaseModel
 
 
@@ -21,11 +22,11 @@ class ExecutionRequestContext(CTEBaseModel):
     request_id: str
     user_id: Optional[str] = None
     correlation_id: Optional[str] = None
-    attributes: Dict[str, Any] = Field(default_factory=dict)
-    telemetry_base: Dict[str, str] = Field(default_factory=dict, exclude=True)
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    telemetry_base: dict[str, str] = Field(default_factory=dict, exclude=True)
 
     @classmethod
-    def generate(cls, **kwargs: Any) -> "ExecutionRequestContext":
+    def generate(cls, **kwargs: Any) -> ExecutionRequestContext:
         """Generate a new context with a unique request id."""
         ctx = cls(request_id=str(uuid.uuid4()), **kwargs)
         ctx.telemetry_base = ctx.to_telemetry_dict()
@@ -39,8 +40,8 @@ class ExecutionRequestContext(CTEBaseModel):
             return str(value)
         return str(value)
 
-    def to_telemetry_dict(self) -> Dict[str, str]:
-        payload: Dict[str, str] = {"request_id": self.request_id}
+    def to_telemetry_dict(self) -> dict[str, str]:
+        payload: dict[str, str] = {"request_id": self.request_id}
         if self.user_id:
             payload["user_id"] = self.user_id
         if self.correlation_id:
@@ -61,10 +62,7 @@ def execution_request_scope(
     """Apply logging + tracing scope for a request/operation."""
     ctx.telemetry_base = ctx.to_telemetry_dict()
 
-    set_request_context(
-        request_id=ctx.request_id,
-        user_id=ctx.user_id
-    )
+    set_request_context(request_id=ctx.request_id, user_id=ctx.user_id)
 
     tracer = trace.get_tracer("medalflow")
     span_name = operation or "medalflow.request"
@@ -104,7 +102,7 @@ def resolve_request_context(ctx: Optional[Any]) -> ExecutionRequestContext:
     if isinstance(ctx, str):
         return ExecutionRequestContext(request_id=ctx)
 
-    data: Dict[str, Any] = {}
+    data: dict[str, Any] = {}
 
     if isinstance(ctx, Mapping):
         data = dict(ctx)
@@ -139,15 +137,15 @@ def resolve_request_context(ctx: Optional[Any]) -> ExecutionRequestContext:
 
 
 def sanitize_extras(
-    extra: Optional[Dict[str, Any]],
+    extra: Optional[dict[str, Any]],
     *,
     prefix: Optional[str] = None,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Sanitize arbitrary telemetry extras into a JSON-safe dict."""
     if not extra:
         return {}
 
-    result: Dict[str, str] = {}
+    result: dict[str, str] = {}
     for key, value in extra.items():
         sanitized = ExecutionRequestContext._stringify(value)
         if sanitized is None:
@@ -160,8 +158,8 @@ def sanitize_extras(
 def merge_telemetry(
     ctx: ExecutionRequestContext,
     *,
-    extra: Optional[Dict[str, Any]] = None,
-) -> Dict[str, str]:
+    extra: Optional[dict[str, Any]] = None,
+) -> dict[str, str]:
     """Merge request context telemetry with additional key/value pairs."""
     if not ctx.telemetry_base:
         ctx.telemetry_base = ctx.to_telemetry_dict()

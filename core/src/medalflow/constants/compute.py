@@ -9,62 +9,62 @@ from enum import Enum
 
 class ComputeType(str, Enum):
     """Type of compute platform.
-    
+
     Defines the available compute platform types that can be used
     for data processing and query execution.
-    
+
     Values:
         SYNAPSE: Azure Synapse Analytics
             - Dedicated SQL pools
-            - Serverless SQL pools  
+            - Serverless SQL pools
             - Apache Spark pools
             - External table support
-            
+
             - Lakehouse SQL endpoint
             - SQL Data Warehouse
             - Spark compute
             - Direct lake access
     """
-    
+
     SYNAPSE = "synapse"
 
 
 class ComputeEnvironment(str, Enum):
     """Compute environment configuration.
-    
+
     Defines the operational context for compute operations, allowing
     platforms to optimize resource allocation and configuration based
     on workload characteristics.
-    
+
     Values:
         ETL: Extract-Transform-Load workload environment.
             - Optimized for: Batch processing, high throughput
             - Characteristics: Large resource pools, longer timeouts
             - Use for: Data pipelines, scheduled jobs, bulk operations
-        
+
         CONSUMPTION: Interactive/analytical workload environment.
             - Optimized for: Query performance, low latency
             - Characteristics: Smaller pools, shorter timeouts, caching
             - Use for: Dashboards, ad-hoc queries, reporting
-    
+
     Example:
         >>> # For batch processing
         >>> platform = factory.create_platform(environment=ComputeEnvironment.ETL)
-        >>> 
+        >>>
         >>> # For interactive queries
         >>> platform = factory.create_platform(environment=ComputeEnvironment.CONSUMPTION)
     """
-    
+
     ETL = "etl"
     CONSUMPTION = "consumption"
 
 
 class EngineType(str, Enum):
     """Available engine types for query execution.
-    
+
     Defines the compute engines available for processing queries and
     transformations. Each platform may support different subsets of engines.
-    
+
     Values:
         SQL: Traditional SQL engine for set-based operations.
             - Best for: Simple queries, small-medium datasets
@@ -76,40 +76,42 @@ class EngineType(str, Enum):
             - Platform analyzes query characteristics to choose
             - Considers: data volume, complexity, transformations
             - Falls back to platform defaults if unsure
-    
+
     Example:
         >>> # Force SQL engine
         >>> context = QueryContext(preferred_engine=EngineType.SQL)
-        >>> 
+        >>>
         >>> # Let platform decide
         >>> context = QueryContext(preferred_engine=EngineType.AUTO)
     """
-    
+
     SQL = "sql"
     SPARK = "spark"
     AUTO = "auto"
+
+
 class ResultFormat(str, Enum):
     """Format for query result data when using ExecuteSQL operation.
-    
+
     Defines how query results should be returned when executing SELECT
     queries or other operations that return data.
-    
+
     Values:
         DATAFRAME: Return results as pandas DataFrame (default).
             - Best for: Data analysis, transformations, visualizations
             - Memory: Loads all data into memory
             - Use when: Working with tabular data in Python
-            
+
         DICT_LIST: Return results as list of dictionaries.
             - Best for: JSON serialization, row-by-row processing
             - Memory: Loads all data into memory as Python objects
             - Use when: Need direct Python dict access
-            
+
         SCALAR: Return single value result.
             - Best for: COUNT, MAX, MIN, single-value queries
             - Memory: Minimal (single value)
             - Use when: Query returns exactly one value
-    
+
     Example:
         >>> # Get results as DataFrame (default)
         >>> op = ExecuteSQL(
@@ -117,14 +119,14 @@ class ResultFormat(str, Enum):
         ...     returns_results=True,
         ...     result_format=ResultFormat.DATAFRAME
         ... )
-        >>> 
+        >>>
         >>> # Get results as list of dicts
         >>> op = ExecuteSQL(
         ...     sql="SELECT id, name FROM users",
         ...     returns_results=True,
         ...     result_format=ResultFormat.DICT_LIST
         ... )
-        >>> 
+        >>>
         >>> # Get single value
         >>> op = ExecuteSQL(
         ...     sql="SELECT COUNT(*) FROM orders",
@@ -132,7 +134,7 @@ class ResultFormat(str, Enum):
         ...     result_format=ResultFormat.SCALAR
         ... )
     """
-    
+
     DATAFRAME = "dataframe"
     DICT_LIST = "dict_list"
     SCALAR = "scalar"

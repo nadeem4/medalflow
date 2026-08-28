@@ -11,9 +11,10 @@ Components:
     - SilverMetadata: Model backing the ``@silver_metadata`` configuration
 """
 
-from .sequencer import SilverTransformationSequencer
-from .decorators import silver_metadata
 from medalflow.types.metadata import SilverMetadata
+
+from .decorators import silver_metadata
+from .sequencer import SilverTransformationSequencer
 
 __all__ = [
     "SilverTransformationSequencer",

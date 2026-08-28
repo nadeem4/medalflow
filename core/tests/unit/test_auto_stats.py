@@ -20,10 +20,9 @@ query-builder collaborators are stubs, so nothing touches a warehouse.
 """
 
 import pytest
-
+from medalflow.compute.platforms.base import _BasePlatform
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
-from medalflow.compute.platforms.base import _BasePlatform
 from medalflow.operations import CreateStatistics, CreateTable
 from medalflow.settings.base import CTEBaseSettings
 from medalflow.types.metadata import QueryMetadata
@@ -139,8 +138,7 @@ def test_discovered_stats_columns_fan_out_to_one_operation_each(platform, stats_
     assert result.success is True, result.error_message
 
     stats_ops = [
-        op for op in platform._query_builder.operations
-        if isinstance(op, CreateStatistics)
+        op for op in platform._query_builder.operations if isinstance(op, CreateStatistics)
     ]
     assert len(stats_ops) == 2
     assert all(len(op.columns) == 1 for op in stats_ops)

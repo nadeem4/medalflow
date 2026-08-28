@@ -16,7 +16,6 @@ Four defects, all of which made operation building fail at runtime:
 import logging
 
 import pytest
-
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.medallion.bronze.sequencer import BronzeSequencer
@@ -26,7 +25,6 @@ from medalflow.operations import Select
 from medalflow.operations.builder import OperationBuilder
 from medalflow.settings.base import CTEBaseSettings
 from medalflow.types.metadata import DiscoveredMethod, QueryMetadata
-
 
 # --- 1. schema= vs schema_name= -------------------------------------------
 

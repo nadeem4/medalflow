@@ -6,7 +6,7 @@ has not configured a MeterProvider, these instruments are no-ops and nothing
 is exported (Decision D5).
 """
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry import metrics as otel_metrics
 

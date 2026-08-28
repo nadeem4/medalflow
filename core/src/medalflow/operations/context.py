@@ -13,15 +13,13 @@ from medalflow.constants.compute import EngineType
 
 class QueryContext(BaseModel):
     """Context for query execution and engine selection.
-    
+
     Provides hints and metadata to help platforms make intelligent
     decisions about how to execute operations.
     """
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        use_enum_values=False
-    )
-    
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=False)
+
     preferred_engine: EngineType = Field(default=EngineType.AUTO)
     query_complexity: int = Field(default=1, ge=1, le=10)  # 1-10 scale
     estimated_rows: int = Field(default=0, ge=0)

@@ -8,31 +8,31 @@ from .base import CTEBaseModel
 from .metadata import (
     # Layer metadata
     BronzeMetadata,
-    SilverMetadata,
-    GoldMetadata,
-    SnapshotMetadata,
-    TransformationMetadata,
     ClassMetadata,
+    DiscoveredMethod,
+    GoldMetadata,
+    QueryAnalysis,
     # Query metadata
     QueryMetadata,
-    DiscoveredMethod,
+    SilverMetadata,
+    SnapshotMetadata,
     SQLDependencies,
-    QueryAnalysis,
+    TransformationMetadata,
 )
 
 __all__ = [
     # Base model
-    'CTEBaseModel',
+    "CTEBaseModel",
     # Layer metadata
-    'BronzeMetadata',
-    'SilverMetadata',
-    'GoldMetadata',
-    'SnapshotMetadata',
-    'TransformationMetadata',
-    'ClassMetadata',
+    "BronzeMetadata",
+    "SilverMetadata",
+    "GoldMetadata",
+    "SnapshotMetadata",
+    "TransformationMetadata",
+    "ClassMetadata",
     # Query metadata
-    'QueryMetadata',
-    'DiscoveredMethod',
-    'SQLDependencies',
-    'QueryAnalysis',
+    "QueryMetadata",
+    "DiscoveredMethod",
+    "SQLDependencies",
+    "QueryAnalysis",
 ]

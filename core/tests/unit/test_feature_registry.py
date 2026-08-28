@@ -10,7 +10,6 @@ construction (`medallion/base/sequencer.py:324`).
 """
 
 import pytest
-
 from medalflow.core.features import registry as registry_module
 
 

@@ -1,6 +1,7 @@
 """Factory for creating datalake clients."""
 from medalflow.constants.datalake import LakeType
 from medalflow.logging import get_logger
+
 from .client import DatalakeClient
 
 logger = get_logger(__name__)
@@ -8,7 +9,7 @@ logger = get_logger(__name__)
 
 def get_processed_datalake_client() -> DatalakeClient:
     """Get a client for the Processed lake.
-    
+
     Returns:
         DatalakeClient configured for Processed lake
     """
@@ -18,7 +19,7 @@ def get_processed_datalake_client() -> DatalakeClient:
 
 def get_internal_datalake_client() -> DatalakeClient:
     """Get a client for the Internal lake.
-    
+
     Returns:
         DatalakeClient configured for Internal lake
     """

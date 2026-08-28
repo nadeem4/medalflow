@@ -27,10 +27,9 @@ from medalflow.common.exceptions import (
     ErrorCode,
     # Helper functions
     connection_error,
-    query_execution_error,
     feature_not_enabled_error,
+    query_execution_error,
 )
-
 from medalflow.utils.decorators import retry_with_backoff
 
 __all__ = [

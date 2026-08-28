@@ -10,8 +10,8 @@ Components:
     - view_metadata: Alias for gold_metadata (backward compatibility)
 """
 
-from .sequencer import GoldSequencer
 from .decorators import gold_metadata, view_metadata
+from .sequencer import GoldSequencer
 
 __all__ = [
     "GoldSequencer",

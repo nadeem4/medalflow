@@ -4,7 +4,7 @@ This module provides decorators specific to the Gold layer of the medallion
 architecture, which focuses on business-ready analytical datasets and views.
 """
 
-from typing import Callable, List, Optional, Type
+from typing import Callable, Optional
 
 from medalflow.types.metadata import GoldMetadata
 
@@ -13,15 +13,15 @@ def gold_metadata(
     schema_name: str,
     layer: str = "gold",
     description: Optional[str] = None,
-    tags: Optional[List[str]] = None
-) -> Callable[[Type], Type]:
+    tags: Optional[list[str]] = None,
+) -> Callable[[type], type]:
     """Decorator for Gold layer sequencer classes.
-    
+
     This decorator configures classes that create and manage Gold layer views.
     Gold layer views provide business-ready data for analytics, reporting, and
     data science. The decorator enables automatic view generation, dependency
     tracking, and refresh orchestration.
-    
+
     Args:
         schema_name: Target schema for creating analytical views. This should
             be a dedicated schema for Gold layer objects to maintain clear
@@ -33,10 +33,10 @@ def gold_metadata(
             and content. This appears in data catalogs and documentation.
         tags: List of tags for categorizing and discovering views. Use consistent
             tagging strategies like ["domain:sales", "refresh:daily", "priority:high"].
-        
+
     Returns:
         Decorated class with GoldMetadata attached as _gold_metadata attribute.
-        
+
     Example:
         Basic Gold layer configuration:
         >>> @gold_metadata(
@@ -46,7 +46,7 @@ def gold_metadata(
         ... class BusinessMetricsViews(GoldSequencer):
         ...     def create_views(self):
         ...         return [self.revenue_view(), self.customer_view()]
-        
+
         Domain-specific Gold layer:
         >>> @gold_metadata(
         ...     schema_name="gold_sales",
@@ -57,7 +57,7 @@ def gold_metadata(
         ...     @query_metadata(type=QueryType.CREATE_VIEW, table_name="v_sales_summary")
         ...     def sales_summary_view(self):
         ...         return "CREATE VIEW v_sales_summary AS ..."
-        
+
         ML-ready feature views:
         >>> @gold_metadata(
         ...     schema_name="gold_ml",
@@ -67,7 +67,7 @@ def gold_metadata(
         ... )
         ... class MLFeatureViews(GoldSequencer):
         ...     pass
-    
+
     Notes:
         - The decorated class should inherit from GoldSequencer
         - Views created in Gold layer should be optimized for query performance
@@ -75,17 +75,15 @@ def gold_metadata(
         - Use consistent naming conventions for views (e.g., v_ prefix)
         - Document business logic and calculations within view definitions
     """
-    def decorator(cls: Type) -> Type:
+
+    def decorator(cls: type) -> type:
         metadata = GoldMetadata(
-            schema_name=schema_name,
-            layer=layer,
-            description=description,
-            tags=tags or []
+            schema_name=schema_name, layer=layer, description=description, tags=tags or []
         )
-        
+
         cls._gold_metadata = metadata
         return cls
-    
+
     return decorator
 
 

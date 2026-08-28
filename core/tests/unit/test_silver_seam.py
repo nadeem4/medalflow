@@ -9,10 +9,8 @@ caught it. Discovery results must be instantiated via `metadata.sequencer_class`
 """
 
 import logging
-from typing import List
 
 import pytest
-
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.silver.metadata_discovery import (
     SilverMetadataDiscovery,
@@ -20,7 +18,6 @@ from medalflow.medallion.silver.metadata_discovery import (
 )
 from medalflow.medallion.silver.sequencer import SilverTransformationSequencer
 from medalflow.types.metadata import QueryMetadata
-
 
 # --- api seam: sequencer_class must be instantiated ------------------------
 
@@ -179,9 +176,7 @@ def test_detail_table_transformation_logs_without_crashing(caplog):
 
     sql, metadata = sequencer._transform_query_result(
         "SELECT 1",
-        QueryMetadata(
-            type=QueryType.CREATE_TABLE, table_name="OrderDetail", schema_name="temp"
-        ),
+        QueryMetadata(type=QueryType.CREATE_TABLE, table_name="OrderDetail", schema_name="temp"),
     )
 
     assert metadata.schema_name == "silver"
@@ -198,7 +193,7 @@ def test_get_transformation_by_sp_is_annotated_as_a_list():
 
     hints = get_type_hints(SilverMetadataDiscovery.get_transformation_by_sp)
 
-    assert hints["return"] == List[TransformationMetadata]
+    assert hints["return"] == list[TransformationMetadata]
 
 
 def test_warm_cache_is_gone():

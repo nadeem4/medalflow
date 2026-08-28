@@ -11,7 +11,6 @@ Before that, stage creation read `operation.schema` and the plan builder
 import logging
 
 import pytest
-
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from medalflow.medallion.types import ExecutionPlan
@@ -63,9 +62,7 @@ def two_dependent_operations():
     silver = _select("silver", "DimCustomer")
     dependencies = {
         bronze: SQLDependencies(reads_from=set(), writes_to="bronze.customers"),
-        silver: SQLDependencies(
-            reads_from={"bronze.customers"}, writes_to="silver.dimcustomer"
-        ),
+        silver: SQLDependencies(reads_from={"bronze.customers"}, writes_to="silver.dimcustomer"),
     }
     return bronze, silver, dependencies
 
@@ -91,21 +88,15 @@ def test_orchestrator_builds_plan_from_two_dependent_operations(
     assert plan.dependency_graph[silver._dag_id] == [bronze._dag_id]
 
 
-def test_plan_lineage_and_metadata_default_to_none(
-    orchestrator_factory, two_dependent_operations
-):
+def test_plan_lineage_and_metadata_default_to_none(orchestrator_factory, two_dependent_operations):
     bronze, silver, dependencies = two_dependent_operations
 
-    plan = orchestrator_factory(dependencies).create_execution_plan(
-        operations=[bronze, silver]
-    )
+    plan = orchestrator_factory(dependencies).create_execution_plan(operations=[bronze, silver])
 
     assert plan.lineage is None
 
 
-def test_plan_accepts_orchestrator_metadata_dict(
-    orchestrator_factory, two_dependent_operations
-):
+def test_plan_accepts_orchestrator_metadata_dict(orchestrator_factory, two_dependent_operations):
     """The orchestrator passes a plain dict, not a layer-metadata model."""
     bronze, silver, dependencies = two_dependent_operations
 
@@ -117,23 +108,17 @@ def test_plan_accepts_orchestrator_metadata_dict(
     assert plan.metadata["sequencers"] == ["DimCustomerModel"]
 
 
-def test_building_a_plan_does_not_mutate_operations(
-    orchestrator_factory, two_dependent_operations
-):
+def test_building_a_plan_does_not_mutate_operations(orchestrator_factory, two_dependent_operations):
     """`setattr(operation, 'dependencies', ...)` raised on a pydantic model."""
     bronze, silver, dependencies = two_dependent_operations
 
-    orchestrator_factory(dependencies).create_execution_plan(
-        operations=[bronze, silver]
-    )
+    orchestrator_factory(dependencies).create_execution_plan(operations=[bronze, silver])
 
     assert not hasattr(bronze, "layer")
     assert not hasattr(bronze, "dependencies")
 
 
-def test_validate_plan_counts_operations_not_stages(
-    orchestrator_factory, two_dependent_operations
-):
+def test_validate_plan_counts_operations_not_stages(orchestrator_factory, two_dependent_operations):
     """`get_all_operations()` returns a list per stage, so len() was the stage count."""
     bronze, silver, dependencies = two_dependent_operations
     orchestrator = orchestrator_factory(dependencies)
@@ -143,9 +128,7 @@ def test_validate_plan_counts_operations_not_stages(
     assert orchestrator.plan_builder.validate_plan(plan) is True
 
 
-def test_validate_plan_rejects_a_wrong_query_count(
-    orchestrator_factory, two_dependent_operations
-):
+def test_validate_plan_rejects_a_wrong_query_count(orchestrator_factory, two_dependent_operations):
     bronze, silver, dependencies = two_dependent_operations
     orchestrator = orchestrator_factory(dependencies)
     plan = orchestrator.create_execution_plan(operations=[bronze, silver])

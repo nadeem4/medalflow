@@ -7,9 +7,8 @@ the pair, and each exception recorded twice (once by each span).
 """
 
 import pytest
-from opentelemetry import trace
-
 from medalflow.observability.context import ExecutionRequestContext, execution_request_scope
+from opentelemetry import trace
 
 
 class _RecordingSpan:
@@ -105,9 +104,7 @@ def test_instrumented_operation_opens_one_span_not_two(opened_spans):
     ctx = ExecutionRequestContext(request_id="req-1")
     metrics = _FakeMetrics()
 
-    with operation_instrumentation(
-        ctx=ctx, metrics=metrics, stage_name="1", operation_name="load"
-    ):
+    with operation_instrumentation(ctx=ctx, metrics=metrics, stage_name="1", operation_name="load"):
         pass
 
     assert [s.name for s in opened_spans] == ["medalflow.operation.load"]

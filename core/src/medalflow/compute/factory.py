@@ -5,10 +5,10 @@ Builds the compute platform named by ``settings.compute.compute_type``.
 
 from typing import TYPE_CHECKING
 
-from medalflow.constants import ComputeType
-from medalflow.constants.compute import ComputeEnvironment
 from medalflow.compute.platforms.base import _BasePlatform
 from medalflow.compute.platforms.synapse import SynapsePlatform
+from medalflow.constants import ComputeType
+from medalflow.constants.compute import ComputeEnvironment
 from medalflow.logging import get_logger
 
 if TYPE_CHECKING:
@@ -43,9 +43,7 @@ def create_platform(
     if platform_type == ComputeType.SYNAPSE:
         platform = SynapsePlatform(settings.compute.synapse, environment)
     else:
-        raise ValueError(
-            f"Unsupported compute type: {platform_type}. Supported types: SYNAPSE"
-        )
+        raise ValueError(f"Unsupported compute type: {platform_type}. Supported types: SYNAPSE")
 
     logger.info(
         "Created platform",

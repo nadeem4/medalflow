@@ -6,7 +6,7 @@ action should be performed, independent of how it's executed.
 """
 
 import re
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from pydantic import Field, field_validator
 
@@ -19,31 +19,36 @@ from medalflow.types.base import CTEBaseModel
 
 class BaseOperation(CTEBaseModel):
     """Base class for all database operations.
-    
+
     This is the fundamental abstraction that allows platform-agnostic
     database operations. Each specific operation type extends this base.
-    
+
     Operations are pure data structures that describe WHAT to do,
     not HOW to do it. They are transformed into SQL by query builders
     and executed by compute engines.
-    
+
     Attributes:
         operation_type: The type of operation to perform
         schema_name: Database schema name
         object_name: Name of the database object (table/view/etc)
         engine_hint: Optional hint for engine selection (SQL/SPARK/AUTO)
     """
+
     operation_type: QueryType
     schema_name: str = Field(..., min_length=1, max_length=128)
     object_name: str = Field(..., min_length=1, max_length=128)
     engine_hint: Optional[EngineType] = Field(default=None)
-    logging_context: Optional[dict] = Field(default_factory=dict, description="Optional operation name for logging/tracking")
-    metadata: Optional[QueryMetadata] = Field(default=None, description="Optional metadata for the operation")
+    logging_context: Optional[dict] = Field(
+        default_factory=dict, description="Optional operation name for logging/tracking"
+    )
+    metadata: Optional[QueryMetadata] = Field(
+        default=None, description="Optional metadata for the operation"
+    )
     context: Optional[ExecutionRequestContext] = Field(
         default=None,
         description="Observability context for this operation",
     )
-    
+
     def __hash__(self) -> int:
         """Hash operations by identity.
 
@@ -57,31 +62,32 @@ class BaseOperation(CTEBaseModel):
         """
         return id(self)
 
-    @field_validator('schema_name', 'object_name')
+    @field_validator("schema_name", "object_name")
     @classmethod
     def validate_sql_identifier(cls, v: str, info) -> str:
         """Validate SQL identifiers to prevent injection."""
         if not v:
             raise ValueError(f"{info.field_name} cannot be empty")
-        
+
         # Allow alphanumeric, underscore, and limited special chars
         # This pattern prevents SQL injection while allowing valid identifiers
-        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_$#@]*$', v):
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_$#@]*$", v):
             raise ValueError(
                 f"Invalid {info.field_name}: '{v}'. "
                 f"Must start with letter or underscore, and contain only alphanumeric, underscore, $, #, or @ characters."
             )
-        
+
         # Check length
         if len(v) > 128:
             raise ValueError(f"{info.field_name} too long: maximum 128 characters")
-            
+
         return v
-    
+
     def get_table_prefix(self) -> str:
         """Get the full table prefix including schema."""
 
         from medalflow.settings import get_settings
+
         settings = get_settings()
         return settings.table_prefix
 
@@ -101,12 +107,12 @@ class BaseOperation(CTEBaseModel):
         if self.logging_context:
             self.context.attributes.update(self.logging_context)
         if self.engine_hint is not None:
-            self.context.attributes['engine_hint'] = self.engine_hint.value
+            self.context.attributes["engine_hint"] = self.engine_hint.value
         self.context.telemetry_base = self.context.to_telemetry_dict()
 
-    def telemetry_fields(self) -> Dict[str, str]:
+    def telemetry_fields(self) -> dict[str, str]:
         """Return flattened telemetry fields describing this operation."""
-        payload: Dict[str, str] = {
+        payload: dict[str, str] = {
             "operation.type": str(self.operation_type),
             "operation.schema": self.schema_name,
             "operation.object": self.object_name,
@@ -121,9 +127,9 @@ class BaseOperation(CTEBaseModel):
                 payload[f"operation.ctx.{key}"] = sanitized
         return payload
 
-    def observability_attributes(self) -> Dict[str, str]:
+    def observability_attributes(self) -> dict[str, str]:
         """Return key attributes useful for logging/metrics."""
-        attrs: Dict[str, str] = {
+        attrs: dict[str, str] = {
             "schema": self.schema_name,
             "object": self.object_name,
             "operation_type": str(self.operation_type),

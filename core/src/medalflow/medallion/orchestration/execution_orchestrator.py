@@ -11,44 +11,45 @@ The orchestrator:
 - Supports operations from multiple sources
 """
 
-from typing import Dict, List, Optional, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 from medalflow.logging import get_logger
-from medalflow.observability.context import sanitize_extras
 from medalflow.medallion.types import ExecutionPlan
-from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
 from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
+from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
+from medalflow.observability.context import sanitize_extras
 from medalflow.operations import BaseOperation
+
 from .operation_dag_builder import OperationDAGBuilder
 
 if TYPE_CHECKING:
-    from medalflow.settings import _Settings
     from medalflow.medallion.base.sequencer import _BaseSequencer
     from medalflow.medallion.bronze.sequencer import BronzeSequencer
     from medalflow.medallion.gold.sequencer import GoldSequencer
     from medalflow.medallion.silver.sequencer import SilverTransformationSequencer
+    from medalflow.settings import _Settings
 
 logger = get_logger(__name__)
 
 
 class ExecutionPlanOrchestrator:
     """Orchestrates execution plan creation from collections of operations.
-    
+
     This class provides a unified interface for creating execution plans
     from any collection of BaseOperation instances. It handles dependency
     analysis, DAG building, and stage creation independently of the
     operations' source.
-    
+
     Attributes:
         settings: Application settings
         sql_analyzer: SQL dependency analyzer
         dag_builder: Operation DAG builder
         plan_builder: Execution plan builder
     """
-    
+
     def __init__(self, settings: "_Settings"):
         """Initialize the execution plan orchestrator.
-        
+
         Args:
             settings: Application settings containing configuration
         """
@@ -56,33 +57,33 @@ class ExecutionPlanOrchestrator:
         self.sql_analyzer = SQLDependencyAnalyzer(settings)
         self.plan_builder = ExecutionPlanBuilder()
         self.logger = logger
-        
+
     def create_execution_plan(
         self,
-        operations: List[BaseOperation],
-        metadata: Optional[Dict[str, Any]] = None,
-        sequencer_name: Optional[str] = None
+        operations: list[BaseOperation],
+        metadata: Optional[dict[str, Any]] = None,
+        sequencer_name: Optional[str] = None,
     ) -> ExecutionPlan:
         """Create an execution plan from a list of operations.
-        
+
         This method analyzes dependencies between operations and creates
         an optimal execution plan with parallel stages where possible.
-        
+
         Args:
             operations: List of database operations to plan
             metadata: Optional metadata about the operations' source
             sequencer_name: Optional name of the source sequencer
-            
+
         Returns:
             ExecutionPlan with optimized execution stages
-            
+
         Raises:
             ValueError: If operations list is empty or invalid
             RuntimeError: If circular dependencies are detected
         """
         if not operations:
             raise ValueError("Cannot create execution plan from empty operations list")
-        
+
         self.logger.info(
             "orchestrator.plan.create",
             extra=sanitize_extras(
@@ -92,47 +93,41 @@ class ExecutionPlanOrchestrator:
                 }
             ),
         )
-        
+
         operation_dependencies = self.sql_analyzer.analyze_operations(operations)
-        
+
         dag_builder = OperationDAGBuilder(
-            operations=operations,
-            dependencies=operation_dependencies,
-            settings=self.settings
+            operations=operations, dependencies=operation_dependencies, settings=self.settings
         )
         dag = dag_builder.build_dag()
         dag_builder.validate_dag(dag)
-        
+
         stages = dag_builder.create_execution_stages()
-        
 
         lineage = None
-        
+
         return self.plan_builder.build_plan(
             stages=stages,
             dag=dag.get_adjacency_list(),
             lineage=lineage,
             class_metadata=metadata or {},
             sequencer_name=sequencer_name or "ExecutionPlanOrchestrator",
-            total_queries=len(operations)
+            total_queries=len(operations),
         )
-    
-    def create_plan_from_sequencers(
-        self, 
-        sequencers: List["_BaseSequencer"]  
-    ) -> ExecutionPlan:
+
+    def create_plan_from_sequencers(self, sequencers: list["_BaseSequencer"]) -> ExecutionPlan:
         """Create a combined execution plan from multiple sequencers.
-        
+
         This method combines operations from multiple sequencers into a
         unified execution plan that respects dependencies across all
         transformations.
-        
+
         Args:
             sequencers: List of sequencer instances to combine
-            
+
         Returns:
             Combined ExecutionPlan for all sequencers
-            
+
         Example:
             >>> orchestrator = ExecutionPlanOrchestrator(settings)
             >>> sequencers = [DimCustomerSeq(), DimProductSeq(), FactSalesSeq()]
@@ -140,11 +135,10 @@ class ExecutionPlanOrchestrator:
         """
         if not sequencers:
             raise ValueError("Cannot create plan from empty sequencer list")
-        
-        
+
         all_metadata = {}
         operations = []
-        
+
         for sequencer in sequencers:
             seq_name = sequencer.get_obj_name()
             try:
@@ -165,7 +159,6 @@ class ExecutionPlanOrchestrator:
                     f"Cannot build execution plan: sequencer '{seq_name}' failed: {e}"
                 ) from e
 
-
         self.logger.info(
             "orchestrator.plan.create_from_sequencers",
             extra=sanitize_extras(
@@ -175,26 +168,22 @@ class ExecutionPlanOrchestrator:
                 }
             ),
         )
-        
+
         return self.create_execution_plan(
             operations=operations,
             metadata={
-                'sequencer_metadata': all_metadata,
-                'sequencers': [s.get_obj_name() for s in sequencers]
-            }
+                "sequencer_metadata": all_metadata,
+                "sequencers": [s.get_obj_name() for s in sequencers],
+            },
         )
-    
 
-    def create_plan_for_bronze_layer(
-        self,
-        bronze_sequencer: "BronzeSequencer"
-    ) -> ExecutionPlan:
+    def create_plan_for_bronze_layer(self, bronze_sequencer: "BronzeSequencer") -> ExecutionPlan:
         """Create an execution plan specifically for a bronze layer sequencer.
-        
+
         This method generates an execution plan tailored for bronze layer
         operations, ensuring that all necessary metadata and lineage
         information is included.
-        
+
         Args:
             sequencer: The bronze layer sequencer instance
         Returns:
@@ -202,37 +191,32 @@ class ExecutionPlanOrchestrator:
         """
 
         return self.create_plan_from_sequencers([bronze_sequencer])
-    
-    def create_plan_for_gold_layer(
-        self,
-        gold_sequencer: "GoldSequencer"
-    ) -> ExecutionPlan:
+
+    def create_plan_for_gold_layer(self, gold_sequencer: "GoldSequencer") -> ExecutionPlan:
         """Create an execution plan specifically for a gold layer sequencer.
-        
+
         This method generates an execution plan tailored for gold layer
         operations, ensuring that all necessary metadata and lineage
         information is included.
-        
+
         Args:
-            sequencer: The gold layer sequencer instance    
+            sequencer: The gold layer sequencer instance
         Returns:
 
             ExecutionPlan for the gold layer operations
         """
 
         return self.create_plan_from_sequencers([gold_sequencer])
-    
 
     def create_plan_for_silver_layer(
-        self,
-        silver_sequencers: List["SilverTransformationSequencer"]
+        self, silver_sequencers: list["SilverTransformationSequencer"]
     ) -> ExecutionPlan:
         """Create an execution plan specifically for a silver layer sequencer.
-        
+
         This method generates an execution plan tailored for silver layer
         operations, ensuring that all necessary metadata and lineage
         information is included.
-        
+
         Args:
             sequencer: The silver layer sequencer instance
         Returns:

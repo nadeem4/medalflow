@@ -17,7 +17,6 @@ shrink the plan.
 import logging
 
 import pytest
-
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 
@@ -62,9 +61,7 @@ def test_a_broken_sequencer_fails_the_whole_plan(orchestrator):
 def test_one_broken_sequencer_is_not_skipped_over_a_healthy_one(orchestrator):
     """The plan must not quietly shrink to the models that happened to work."""
     with pytest.raises(Exception) as excinfo:
-        orchestrator.create_plan_from_sequencers(
-            [_HealthySequencer(), _BrokenSequencer()]
-        )
+        orchestrator.create_plan_from_sequencers([_HealthySequencer(), _BrokenSequencer()])
 
     assert "BrokenModel" in str(excinfo.value)
 

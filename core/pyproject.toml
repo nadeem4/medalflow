@@ -61,7 +61,18 @@ select = [
     "UP",  # pyupgrade
     "B",   # flake8-bugbear
 ]
-ignore = ["E501"]  # Line too long - handled by black
+ignore = [
+    "E501",   # Line too long - handled by black
+    # UP007 rewrites Optional[X] to X | None. PEP 604 unions are Python 3.10+.
+    # All 26 occurrences sit in the four modules that carry
+    # `from __future__ import annotations`, so the annotations themselves are
+    # deferred -- but observability/context.py defines a pydantic model, and
+    # pydantic resolves those deferred strings at class-creation time. That
+    # raises TypeError on the Python 3.9 floor declared above, which CI tests.
+    # Ruff's ignore is repo-wide, so the rule stays off until the floor moves
+    # to 3.10.
+    "UP007",
+]
 
 [tool.mypy]
 python_version = "3.9"

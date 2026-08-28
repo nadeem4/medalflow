@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Dict, Iterator, Optional
+from typing import Optional
 
 from opentelemetry.trace import Status, StatusCode
 
@@ -25,9 +26,9 @@ def _build_tags(
     ctx: ExecutionRequestContext,
     stage: Optional[str],
     operation: Optional[str],
-    extra: Optional[Dict[str, str]] = None,
-) -> Dict[str, str]:
-    tags: Dict[str, str] = {
+    extra: Optional[dict[str, str]] = None,
+) -> dict[str, str]:
+    tags: dict[str, str] = {
         "request_id": ctx.request_id,
     }
     if stage:
@@ -41,7 +42,6 @@ def _build_tags(
     return tags
 
 
-
 @contextmanager
 def operation_instrumentation(
     ctx: ExecutionRequestContext,
@@ -49,8 +49,8 @@ def operation_instrumentation(
     stage_name: str,
     operation_name: str,
     metrics: MetricsCollector,
-    attributes: Optional[Dict[str, str]] = None,
-) -> Iterator[Dict[str, str]]:
+    attributes: Optional[dict[str, str]] = None,
+) -> Iterator[dict[str, str]]:
     """Instrument a single operation."""
     tags = _build_tags(
         ctx=ctx,
@@ -69,9 +69,7 @@ def operation_instrumentation(
     # it. Opening a second one nested a same-named child span under every
     # instrumented operation, doubling span volume and recording each exception
     # twice.
-    with execution_request_scope(
-        ctx, operation=f"medalflow.operation.{operation_name}"
-    ) as span:
+    with execution_request_scope(ctx, operation=f"medalflow.operation.{operation_name}") as span:
         for key, value in telemetry_payload.items():
             span.set_attribute(f"medalflow.{key}", value)
         try:
@@ -82,7 +80,9 @@ def operation_instrumentation(
         except Exception as exc:
             elapsed = time.perf_counter() - start_time
             metrics.operation_counter.add(1, {**tags, "status": "error"})
-            metrics.duration_histogram.record(elapsed, {**tags, "scope": "operation", "status": "error"})
+            metrics.duration_histogram.record(
+                elapsed, {**tags, "scope": "operation", "status": "error"}
+            )
             span.record_exception(exc)
             span.set_status(Status(StatusCode.ERROR))
             logger.error(

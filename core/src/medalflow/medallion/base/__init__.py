@@ -10,9 +10,10 @@ Components:
     - QueryMetadata: Type definition for query metadata
 """
 
-from .sequencer import _BaseSequencer
-from .decorators import query_metadata
 from medalflow.types.metadata import QueryMetadata
+
+from .decorators import query_metadata
+from .sequencer import _BaseSequencer
 
 __all__ = [
     "_BaseSequencer",

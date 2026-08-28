@@ -5,7 +5,7 @@ architecture, which focuses on preserving historical states of data for
 compliance, auditing, and temporal analysis.
 """
 
-from typing import Callable, List, Optional, Type
+from typing import Callable, Optional
 
 from medalflow.constants.medallion import SnapshotFrequency
 from medalflow.types.metadata import SnapshotMetadata
@@ -16,16 +16,16 @@ def snapshot_metadata(
     retention_days: int = 90,
     compression: bool = True,
     description: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-    frequency: SnapshotFrequency = SnapshotFrequency.DAILY
-) -> Callable[[Type], Type]:
+    tags: Optional[list[str]] = None,
+    frequency: SnapshotFrequency = SnapshotFrequency.DAILY,
+) -> Callable[[type], type]:
     """Decorator for Snapshot layer sequencer classes.
-    
+
     This decorator configures classes that manage point-in-time data captures.
     Snapshots preserve historical states for compliance, auditing, and time-series
     analysis. The decorator defines retention policies, storage optimization, and
     capture schedules.
-    
+
     Args:
         schema_name: Target schema for snapshot tables. Should be separate from
             operational schemas to manage retention and permissions independently.
@@ -41,10 +41,10 @@ def snapshot_metadata(
             Examples: ["compliance:sox", "frequency:daily", "domain:finance"].
         frequency: How often snapshots are captured - DAILY, WEEKLY, or MONTHLY.
             Affects storage planning and query patterns. Default is DAILY.
-        
+
     Returns:
         Decorated class with SnapshotMetadata attached as _snapshot_metadata attribute.
-        
+
     Example:
         Daily operational snapshots:
         >>> @snapshot_metadata(
@@ -56,7 +56,7 @@ def snapshot_metadata(
         ... class OperationalSnapshots(SnapshotSequencer):
         ...     def snapshot_tables(self):
         ...         return ["inventory", "orders", "shipments"]
-        
+
         Compliance snapshots with long retention:
         >>> @snapshot_metadata(
         ...     schema_name="snapshot_compliance",
@@ -70,7 +70,7 @@ def snapshot_metadata(
         ...     @query_metadata(type=QueryType.CREATE_TABLE, table_name="balance_sheet_snapshot")
         ...     def snapshot_balance_sheet(self):
         ...         return "CREATE TABLE ... AS SELECT * FROM gold.balance_sheet"
-        
+
         High-frequency trading snapshots:
         >>> @snapshot_metadata(
         ...     schema_name="snapshot_trading",
@@ -82,7 +82,7 @@ def snapshot_metadata(
         ... )
         ... class TradingSnapshots(SnapshotSequencer):
         ...     pass
-    
+
     Notes:
         - Snapshot tables are typically partitioned by snapshot date
         - Consider incremental snapshots for large tables to save storage
@@ -90,17 +90,18 @@ def snapshot_metadata(
         - Use consistent naming: {table_name}_snapshot_{YYYYMMDD}
         - Monitor storage growth and adjust retention/compression as needed
     """
-    def decorator(cls: Type) -> Type:
+
+    def decorator(cls: type) -> type:
         metadata = SnapshotMetadata(
             schema_name=schema_name,
             retention_days=retention_days,
             compression=compression,
             description=description,
             tags=tags or [],
-            frequency=frequency
+            frequency=frequency,
         )
-        
+
         cls._snapshot_metadata = metadata
         return cls
-    
+
     return decorator

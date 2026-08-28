@@ -36,39 +36,15 @@ jobs:
       - name: Install dependencies
         run: poetry install --with dev --no-root
 
-      # Blocking gate. These rules catch real breakage (syntax errors, undefined
-      # or redefined names) and pass on the codebase as it stands today, so any
-      # new violation fails the build immediately.
-      - name: ruff (errors — blocking)
-        run: poetry run ruff check src --select E9,F821,F822,F823,F811
+      # Blocking as of Phase 2. `src` and `tests` are clean under the full ruff
+      # config and under black, so any new violation fails the build. The former
+      # narrow `--select E9,F821,F822,F823,F811` gate is gone: the full
+      # `ruff check` below is blocking and strictly stronger.
+      - name: ruff
+        run: poetry run ruff check src tests
 
-      # Advisory until Phase 2. The full ruff config reports ~771 findings and
-      # black would reformat 136 of 140 files. Autofixing them now would mean
-      # large Python rewrites (e.g. UP006 `Dict` -> `dict`, unsafe on the 3.9
-      # runtime target) which Phase 0 explicitly forbids. Phase 2 cleans these
-      # up and flips both steps to blocking by deleting `continue-on-error`.
-      - name: ruff (full config — advisory until Phase 2)
-        id: ruff_full
-        continue-on-error: true
-        run: poetry run ruff check src
-
-      - name: black --check (advisory until Phase 2)
-        id: black_check
-        continue-on-error: true
+      - name: black --check
         run: poetry run black --check src tests
-
-      - name: Report advisory lint status
-        run: |
-          if [ "${{ steps.ruff_full.outcome }}" = "failure" ] || [ "${{ steps.black_check.outcome }}" = "failure" ]; then
-            echo "::warning title=EXPECTED FAILURE UNTIL PHASE 2::Full ruff/black are not clean yet. Phase 2 (Delete & Simplify) fixes this and makes these steps blocking."
-            {
-              echo "### ⚠️ EXPECTED FAILURE UNTIL PHASE 2"
-              echo "\`ruff check src\`: ${{ steps.ruff_full.outcome }} · \`black --check\`: ${{ steps.black_check.outcome }}"
-              echo "Blocking error-level ruff gate passed. Phase 2 removes \`continue-on-error\` from both steps."
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::notice title=Advisory lint is clean::Remove continue-on-error from the ruff/black steps to make them blocking."
-          fi
 
   test:
     name: test
