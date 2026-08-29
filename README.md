@@ -21,6 +21,7 @@ class Customers(BronzeSequencer):
 
 @silver_metadata(
     name="usp_load_dim_customer",
+    schema="silver",
     model="sales",
 )
 class DimCustomer(SilverTransformationSequencer):

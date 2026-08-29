@@ -86,6 +86,7 @@ def test_every_layer_decorator_stores_its_description():
 
     @silver_metadata(
         name="Load_Customer_Dim",
+        schema="silver",
         model="sales",
         description="cleansed customers",
     )
@@ -118,6 +119,7 @@ def test_silver_metadata_rejects_take_snapshot():
     with pytest.raises(TypeError, match="take_snapshot"):
         silver_metadata(
             name="Load_Customer_Dim",
+            schema="silver",
             model="sales",
             take_snapshot=True,
         )
@@ -152,6 +154,7 @@ def test_silver_metadata_rejects_preferred_engine():
     with pytest.raises(TypeError, match="preferred_engine"):
         silver_metadata(
             name="Load_Customer_Dim",
+            schema="silver",
             model="sales",
             preferred_engine="spark",
         )
@@ -182,7 +185,7 @@ def test_spark_stays_an_enum_member():
 
 
 def test_silver_metadata_stores_name_and_model():
-    @silver_metadata(name="Load_Customer_Dim", model="sales")
+    @silver_metadata(name="Load_Customer_Dim", schema="silver", model="sales")
     class Silver:
         pass
 
@@ -191,7 +194,7 @@ def test_silver_metadata_stores_name_and_model():
 
 
 def test_silver_metadata_takes_name_and_model_positionally():
-    @silver_metadata("Load_Customer_Dim", "sales")
+    @silver_metadata("Load_Customer_Dim", "silver", "sales")
     class Silver:
         pass
 
@@ -202,13 +205,15 @@ def test_silver_metadata_takes_name_and_model_positionally():
 def test_silver_metadata_requires_model():
     """`model` was optional and back-derived from a filename. It is now declared."""
     with pytest.raises(TypeError, match="model"):
-        silver_metadata(name="Load_Customer_Dim")
+        silver_metadata(name="Load_Customer_Dim", schema="silver")
 
 
 @pytest.mark.parametrize("parameter", ["sp_name", "group_file_name", "model_name"])
 def test_silver_metadata_rejects_the_old_identity_parameters(parameter):
     with pytest.raises(TypeError, match=parameter):
-        silver_metadata(name="Load_Customer_Dim", model="sales", **{parameter: "x"})
+        silver_metadata(
+            name="Load_Customer_Dim", schema="silver", model="sales", **{parameter: "x"}
+        )
 
 
 @pytest.mark.parametrize("field", ["sp_name", "group_file_name", "model_name"])
@@ -279,3 +284,49 @@ def test_gold_metadata_takes_name_and_schema_positionally():
         pass
 
     assert (Gold._gold_metadata.name, Gold._gold_metadata.schema) == ("Revenue", "gold")
+
+
+# ---------------------------------------------------------------------------
+# D2 — `schema` is the write target in every layer, silver included
+# ---------------------------------------------------------------------------
+
+
+def test_silver_metadata_requires_schema():
+    """Silver's target schema lived only on each `@query_metadata` method.
+
+    That made it the one layer whose declaration did not say where the model
+    writes, and made the answer per-method rather than per-model.
+    """
+    with pytest.raises(TypeError, match="schema"):
+        silver_metadata(name="Load_Customer_Dim", model="sales")
+
+
+def test_silver_metadata_stores_schema():
+    @silver_metadata(name="Load_Customer_Dim", schema="silver", model="sales")
+    class Silver:
+        pass
+
+    assert Silver._silver_metadata.schema == "silver"
+
+
+def test_silver_metadata_model_carries_schema():
+    assert "schema" in SilverMetadata.model_fields
+
+
+def test_silver_metadata_takes_name_schema_and_model_positionally():
+    """Identity, then target schema, then the grouping concept — as bronze reads."""
+
+    @silver_metadata("Load_Customer_Dim", "silver", "sales")
+    class Silver:
+        pass
+
+    meta = Silver._silver_metadata
+    assert (meta.name, meta.schema, meta.model) == ("Load_Customer_Dim", "silver", "sales")
+
+
+def test_every_layer_decorator_declares_a_schema():
+    """The point of D2: one word for the write target in all three layers."""
+    from medalflow.types.metadata import BronzeMetadata, GoldMetadata
+
+    for model in (BronzeMetadata, SilverMetadata, GoldMetadata):
+        assert "schema" in model.model_fields, f"{model.__name__} declares no schema"

@@ -43,7 +43,7 @@ SILVER_MODEL = """
     from medalflow.medallion.silver import SilverTransformationSequencer, silver_metadata
 
 
-    @silver_metadata(name="{name}", model="sales")
+    @silver_metadata(name="{name}", schema="silver", model="sales")
     class {cls}(SilverTransformationSequencer):
         pass
 """
@@ -80,7 +80,7 @@ DECORATED_SUBCLASS = {
     from medalflow.medallion.silver import silver_metadata
 
 
-    @silver_metadata(name="Archived", model="sales")
+    @silver_metadata(name="Archived", schema="silver", model="sales")
     class Archived(Customers):
         pass
 """,

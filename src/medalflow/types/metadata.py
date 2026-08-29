@@ -5,6 +5,8 @@ This module contains all metadata classes including layer-specific metadata
 """
 
 import warnings
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any, NamedTuple
 
 from pydantic import Field
@@ -18,16 +20,35 @@ from medalflow.types.base import CTEBaseModel
 # ============================================================================
 
 
-# Pydantic warns that a field named `schema` shadows `BaseModel.schema()`, the
-# deprecated v1 compatibility shim. Shadowing it is the point: ADR 002 D2 makes
-# `schema` the layers' vocabulary for their write target, and nothing calls the
-# shim.
-with warnings.catch_warnings():
-    warnings.filterwarnings(
-        "ignore",
-        message=r'Field name "schema" in "BronzeMetadata" shadows an attribute',
-        category=UserWarning,
-    )
+@contextmanager
+def _shadowing_schema_is_intended() -> Iterator[None]:
+    """Declare a model whose `schema` field shadows the deprecated v1 shim.
+
+    Pydantic warns that a field named `schema` shadows ``BaseModel.schema()``,
+    its deprecated v1 compatibility shim. Shadowing it is the point: ADR 002 D2
+    makes `schema` the layers' vocabulary for their write target, and nothing
+    calls the shim.
+
+    The warning names the class, so the suppression was copy-pasted once per
+    model. All three layers declare a `schema` now, and three copies of a
+    filter differing only in a class name is one filter. The pattern stays
+    narrow deliberately -- it matches the `schema` shadow warning and nothing
+    else, so an unrelated `UserWarning` raised while the class body runs still
+    reaches the author.
+
+    Yields:
+        None, for the duration of the class definition
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r'Field name "schema" in ".*" shadows an attribute',
+            category=UserWarning,
+        )
+        yield
+
+
+with _shadowing_schema_is_intended():
 
     class BronzeMetadata(CTEBaseModel):
         """One declared Bronze model, which is one Bronze table.
@@ -65,45 +86,47 @@ with warnings.catch_warnings():
         disabled: bool = False
 
 
-class SilverMetadata(CTEBaseModel):
-    """Metadata for Silver layer ETL processes.
+with _shadowing_schema_is_intended():
 
-    The Silver layer is responsible for data transformation and enrichment.
-    This metadata class defines how Silver layer ETL processes are configured
-    and executed, including grouping strategies and stored procedure generation.
+    class SilverMetadata(CTEBaseModel):
+        """Metadata for Silver layer ETL processes.
 
-    Attributes:
-        name: Identity of the transformation — what the plan reports, what
-            discovery indexes on, and the name of the generated stored procedure.
-        model: The model this transformation belongs to. Discovery filters on it
-            against the configured model list.
-        description: Human-readable description of what this ETL process does.
-            Used for documentation and monitoring dashboards.
-        tags: List of tags for categorizing and filtering ETL processes.
-            Examples: ["dimension", "daily", "customer-data"].
-        disable_key_reshuffling: Carried for downstream key handling; the
-            framework itself does not act on it.
-        disabled: If True, this transformation won't be executed. Used for
-            client-specific features or gradual rollout. Defaults to False.
-    """
+        The Silver layer is responsible for data transformation and enrichment.
+        This metadata class defines how Silver layer ETL processes are configured
+        and executed, including grouping strategies and stored procedure generation.
 
-    name: str
-    model: str
-    description: str | None = None
-    tags: list[str] = Field(default_factory=list)
-    disable_key_reshuffling: bool = False
-    disabled: bool = (
-        False  # If True, transformation won't be executed (for client-specific features)
-    )
+        Attributes:
+            name: Identity of the transformation — what the plan reports, what
+                discovery indexes on, and the name of the generated stored
+                procedure.
+            schema: Target schema this transformation writes into, and the
+                default `schema_name` for the class's own `@query_metadata`
+                methods. It lived only on those methods until Decision 2, which
+                made silver the one layer whose declaration did not say where
+                the model writes.
+            model: The model this transformation belongs to. Discovery filters on it
+                against the configured model list.
+            description: Human-readable description of what this ETL process does.
+                Used for documentation and monitoring dashboards.
+            tags: List of tags for categorizing and filtering ETL processes.
+                Examples: ["dimension", "daily", "customer-data"].
+            disable_key_reshuffling: Carried for downstream key handling; the
+                framework itself does not act on it.
+            disabled: If True, this transformation won't be executed. Used for
+                client-specific features or gradual rollout. Defaults to False.
+        """
+
+        name: str
+        schema: str
+        model: str
+        description: str | None = None
+        tags: list[str] = Field(default_factory=list)
+        disable_key_reshuffling: bool = False
+        # If True, transformation won't be executed (for client-specific features)
+        disabled: bool = False
 
 
-# Suppressed for the same reason as `BronzeMetadata.schema` above.
-with warnings.catch_warnings():
-    warnings.filterwarnings(
-        "ignore",
-        message=r'Field name "schema" in "GoldMetadata" shadows an attribute',
-        category=UserWarning,
-    )
+with _shadowing_schema_is_intended():
 
     class GoldMetadata(CTEBaseModel):
         """Metadata for Gold layer analytical processes.

@@ -12,6 +12,7 @@ from medalflow.types.metadata import SilverMetadata
 
 def silver_metadata(
     name: str,
+    schema: str,
     model: str,
     description: str | None = None,
     tags: list[str] | None = None,
@@ -29,6 +30,11 @@ def silver_metadata(
         name: Identity of this transformation. It is the name the plan reports,
             the key discovery indexes on, and the name of the stored procedure
             generated for it.
+        schema: Target schema this transformation writes into. It is also the
+            default `schema_name` for the class's own `@query_metadata`
+            methods, so a method that omits one lands here. Silver's target
+            schema used to live only on those methods, which made it the one
+            layer whose declaration did not say where the model writes.
         model: The model this transformation belongs to. Discovery filters on it
             against the configured model list, so a transformation whose model is
             not configured is skipped. It was previously back-derived from a
@@ -49,6 +55,7 @@ def silver_metadata(
         Basic dimension ETL:
         >>> @silver_metadata(
         ...     name="Load_Customer_Dim",
+        ...     schema="silver",
         ...     model="sales",
         ...     description="Customer dimension with CDC and data quality checks"
         ... )
@@ -60,6 +67,7 @@ def silver_metadata(
         Fact table ETL:
         >>> @silver_metadata(
         ...     name="Load_Sales_Fact",
+        ...     schema="silver",
         ...     model="sales",
         ...     description="Daily sales fact with product and customer dimensions",
         ...     tags=["fact", "sales", "daily", "high-priority"]
@@ -79,6 +87,7 @@ def silver_metadata(
     def decorator(cls: type) -> type:
         metadata = SilverMetadata(
             name=name,
+            schema=schema,
             model=model,
             description=description,
             tags=tags or [],
