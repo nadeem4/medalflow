@@ -1,3 +1,19 @@
+"""The three layers, and the decorators that declare a model in each.
+
+Bronze ingests a source table as it stands, silver transforms, gold
+publishes. Each layer is two things: a decorator marking a class as one of
+its models (``bronze_metadata``, ``silver_metadata``, ``gold_metadata``) and
+a sequencer base class turning that model into operations. Inside a model,
+``query_metadata`` marks the methods that return SQL.
+
+Ordering does not live in the layers. A layer knows how to build its own
+tables; :func:`medalflow.compile` walks all three and orders them into one
+plan, using the dependencies read out of the SQL itself.
+
+This is also where bronze is reached from -- unlike silver and gold, it is
+not re-exported from :mod:`medalflow`.
+"""
+
 # Import base components
 from medalflow.constants.compute import EngineType
 from medalflow.constants.medallion import ExecutionMode, Layer

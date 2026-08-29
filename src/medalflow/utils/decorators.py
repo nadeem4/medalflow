@@ -1,3 +1,24 @@
+"""Two decorators used across the codebase: tracing and retry.
+
+``traced`` opens an OpenTelemetry span around a call, records exceptions on
+it, and can attach attributes computed from the call's own arguments -- which
+is how a span learns the table an operation touched without the tracing
+having to know what an operation is.
+
+``retry_with_backoff`` re-runs on failure with exponential delay up to a cap,
+and only for exceptions the caller opted in to, by type or by predicate.
+Anything else propagates on the first raise.
+
+Both inspect the function they wrap and return a matching sync or async
+wrapper, so one decorator name covers either.
+
+The logger is fetched lazily inside ``_get_logger``, which leaves this module
+importing nothing from MedalFlow at module scope -- only stdlib and
+OpenTelemetry. It sits underneath the engine and the sequencers, so keeping
+it free of package-internal imports is what stops it from constraining their
+import order.
+"""
+
 import asyncio
 import functools
 import time

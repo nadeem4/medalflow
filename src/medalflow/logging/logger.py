@@ -37,6 +37,12 @@ _RESERVED_LOG_RECORD_KEYS = _build_reserved_keys()
 
 
 def get_logger(name: str) -> logging.Logger:
+    """Get a logger by name.
+
+    A thin pass-through to ``logging.getLogger``, kept so the whole package
+    has one import for logging and configuration stays in this module rather
+    than at each call site.
+    """
     return logging.getLogger(name)
 
 
@@ -44,6 +50,14 @@ class CustomJsonFormatter(logging.Formatter):
     """JSON formatter that enriches log entries with context and trace data."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """Render one record as a single line of JSON.
+
+        Anything the caller passed in ``extra`` is promoted to a top-level
+        key, minus the standard ``LogRecord`` attributes, so a structured
+        field is queryable rather than buried in the message. Trace and span
+        ids are picked up when OpenTelemetry log correlation put them on the
+        record.
+        """
         log_record: dict[str, Any] = {}
 
         if hasattr(record, "resource"):

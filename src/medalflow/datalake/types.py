@@ -1,3 +1,13 @@
+"""The shape a data lake listing comes back in.
+
+:class:`FileInfo` is one entry from a directory listing, carrying the same
+location three ways because callers need different ones -- relative to the
+directory that was listed, absolute within the filesystem, and as an
+``abfs://`` URL for handing to something that reads the lake directly.
+Computing all three once is cheaper than making every caller reassemble the
+two it did not get.
+"""
+
 from pydantic import BaseModel
 
 

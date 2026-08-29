@@ -1,3 +1,23 @@
+"""Silver layer sequencer, and the rewrites it can apply to your SQL.
+
+Silver is where a query stops being a copy of a source table and starts being
+a model, so it is the one layer that may rewrite what the author wrote:
+promoting a staged detail table into silver, filling NULLs by column-name
+rule, and generating an enum lookup for a dimension declared with ``filter=``
+instead of SQL.
+
+All three are :mod:`~medalflow.settings.conventions` entries and all three
+default to off. Unconfigured, this sequencer passes SQL through and does what
+bronze and gold do. Each encodes the naming scheme of one warehouse, and a
+framework does not silently rewrite a user's SQL.
+
+The parsing dialect comes from ``settings.compute.active_config.dialect``,
+not from a constructor argument -- the old ``sql_dialect="tsql"`` parameter
+overwrote the configured value on every construction. The SQL that
+``transform_detail_to_silver`` *emits* is still T-SQL regardless; see
+``_get_null_handling``.
+"""
+
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -13,6 +33,18 @@ if TYPE_CHECKING:
 
 
 class SilverTransformationSequencer(_BaseSequencer):
+    """Builds one silver table from one ``@silver_metadata`` model.
+
+    The model's ``@query_metadata`` methods return its SQL and the base
+    sequencer orders them. What this class adds is optional and configured:
+    the detail-table promotion, the NULL-handling rules, and the shortcut
+    where a dimension declares ``filter=`` instead of returning SQL and gets
+    an enum lookup generated from ``conventions.enum_table``.
+
+    None of it guesses. A ``filter=`` with no enum table configured raises,
+    naming the settings to set, rather than quietly producing no table.
+    """
+
     def __init__(self, settings: "MedalflowSettings", selection: list[str] | None = None):
         """Initialize the Silver Transformation sequencer.
 
@@ -174,7 +206,6 @@ class SilverTransformationSequencer(_BaseSequencer):
 
         Args:
             detail_query: The final detail SELECT query from transformation
-            table_name: Optional table name for custom default handling
 
         Returns:
             Transformed SELECT query ready for direct silver table creation

@@ -45,8 +45,9 @@ class SynapseServerlessQueryBuilder(BaseQueryBuilder):
         """Initialize Synapse Serverless query builder.
 
         Args:
-            synapse_config: Synapse-specific configuration
-            table_prefix: Optional prefix to add to table names (e.g., 'sap_', 'oracle_')
+            settings: Application settings. The Synapse-specific names this
+                builder emits -- external data sources, file formats, the
+                location prefix -- are read from ``settings.compute.synapse``.
         """
         super().__init__(settings)
         self.compute_settings = settings.compute.synapse

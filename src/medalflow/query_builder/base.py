@@ -1,3 +1,17 @@
+"""SQL generation, and the only place identifiers are validated.
+
+A query builder turns an operation -- ``CreateTable``, ``Insert``, ``Merge``
+and the rest -- into SQL text for one platform. It does not execute anything;
+that is the engine, one layer down.
+
+It is also the injection boundary, and it is a real boundary rather than a
+shared responsibility. The engine binds no parameters: it is handed a string
+and runs it. So every schema, table and column name that reaches generated
+SQL is validated here first, against a character whitelist, and a caller that
+genuinely needs arbitrary SQL has to say so with
+:class:`~medalflow.types.RawSQL` and own the risk explicitly.
+"""
+
 import re
 from abc import ABC, abstractmethod
 from typing import Any
@@ -50,11 +64,14 @@ class BaseQueryBuilder(ABC):
     """
 
     def __init__(self, settings: MedalflowSettings):
-        """Initialize query builder with optional table prefix.
+        """Initialize query builder.
+
+        Everything the builder needs is read from ``settings`` -- including
+        the table prefix, which used to be a constructor parameter and so
+        could disagree with the configured one.
 
         Args:
-            table_prefix: Optional prefix to add to table names (e.g., 'sap_', 'oracle_').
-                         If not provided, no prefix will be added to table names.
+            settings: Application settings.
         """
 
         self.settings = settings

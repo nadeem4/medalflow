@@ -1,3 +1,17 @@
+"""``execute()`` -- one serialized operation, run now.
+
+The seam for callers that bring their own orchestration. ``run()`` builds a
+plan and walks it; this takes a single operation dict of the kind
+``ExecutionPlan.get_all_operations(serialize=True)`` produces, which is what
+lets an Airflow or ADF task be one operation without MedalFlow scheduling
+anything. ``run()`` is itself a loop over this function, so the two paths
+cannot drift.
+
+Both functions build a platform per call, from settings. The metrics
+collector is the one thing held across calls: constructing it reads settings,
+and there is nothing per-operation about it.
+"""
+
 from typing import Any
 
 from medalflow.compute import ComputeEnvironment, OperationResult, create_platform

@@ -55,7 +55,9 @@ class DatalakeClient:
 
         Args:
             lake_type: Which lake to connect to (PROCESSED or INTERNAL)
-            prefix_paths: Whether to add data source prefix to paths
+
+        Raises:
+            ValueError: If settings carry no configuration for ``lake_type``.
         """
         self.settings = get_settings()
         self.lake_type = lake_type

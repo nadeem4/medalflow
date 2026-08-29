@@ -31,44 +31,32 @@ logger = get_logger(__name__)
 
 
 class BaseSQLEngine:
-    """SQLAlchemy-based SQL execution engine for all platforms.
+    """SQL execution over a SQLAlchemy connection pool.
 
-    This concrete implementation provides full SQL engine functionality using
-    SQLAlchemy, which supports Synapse and many
-    other platforms. Platform-specific engines inherit from this class and only
-    need to provide customization through hooks.
+    Concrete, not abstract: a subclass that overrides nothing is a working
+    engine. What it provides is the pool (``QueuePool``, sized from settings,
+    with ``pool_pre_ping``), retry-with-backoff on every call, and the four
+    result shapes -- ``execute_query`` (none), ``fetch_dataframe``,
+    ``fetch_scalar``, ``fetch_all`` -- plus ``execute_batch``, which runs a
+    list of statements on one connection and commits once.
 
-    Features:
-        - Automatic connection pooling with SQLAlchemy
-        - Optimized fetch methods (scalar, all, dataframe)
-        - Built-in retry logic for reliability
-        - Comprehensive error handling and logging
-        - ODBC-based connections for maximum compatibility
-        - Platform customization through hooks
+    The SQLAlchemy URL is fixed at ``mssql+pyodbc``, built from the ODBC
+    string ``settings.get_odbc_string(environment)`` returns. That is the one
+    thing a
+    subclass cannot vary, so this class reaches SQL Server and Synapse and
+    nothing else -- a different database needs a different URL, not a
+    subclass. Synapse is the only platform MedalFlow implements.
 
-    Platform Customization:
-        Subclasses can override these hooks:
-        - _apply_connection_settings(): Apply platform-specific SET commands
-        - get_connection_info(): Return platform-specific connection details
+    Two hooks, both with working defaults:
+        - ``_apply_connection_settings()``: SET commands issued on each
+          connection as it leaves the pool
+        - ``get_connection_info()``: the dict reported for logging and
+          debugging
 
-    Supported Platforms:
-        Any SQLAlchemy-compatible database including:
-        - Azure Synapse
-        - Databricks
-        - Snowflake
-        - PostgreSQL
-        - MySQL
-        - SQL Server
-        - And many more...
-
-    Example:
-        >>> # For Synapse
-        >>> engine = SynapseSQLEngine(settings, ComputeEnvironment.ETL)
-        >>> df = engine.fetch_dataframe("SELECT * FROM table")
-        >>>
-        >>> # For new platform (e.g., Snowflake)
-        >>> class SnowflakeSQLEngine(BaseSQLEngine):
-        ...     pass  # Just works with ODBC!
+    An engine runs the SQL it is handed. It does not build or validate it --
+    identifier validation lives in
+    :class:`~medalflow.query_builder.base.BaseQueryBuilder`, and no method
+    here binds parameters.
     """
 
     def __init__(

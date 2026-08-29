@@ -1,3 +1,17 @@
+"""Gold layer sequencer -- the published, query-facing layer.
+
+:class:`GoldSequencer` is the thinnest of the three. It supplies its layer
+name, the ``_gold_metadata`` attribute discovery looks for, and the name
+lookup that reads it. Everything that turns ``@query_metadata`` methods into
+an ordered plan is inherited unchanged from
+:class:`~medalflow.medallion.base.sequencer._BaseSequencer`.
+
+Nothing here is gold-specific beyond that, which is the point: a gold model
+publishing a view says so with ``QueryType.CREATE_OR_ALTER_VIEW`` in its own
+``@query_metadata``, and what it publishes stays the author's decision rather
+than this class's.
+"""
+
 from typing import TYPE_CHECKING
 
 from medalflow.constants.medallion import Layer

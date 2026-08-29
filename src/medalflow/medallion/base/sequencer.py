@@ -1,3 +1,18 @@
+"""What every layer's sequencer shares: decorated methods in, a plan out.
+
+:class:`_BaseSequencer` finds the ``@query_metadata`` methods on a model,
+calls each one for its SQL, turns the results into operations, and hands them
+to the orchestrator, which reads the dependencies out of the SQL and groups
+everything into the stages of an
+:class:`~medalflow.medallion.types.ExecutionPlan`. Plans are cached per
+sequencer when the cache feature is enabled.
+
+It is an ``ABC`` with no abstract methods, deliberately. Every method has a
+working default, so there is nothing a layer is *required* to override, and
+marking one ``@abstractmethod`` would invent a contract the layer sequencers
+do not have. ``ABC`` is here to say "not this class directly".
+"""
+
 import inspect
 from abc import ABC
 from typing import TYPE_CHECKING, Any
@@ -21,32 +36,31 @@ if TYPE_CHECKING:
 # has a working default, so there is genuinely nothing to mark @abstractmethod;
 # adding one would invent a contract the layer sequencers do not currently have.
 class _BaseSequencer(ABC):  # noqa: B024
-    """Base class for all ETL sequencers in the medalflow platform.
+    """Turns one model's decorated methods into an execution plan.
 
-    This abstract base class provides the core functionality for discovering methods
-    annotated with metadata decorators and organizing them into execution plans. All
-    layer-specific sequencers (Bronze, Silver, Gold) inherit from this
-    class and implement the abstract methods to define their specific behavior.
-
-    The BaseSequencer orchestrates specialized components to handle different aspects
-    of execution plan generation, keeping the base class focused on coordination
-    rather than implementation details.
+    Every layer sequencer inherits from this. It finds the
+    ``@query_metadata`` methods on the model, calls each for its SQL, builds
+    the operations, and hands them to
+    :class:`~medalflow.medallion.orchestration.execution_orchestrator.ExecutionPlanOrchestrator`
+    -- which is where dependency analysis and stage ordering actually happen.
+    This class coordinates; it does not analyse SQL itself.
 
     Attributes:
-        logger: Structured logger instance for this sequencer
-        sql_analyzer: SQL dependency analyzer instance (handles all SQL analysis)
-        plan_builder: Execution plan builder
-        _stats_manager: Statistics manager for table stats
-        _cache_manager: Cache manager for execution plan caching
+        logger: Structured logger, named for the concrete sequencer class
+        settings: Application settings
+        selection: Target table names this sequencer is restricted to, or
+            None for all of them
+        table_prefix: Prefix applied to generated table names
+        sql_dialect: Parsing dialect, from ``compute.active_config.dialect``
+        _stats_manager: Statistics feature manager, or None when disabled
+        _cache_manager: Cache feature manager, or None when disabled
 
-    Example:
-        >>> class MyCustomSequencer(_BaseSequencer):
-        ...     @query_metadata(type=QueryType.INSERT, table_name="my_table")
-        ...     def transform_data(self) -> str:
-        ...         return "SELECT * FROM source_table"
-        >>>
-        >>> sequencer = MyCustomSequencer()
-        >>> plan = sequencer.get_execution_plan()
+    A layer subclasses this and overrides very little: its layer name, the
+    class-level metadata attribute its decorator sets, and any rewriting it
+    does to a query on the way through. Authors do not subclass it directly
+    -- they subclass :class:`~medalflow.medallion.bronze.sequencer.BronzeSequencer`,
+    :class:`~medalflow.medallion.silver.sequencer.SilverTransformationSequencer`
+    or :class:`~medalflow.medallion.gold.sequencer.GoldSequencer`.
     """
 
     def __init__(self, settings: "MedalflowSettings", selection: list[str] | None = None):

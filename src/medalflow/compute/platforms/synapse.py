@@ -1,13 +1,20 @@
-"""Azure Synapse Analytics platform implementation.
+"""Azure Synapse Analytics platform -- the only platform MedalFlow implements.
 
-This module provides the platform implementation for Azure Synapse Analytics,
-managing SQL and Spark engines along with Synapse-specific query builders.
+:class:`SynapsePlatform` assembles the three things
+:class:`~medalflow.compute.platforms.base._BasePlatform` needs and then leaves
+the work to it: a :class:`~medalflow.compute.engines.synapse.SynapseSQLEngine`,
+a query builder from :func:`~medalflow.query_builder.create_query_builder`, and
+a data lake client.
 
-Key Features:
-    - Automatic engine selection based on workload
-    - External table support for data lake integration
-    - Serverless and dedicated SQL pool support
-    - Spark pool integration when configured
+It overrides ``execute_operation`` for one Synapse-specific reason. A Synapse
+external table and the files behind it are separate objects, so recreating the
+table (``CreateTable`` with ``recreate`` and a ``location``) leaves the old
+files in place and the new table reads both generations. The override deletes
+that directory first, and fails the operation if the delete fails rather than
+building a table over data nobody asked for.
+
+``supported_engines()`` reports ``SQL`` and ``AUTO``. There is no second engine
+for AUTO to choose between: every operation runs on SQL (ADR 002, Decision 4).
 """
 
 import time

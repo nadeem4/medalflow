@@ -1,123 +1,34 @@
-"""Compute engines for executing queries across different platforms.
+"""The layer that actually talks to the database.
 
-This module provides the engine abstraction layer for the MedalFlow compute module.
-Engines are responsible for executing SQL queries on their respective platforms.
+One class, :class:`~medalflow.compute.engines.base.BaseSQLEngine`, and one
+subclass of it per platform -- currently only
+:class:`~medalflow.compute.engines.synapse.SynapseSQLEngine`. It is a concrete
+class, not an abstract one: a subclass that overrides nothing is a working
+engine, and the two hooks it offers (``_apply_connection_settings`` and
+``get_connection_info``) both have working defaults.
 
-Overview:
-    Engines are the execution layer of the compute module. They handle the actual
-    communication with compute platforms, manage connections, execute queries/jobs,
-    and handle platform-specific error conditions. Each engine type
-    has its own interface and platform-specific implementations.
+An engine takes finished SQL and runs it. It owns the SQLAlchemy engine and its
+connection pool, the retry-with-backoff around each call, and the four ways a
+result comes back -- nothing (``execute_query``), a DataFrame, a scalar, or a
+list of row mappings. ``execute_batch`` runs several statements on one
+connection.
 
-Architecture:
-    The module follows a two-level abstraction pattern:
-    
-    1. **Base Interfaces**: Abstract classes defining the engine contract
-       - BaseSQLEngine: Synchronous SQL query execution
-    
-    2. **Platform Implementations**: Concrete implementations for each platform
-       - Synapse: SynapseSQLEngine
+What an engine does *not* do, because something else does:
 
-Engine Types:
-    **SQL Engines**:
-        - Execute SQL queries synchronously
-        - Return results as DataFrames, scalars, or success indicators
-        - Handle connection pooling and retries
-        - Support parameterized queries for security
-    
-    **Spark Engines**:
-        - Submit Spark jobs asynchronously
-        - Monitor job status and progress
-        - Manage Spark session configuration
-        - Handle job cancellation and timeouts
+* **Generate SQL** -- :mod:`medalflow.query_builder`. That is also where
+  identifier validation lives: an engine is handed a string and runs it, so it
+  is not the layer that makes the string safe.
+* **Choose a platform** -- :mod:`medalflow.compute.platforms`, which builds the
+  engine and is the only thing that holds one. Engines are not part of the
+  public API and nothing outside the compute module constructs one.
 
-Engine Responsibilities:
-    - Query/job execution with proper error handling
-    - Connection lifecycle management (create, reuse, cleanup)
-    - Retry logic for transient failures
-    - Performance monitoring and metrics collection
-    - Resource cleanup on completion or failure
-    - Platform-specific optimizations
+Everything the engine reads is loaded whole: ``fetch_dataframe`` goes through
+``pandas.read_sql`` and ``fetch_all`` through ``.all()``. There is no streaming
+path, so a query is bounded by the memory of the process running it.
 
-Engines do NOT handle:
-    - Query generation (see query_builder module)
-    - Table management logic (see processors module)
-    - Platform selection (see platforms module)
-    - Business logic or data transformations
-
-Security Features:
-    - Parameterized query support to prevent SQL injection
-    - Secure credential management via Azure Identity
-    - Connection encryption and secure protocols
-    - Audit logging for compliance
-
-Example Usage:
-    >>> # Engines are managed internally by platforms
-    >>> from medalflow.compute import create_platform, ExecuteSQL
-    >>> from medalflow.constants.compute import ResultFormat
-    >>> 
-    >>> platform = create_platform()
-    >>> 
-    >>> # Execute operations through the platform
-    >>> # Engines are not directly accessible
-    >>> 
-    >>> # Execute a DDL query
-    >>> op = ExecuteSQL(
-    ...     sql="CREATE SCHEMA IF NOT EXISTS bronze",
-    ...     schema_name="dbo",
-    ...     object_name="bronze"
-    ... )
-    >>> result = platform.execute(op)
-    >>> 
-    >>> # Fetch results as DataFrame (default)
-    >>> op = ExecuteSQL(
-    ...     sql="SELECT * FROM bronze.customers WHERE region = 'US'",
-    ...     returns_results=True,
-    ...     schema_name="bronze",
-    ...     object_name="customers"
-    ... )
-    >>> result = platform.execute(op)
-    >>> df = result.data  # pandas DataFrame
-    >>> 
-    >>> # Get scalar value
-    >>> op = ExecuteSQL(
-    ...     sql="SELECT COUNT(*) FROM bronze.customers",
-    ...     returns_results=True,
-    ...     result_format=ResultFormat.SCALAR,
-    ...     schema_name="bronze",
-    ...     object_name="customers"
-    ... )
-    >>> result = platform.execute(op)
-    >>> count = result.data  # scalar value
-
-Connection Management:
-    Engines implement connection pooling and reuse to minimize overhead.
-    Connections are managed internally by the platform and engines.
-
-Error Handling:
-    Platforms provide structured error handling through OperationResult:
-    
-    >>> op = ExecuteSQL(
-    ...     sql="SELECT * FROM invalid_table",
-    ...     returns_results=True,
-    ...     schema_name="dbo",
-    ...     object_name="invalid_table"
-    ... )
-    >>> result = platform.execute(op)
-    >>> if not result.success:
-    ...     print(f"Query failed: {result.error_message}")
-    ...     print(f"Error type: {result.error_type}")
-
-Performance Considerations:
-    - Connection pooling reduces connection overhead
-    - Batch operations minimize round trips
-    - Result streaming for large datasets
-    - Query timeout configuration
-
-See Also:
-    - medalflow.compute.engines.base: Base engine interfaces
-    - medalflow.compute.engines.synapse: Azure Synapse implementations
-    - medalflow.compute.platforms: Platform orchestration layer
+``pyodbc`` and ``pandas`` are imported inside the methods that need them --
+both ship with the optional ``azure`` extra, and importing this package must
+not require it.
 """
 
 from medalflow.compute.engines.base import BaseSQLEngine
