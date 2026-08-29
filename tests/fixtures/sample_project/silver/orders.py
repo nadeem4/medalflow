@@ -14,11 +14,7 @@ from medalflow.medallion.silver import SilverTransformationSequencer, silver_met
 class FactOrders(SilverTransformationSequencer):
     """silver.DimCustomer -> silver.FactOrders."""
 
-    @query_metadata(
-        type=QueryType.CREATE_TABLE,
-        table_name="FactOrders",
-        schema_name="silver",
-    )
+    @query_metadata(type=QueryType.CREATE_TABLE, table_name="FactOrders")
     def build_fact_orders(self) -> str:
         return (
             "SELECT o.OrderId, c.CustomerId "

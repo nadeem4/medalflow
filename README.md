@@ -25,11 +25,7 @@ class Customers(BronzeSequencer):
     model="sales",
 )
 class DimCustomer(SilverTransformationSequencer):
-    @query_metadata(
-        type=QueryType.CREATE_TABLE,
-        table_name="DimCustomer",
-        schema_name="silver",
-    )
+    @query_metadata(type=QueryType.CREATE_TABLE, table_name="DimCustomer")
     def build_dim_customer(self) -> str:
         return "SELECT CustomerId, Name FROM bronze.Customers"
 ```
@@ -60,6 +56,10 @@ export. Neither was true. This document now describes only what the code does.
 
 - **Authoring by decorator.** One class decorator per layer (`@bronze_metadata`,
   `@silver_metadata`, `@gold_metadata`) plus `@query_metadata` on methods that return SQL.
+  Every layer decorator takes the same `name`, `schema`, `description=` and `tags=`, plus
+  at most one layer-specific extra (`source_system` for bronze, `model` for silver). A
+  model's `schema` is the default target schema for its own `@query_metadata` methods, so
+  a method only names one when it writes somewhere else.
 - **Discovery by package walk.** Point `MEDALFLOW_MODELS_PACKAGE` at the package holding
   your models and MedalFlow imports each layer's subpackage and collects the decorated
   classes it finds. All three layers are discovered this way, so a plan compiles with no
