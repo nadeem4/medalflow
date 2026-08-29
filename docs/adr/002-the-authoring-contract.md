@@ -303,6 +303,19 @@ warehouse by default.
 - `QueryMetadata.schema_name` receives the target schema string rather than a `Layer`
   member, which only validated because `Layer` subclasses `str`.
 
+Two silent failures in the shared walk were fixed at the same time, because
+`compile()` and `run()` are built on top of it and both would have inherited them:
+
+- `_is_model_class` asked `hasattr`, which an *inherited* attribute satisfies, so any
+  subclass of a decorated model counted as a model. The `__module__` guard does not
+  catch it — a subclass genuinely belongs to its own module. Where `name` comes from
+  the metadata (bronze and silver) the subclass inherited the parent's name too and,
+  keyed by name, **displaced the model it inherited from**: the plan lost the declared
+  model and gained a class nobody declared. The attribute must now be in `cls.__dict__`.
+  Re-decorating a subclass still declares a new model.
+- Two models sharing a `name` collapsed into whichever the walk reached last. It raises
+  now, naming the duplicated name and both classes as `module.QualName`.
+
 This supersedes the note under Decision 5 that "Bronze is the exception on purpose: it
 overrides `get_queries` outright and applies `selection` to `INFORMATION_SCHEMA` instead."
 Bronze still overrides `get_queries`, but `selection` filters declared models by name in
