@@ -35,7 +35,10 @@ SEAM_CALLS: dict = {}
 
 
 class _Settings:
-    """The two things `compile()` asks settings for before it discovers."""
+    """What `compile()` asks settings for before it discovers: bronze's mode,
+    and where each layer's models live."""
+
+    bronze_introspection = False
 
     def package_for_layer(self, layer):
         return f"acme.{layer}"

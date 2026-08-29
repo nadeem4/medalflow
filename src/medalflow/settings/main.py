@@ -126,11 +126,15 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
 
     bronze_introspection: bool = Field(
         default=False,
-        description="Derive bronze tables from a live INFORMATION_SCHEMA query "
-        "instead of from declared @bronze_metadata models. Off by default: "
-        "introspection makes compiling a plan require a warehouse. The mode is "
-        "never inferred from whether models are found, so a mistyped "
-        "bronze_package fails loudly rather than falling back to the warehouse.",
+        description="Derive one bronze model per table from a live "
+        "INFORMATION_SCHEMA query instead of from declared @bronze_metadata "
+        "models. Off by default, because turning it on costs offline compile: "
+        "compiling then requires a reachable warehouse, for the bronze layer "
+        "only -- silver and gold still answer from their packages. Everything "
+        "downstream is unchanged, so a selector narrows introspected tables "
+        "exactly as it narrows declared ones. The mode is never inferred from "
+        "whether models are found, so a mistyped bronze_package fails loudly "
+        "rather than falling back to the warehouse.",
     )
 
     configured_models: str = Field(

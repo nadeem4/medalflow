@@ -25,8 +25,13 @@ because returning an empty result would make a typo indistinguishable from a
 project that declares no matching model. Genuine bugs inside MedalFlow itself
 still propagate; they are not something the author can act on.
 
-Compiling is offline (D6). Bronze models are declared, so nothing here needs a
-warehouse or a credential.
+Compiling is offline (D6): bronze models are declared, so nothing here needs a
+warehouse or a credential. The one exception is opted into --
+``MEDALFLOW_BRONZE_INTROSPECTION=true`` derives the bronze models from a live
+``INFORMATION_SCHEMA`` query, which costs offline compile for the bronze layer.
+Silver and gold answer from their packages either way, each introspected table
+becomes an ordinary ``CompiledModel``, and a warehouse that cannot be reached is
+a ``CompileError`` like any other.
 """
 
 import inspect
@@ -36,7 +41,10 @@ from pydantic import Field
 
 from medalflow.logging import get_logger
 from medalflow.medallion.base.discovery import PackageNotImportable
-from medalflow.medallion.bronze.metadata_discovery import BronzeMetadataDiscovery
+from medalflow.medallion.bronze.metadata_discovery import (
+    BronzeMetadataDiscovery,
+    IntrospectedBronzeDiscovery,
+)
 from medalflow.medallion.gold.metadata_discovery import GoldMetadataDiscovery
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
@@ -218,6 +226,10 @@ def compile(selector: str = "*") -> CompileResult:
     surviving models' operations become a single staged plan with the
     bronze -> silver -> gold edges the models' own SQL implies.
 
+    Offline, unless `bronze_introspection` is on -- that mode derives the
+    bronze models from a live warehouse, which is the cost D6 named when it
+    made introspection opt-in. Everything after discovery is identical.
+
     Errors are collected, not raised: the result carries one
     :class:`CompileError` per problem so an author sees all of them at once.
 
@@ -282,6 +294,12 @@ def compile(selector: str = "*") -> CompileResult:
 def _discover(layer: str, settings) -> tuple[list[Any], list[CompileError]]:
     """Discover one layer's models, turning its failures into errors.
 
+    Bronze has two modes (D6). Introspection is opted into with
+    `bronze_introspection` and answers from a live warehouse; declared models
+    are the default and answer offline. The mode is read off configuration and
+    never inferred from what was found, so a mistyped package name fails
+    loudly rather than quietly falling back to a warehouse.
+
     Three things can go wrong before a single model is read, and none of them
     is a reason to abandon the other layers: the layer may have no package
     configured, the package it names may not import, and the walk itself may
@@ -299,6 +317,9 @@ def _discover(layer: str, settings) -> tuple[list[Any], list[CompileError]]:
         The layer's discovered metadata records, and any errors that stopped
         it from producing them
     """
+    if layer == "bronze" and settings.bronze_introspection:
+        return _introspect_bronze(settings)
+
     try:
         package = settings.package_for_layer(layer)
     except ValueError as e:
@@ -348,6 +369,43 @@ def _discover(layer: str, settings) -> tuple[list[Any], list[CompileError]]:
                 suggestion=(
                     f"Check that every module under '{package}' imports, and that no "
                     f"two {layer} models declare the same name."
+                ),
+            )
+        ]
+
+
+def _introspect_bronze(settings) -> tuple[list[Any], list[CompileError]]:
+    """Derive the bronze models from a live source schema.
+
+    The opt-in half of Decision 6. It needs a warehouse, which is exactly the
+    cost the decision named when it made this mode opt-in rather than the
+    default -- and the cost falls on the bronze layer alone, so silver and gold
+    still compile offline.
+
+    An unreachable warehouse is an error like any other, not a traceback: a
+    mistyped connection string deserves the same structured surface as a
+    mistyped package name.
+
+    Args:
+        settings: Application settings
+
+    Returns:
+        One model per introspected table, and any error that stopped the
+        query from producing them
+    """
+    try:
+        return IntrospectedBronzeDiscovery(settings=settings).discover_all(), []
+    except Exception as e:
+        return [], [
+            CompileError(
+                model=None,
+                error_type=type(e).__name__,
+                message=f"Could not introspect the bronze source schema: {e}",
+                suggestion=(
+                    "Bronze is in introspection mode, so compiling it queries a live "
+                    "warehouse. Check that the configured compute platform is reachable, "
+                    "or unset MEDALFLOW_BRONZE_INTROSPECTION to declare bronze models "
+                    "with @bronze_metadata and compile offline instead."
                 ),
             )
         ]

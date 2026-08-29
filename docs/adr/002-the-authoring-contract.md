@@ -492,11 +492,39 @@ whose value is its exact error count.
   replaces. `create_plan_from_sequencers`, `create_execution_plan` and
   `discover_all_transformations` have other callers and stay.
 
-**`bronze_introspection` now has no entry point.** Choosing the mode was
-`api.medallion._bronze_sequencers`, which went with the module; `compile()` reads the
-declared bronze models and nothing reads the setting. `IntrospectedBronzeSequencer` still
-works when constructed directly, and its behaviour is still pinned in
-`test_bronze_declared.py`, but the opt-in of Decision 6 part 2 is unreachable through the
-public API. Wiring it into `compile()` is a Decision 6 question — an introspected layer is
-one sequencer over N tables, not a model a selector can match — and is deliberately left
-open rather than answered in passing here.
+## Amendment — Decision 6, part 2: introspection is a discovery, not a sequencer
+
+Deleting the per-layer entry points removed the only code that read
+`bronze_introspection`, leaving a documented mode with no way to reach it. The answer is
+not to re-add an entry point but to move introspection to where the question belongs.
+
+**Introspection answers "which bronze models exist", which is discovery's question.**
+`IntrospectedBronzeDiscovery` queries `INFORMATION_SCHEMA` once and derives a
+`BronzeMetadata` declaration per table, returning the same `BronzeModelMetadata` records
+the package walk returns. `compile()` picks the mode off `bronze_introspection` and is
+otherwise identical, so **each introspected table is its own `CompiledModel`** and
+`compile("Customers")` and `layer:bronze` behave the same in both modes. `compile()` and
+`run()` stay the single path.
+
+- **`IntrospectedBronzeSequencer` is deleted.** A sequencer that discovered its own inputs
+  was the shape that left bronze with no discovery at all; with the query moved, its whole
+  job — the `INFORMATION_SCHEMA` call, the empty-selection rule, the target-schema
+  override, source-name-as-target-name — is either discovery's or already `BronzeSequencer`'s.
+  Every behaviour it pinned is re-aimed onto the discovery in `test_bronze_declared.py`.
+  One sequencer builds every bronze table now, in both modes.
+- **Turning the flag on costs offline compile, for the bronze layer only.** That is the
+  trade-off this decision named as the *reason* introspection is opt-in. Silver and gold
+  never query. The default is unchanged and still offline, which D6 and the example
+  project depend on.
+- **An unreachable warehouse is a `CompileError`, not a traceback.** A mistyped connection
+  string gets the same structured surface as a mistyped package name, and the suggestion
+  names `MEDALFLOW_BRONZE_INTROSPECTION` as the way back to offline compile.
+- **Narrowing moved to the selector.** The warehouse is asked what exists, not what was
+  wanted: one query for the schema, then the selector filters models. Pushing the
+  selection down to `get_tables` would have meant one query per selected table.
+
+One wrinkle, recorded rather than fixed: `compile()` discovers every layer and applies the
+selector afterwards, so `compile("layer:silver")` still introspects bronze when the flag
+is on. The mode is a property of the layer, not of the selector. Skipping discovery for
+layers a selector excludes would also change which errors a narrow compile reports, so it
+is its own change.
