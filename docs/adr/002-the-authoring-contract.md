@@ -416,14 +416,44 @@ Three details that had to be decided:
 `ExecutionPlan.get_all_operations(serialize=True)` is deliberately untouched: `run()`
 builds on that seam, and it still has no caller.
 
-Two silent behaviours were found and left alone, both older than this change:
+### Three silently wrong answers, fixed rather than noted
 
-- `_walk_package` returns quietly when the configured package itself cannot be imported,
-  so a mistyped `MEDALFLOW_MODELS_PACKAGE` compiles to an empty plan rather than an
-  error. A missing *layer* package is now reported; a missing *root* package is not.
-- `ExecutionPlan.to_dict()` calls `self.metadata.to_dict()`, but
-  `create_plan_from_sequencers` passes a plain `dict` as metadata — so serialising a plan
-  from the per-layer API functions raises `AttributeError`. `compile()` passes no
-  metadata and is unaffected.
+All three predate `compile()` and all three made it return an answer that was wrong
+without saying so — which is the one thing the decision exists to prevent.
+
+**An unset `configured_models` deleted the silver layer.** `get_configured_model_list()`
+returns `[]` when the setting is unset, and `is_model_configured` asked whether a name
+was *in* that list — so a project that had never heard of `MEDALFLOW_CONFIGURED_MODELS`
+had every silver model skipped and its silver layer compiled to zero models. The example
+project would have shipped with an empty silver layer for every new user. **Unset now
+means no filter**; a non-empty list narrows exactly as before. That is also what
+`selection=None` means everywhere else here: absent is everything, empty is nothing.
+`is_model_configured` stays silver-only for the reason it is off gold, unchanged.
+
+**A configured package that would not import returned nothing.** `_walk_package` logged
+the ImportError and returned, so a mistyped `MEDALFLOW_MODELS_PACKAGE` — the likelier
+typo, since one variable feeds all three layers — produced an empty plan and no
+complaint. It raises `PackageNotImportable` (a `ValueError`, so no existing caller needs
+a new except clause to stop being silent), and `compile()` reports it as
+`UnimportablePackage`, the sibling of `UnconfiguredPackage`, with the same shape of
+suggestion. The distinction that had to survive is that **"the package does not exist"
+and "the package exists and declares nothing" are different answers, and only the first
+is an error** — a project using two of the three layers is a legitimate shape. It
+survives because only the first raises ImportError, and both halves are pinned.
+
+**`ExecutionPlan.to_dict()` raised on the metadata it is declared to accept.** The field
+is `ClassMetadata | dict | None` and the orchestrator passes a dict, but `to_dict` called
+`self.metadata.to_dict()` unconditionally — so every plan from
+`create_plan_from_sequencers`, which is every per-layer API function, raised
+`AttributeError` when serialised. It survived only because the one path that serialised a
+plan passed an *empty* dict, which is falsy. Serialisability is the point of this
+decision; a serialisable `CompileResult` beside four entry points that raise on
+`.to_dict()` is a trap.
+
+Both of `compile()`'s error branches that no test reached now have fixture projects of
+their own — `duplicate_project` (one gold name declared twice, so the layer's walk fails
+as a whole) and `cyclic_project` (two silver models reading each other, so the operations
+build but the graph has no execution order). Neither was folded into `broken_project`,
+whose value is its exact error count.
 
 Still outstanding: Decision 7's `run(selector)`.
