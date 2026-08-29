@@ -1,27 +1,36 @@
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import sqlglot
 from sqlglot import exp
 
 from medalflow.constants.medallion import Layer
 from medalflow.medallion.base.sequencer import _BaseSequencer
-from medalflow.settings import get_settings
 from medalflow.types.metadata import QueryMetadata
+
+if TYPE_CHECKING:
+    from medalflow.settings import MedalflowSettings
 
 
 class SilverTransformationSequencer(_BaseSequencer):
-    def __init__(self, sql_dialect: str = "tsql"):
+    def __init__(self, settings: "MedalflowSettings", selection: list[str] | None = None):
         """Initialize the Silver Transformation sequencer.
 
+        The SQL dialect is not a constructor argument. It comes from
+        ``settings.compute.active_config.dialect``, which the base already
+        reads; the old ``sql_dialect="tsql"`` parameter overwrote that on every
+        construction, so a deployment configured for any other dialect silently
+        got T-SQL.
+
         Args:
-            sql_dialect: SQL dialect for parsing (tsql for Synapse, spark for Databricks, etc.)
+            settings: Configuration settings for the sequencer
+            selection: Reserved for parity with the other layers. A silver
+                sequencer is one model, so there is nothing to select from;
+                it is accepted and unused.
         """
-        settings = get_settings()
         super().__init__(settings)
+        self.selection = selection
         self.layer = Layer.SILVER
-        # Override sql_dialect if provided
-        if sql_dialect:
-            self.sql_dialect = sql_dialect
 
     def get_layer_name(self) -> str:
         """Return the layer name for this sequencer.
@@ -172,7 +181,7 @@ class SilverTransformationSequencer(_BaseSequencer):
             Transformed SELECT query ready for direct silver table creation
 
         Example:
-            >>> sequencer = SilverTransformationSequencer()
+            >>> sequencer = SilverTransformationSequencer(settings)
             >>> detail_sql = "SELECT CustomerKey, CreditLimit FROM temp.Stage"
             >>> silver_sql = sequencer.transform_detail_to_silver(detail_sql)
             >>> # Returns query with ISNULL handling and default row

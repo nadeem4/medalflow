@@ -11,8 +11,6 @@ a `ConventionsSettings` entry defaulting to off; these tests pin both halves --
 the convention firing when configured, and staying out of the way when not.
 """
 
-import logging
-
 import pytest
 import sqlglot
 from medalflow.constants.sql import QueryType
@@ -34,19 +32,12 @@ def _settings(**conventions):
 
 
 def _bronze(settings):
-    """A BronzeSequencer without its LakeDatabase -- offline per D6."""
-    sequencer = BronzeSequencer.__new__(BronzeSequencer)
-    sequencer.settings = settings
-    sequencer.source_schema = "dbo"
-    return sequencer
+    """A real BronzeSequencer. Its LakeDatabase is lazy, so this stays offline (D6)."""
+    return BronzeSequencer(settings)
 
 
 def _silver(settings):
-    sequencer = SilverTransformationSequencer.__new__(SilverTransformationSequencer)
-    sequencer.settings = settings
-    sequencer.sql_dialect = "tsql"
-    sequencer.logger = logging.getLogger("test-conventions")
-    return sequencer
+    return SilverTransformationSequencer(settings)
 
 
 def _table(name):
@@ -55,10 +46,26 @@ def _table(name):
 
 @pytest.fixture(autouse=True)
 def offline_query_builder(monkeypatch):
-    """`create_query_builder` resolves live settings; keep that offline (D6)."""
+    """`create_query_builder` resolves live settings; keep that offline (D6).
+
+    The env vars are for `_BaseSequencer._init_feature_managers`, which reaches
+    for the settings singleton through the datalake client rather than through
+    this module attribute.
+    """
     import medalflow.settings
+    from medalflow.settings import main as settings_main
+
+    from tests.conftest import OFFLINE_ENV
+
+    for key, value in OFFLINE_ENV.items():
+        monkeypatch.setenv(key, value)
+    settings_main._settings = None
 
     monkeypatch.setattr(medalflow.settings, "get_settings", lambda: _settings())
+    try:
+        yield
+    finally:
+        settings_main._settings = None
 
 
 # --- defaults --------------------------------------------------------------

@@ -1,24 +1,28 @@
+from typing import TYPE_CHECKING
+
 from medalflow.constants.medallion import Layer
 from medalflow.medallion.base.sequencer import _BaseSequencer
 from medalflow.operations import BaseOperation
-from medalflow.settings import get_settings
 from medalflow.types.metadata import DiscoveredMethod
+
+if TYPE_CHECKING:
+    from medalflow.settings import MedalflowSettings
 
 
 class GoldSequencer(_BaseSequencer):
     """Sequencer for Gold layer operations in the medallion architecture."""
 
-    def __init__(self, selected_tables: list[str] | None = None):
+    def __init__(self, settings: "MedalflowSettings", selection: list[str] | None = None):
         """Initialize the Gold sequencer.
 
         Args:
-            selected_tables: Optional list of table names to process.
-                            If None, all tables are processed.
+            settings: Configuration settings for the sequencer
+            selection: Optional list of table names to process. None means
+                every table; an empty list means none.
         """
-        settings = get_settings()
         super().__init__(settings)
         self.layer = Layer.GOLD
-        self.selected_tables = selected_tables
+        self.selection = selection
 
     def get_layer_name(self) -> str:
         """Return the layer name for this sequencer.
@@ -49,17 +53,15 @@ class GoldSequencer(_BaseSequencer):
         """
         # If no selection (None), process all tables
         # If empty list, process nothing
-        if self.selected_tables is None:
+        if self.selection is None:
             return super()._get_queries(discovered_methods)
 
         # Filter discovered methods by table name
         filtered_methods = [
-            method
-            for method in discovered_methods
-            if method.metadata.table_name in self.selected_tables
+            method for method in discovered_methods if method.metadata.table_name in self.selection
         ]
 
         if not filtered_methods:
-            self.logger.warning(f"No methods found for selected tables: {self.selected_tables}")
+            self.logger.warning(f"No methods found for selected tables: {self.selection}")
 
         return super()._get_queries(filtered_methods)
