@@ -37,6 +37,19 @@ if TYPE_CHECKING:
     from medalflow.settings import MedalflowSettings
 
 
+class PackageNotImportable(ValueError):
+    """The package configured for a layer could not be imported.
+
+    Distinct from "the package imported and declared no models", which is a
+    legitimate project shape and not an error. This one means the name points
+    at nothing -- almost always a typo in the variable that supplied it.
+
+    A ``ValueError`` because every caller of discovery already guards it with
+    one, and a mistyped package name should not need a new except clause to
+    stop being silent.
+    """
+
+
 def _qualified_name(cls: type) -> str:
     """Import path an author can search for.
 
@@ -157,6 +170,7 @@ class _BaseDiscovery:
             One metadata record per discovered model
 
         Raises:
+            PackageNotImportable: If the configured package does not import
             ValueError: If a module cannot be processed, if a decorated class
                 in it cannot be read, or if two models declare the same name.
                 A model that fails is an authoring error, never a reason to
@@ -218,14 +232,22 @@ class _BaseDiscovery:
     def _walk_package(self) -> Generator:
         """Import every module under the configured package.
 
-        A package that does not exist yields nothing: a project that declares
-        no models for a layer is not an error. A module that exists and fails
-        to import is, so it raises.
+        Two failures, both of them errors. The package itself may not import,
+        which used to be logged and swallowed -- so a mistyped
+        ``MEDALFLOW_MODELS_PACKAGE`` produced an empty plan and no complaint,
+        and a log line is not something a caller can act on. Or a module
+        beneath it may fail to import, which already raised.
+
+        What is *not* an error: a package that imports and declares no models.
+        A project using two of the three layers is a legitimate shape, so
+        "does not exist" and "exists and is empty" have to stay distinguishable
+        -- and they are, because only the first raises ImportError.
 
         Yields:
             Module objects from the package
 
         Raises:
+            PackageNotImportable: If the configured package cannot be imported
             ValueError: If a submodule exists but cannot be imported
         """
         try:
@@ -233,7 +255,15 @@ class _BaseDiscovery:
             package_path = package.__path__
         except ImportError as e:
             self.logger.error(f"Could not import {self.layer} package {self.package}: {e}")
-            return
+            raise PackageNotImportable(
+                f"The {self.layer} layer is configured to look for models in "
+                f"'{self.package}', which cannot be imported: {e}. Check the "
+                f"package name in MEDALFLOW_{self.layer.upper()}_PACKAGE, or in "
+                f"MEDALFLOW_MODELS_PACKAGE (whose '{self.layer}' subpackage is "
+                f"walked), and that it is importable from where MedalFlow runs. "
+                f"A package that imports and declares no {self.layer} models is "
+                f"fine; one that does not import is not."
+            ) from e
 
         for _importer, modname, _ispkg in pkgutil.walk_packages(
             package_path, prefix=f"{self.package}."

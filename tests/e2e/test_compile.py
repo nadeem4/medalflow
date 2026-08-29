@@ -217,6 +217,32 @@ def test_an_unconfigured_layer_package_becomes_an_error(project):
     assert result.ok is False
 
 
+def test_a_root_package_that_does_not_import_becomes_an_error(project):
+    """A mistyped `MEDALFLOW_MODELS_PACKAGE` is the likelier of the two typos,
+    and used to compile to an empty plan with nothing said about it."""
+    project(MEDALFLOW_MODELS_PACKAGE="sampl_project")
+
+    result = compile("*")
+
+    assert result.models == []
+    assert result.ok is False
+    assert len(result.errors) == 3
+
+    for error in result.errors:
+        assert error.error_type == "UnimportablePackage"
+        assert "sampl_project" in error.message
+        assert "MEDALFLOW_MODELS_PACKAGE" in error.suggestion
+
+
+def test_an_importable_layer_declaring_no_models_is_not_an_error(broken_project):
+    """`broken_project` has an empty bronze and an empty gold package. A layer
+    a project does not use is a legitimate shape, and is what separates it from
+    a package that does not exist at all."""
+    result = compile("*")
+
+    assert [error for error in result.errors if error.model is None] == []
+
+
 # --- several broken models, one run ----------------------------------------
 
 

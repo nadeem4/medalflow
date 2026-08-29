@@ -35,6 +35,7 @@ from typing import Any
 from pydantic import Field
 
 from medalflow.logging import get_logger
+from medalflow.medallion.base.discovery import PackageNotImportable
 from medalflow.medallion.bronze.metadata_discovery import BronzeMetadataDiscovery
 from medalflow.medallion.gold.metadata_discovery import GoldMetadataDiscovery
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
@@ -281,10 +282,14 @@ def compile(selector: str = "*") -> CompileResult:
 def _discover(layer: str, settings) -> tuple[list[Any], list[CompileError]]:
     """Discover one layer's models, turning its failures into errors.
 
-    Two things can go wrong before a single model is read, and neither is a
-    reason to abandon the other layers: the layer may have no package
-    configured, and the walk itself may fail (a module that will not import,
-    two models sharing a name).
+    Three things can go wrong before a single model is read, and none of them
+    is a reason to abandon the other layers: the layer may have no package
+    configured, the package it names may not import, and the walk itself may
+    fail (a submodule that will not import, two models sharing a name).
+
+    A package that imports and declares nothing is none of those. A project
+    using two of the three layers is a legitimate shape, so it compiles to no
+    models and no error.
 
     Args:
         layer: 'bronze', 'silver' or 'gold'
@@ -317,6 +322,23 @@ def _discover(layer: str, settings) -> tuple[list[Any], list[CompileError]]:
         # Forced: compile is what an author runs after editing their models,
         # so reading a cached walk would report the project as it used to be.
         return discovery.discover_all(force_refresh=True), []
+    except PackageNotImportable as e:
+        # Sibling of UnconfiguredPackage, and it gets the same shape of
+        # guidance: both mean the variable pointing at this layer is wrong,
+        # and a typo in it is likelier than leaving it unset.
+        return [], [
+            CompileError(
+                model=None,
+                error_type="UnimportablePackage",
+                message=str(e),
+                suggestion=(
+                    f"Correct MEDALFLOW_{layer.upper()}_PACKAGE, or "
+                    f"MEDALFLOW_MODELS_PACKAGE if the {layer} package is derived "
+                    f"from it, and make sure '{package}' is importable from where "
+                    f"MedalFlow runs."
+                ),
+            )
+        ]
     except Exception as e:
         return [], [
             CompileError(

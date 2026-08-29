@@ -7,8 +7,14 @@ layer's metadata attribute. Only the package and the attribute differ.
 
 These pin the behaviour the silver walk already had, now that gold shares it:
 the `test` / `__pycache__` module skip, the `__module__` check that drops
-imported classes, a missing root package returning nothing, and a submodule
-that fails to import raising rather than being skipped.
+imported classes, and a submodule that fails to import raising rather than
+being skipped.
+
+One of them has changed since. A missing root package used to be logged and
+return nothing, so a mistyped package name produced an empty plan and no
+complaint; it raises now. The pair below keeps the distinction that matters --
+a package that does not exist is an error, a package that exists and declares
+nothing is not.
 """
 
 import sys
@@ -16,7 +22,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
-from medalflow.medallion.base.discovery import _BaseDiscovery
+from medalflow.medallion.base.discovery import PackageNotImportable, _BaseDiscovery
 
 
 class _StubSettings:
@@ -69,7 +75,8 @@ def project(tmp_path, monkeypatch):
 
     yield build
 
-    for loaded in [m for m in sys.modules if m.split(".")[0] in {"walkable", "broken", "shadowed"}]:
+    built = {"walkable", "broken", "shadowed", "empty"}
+    for loaded in [m for m in sys.modules if m.split(".")[0] in built]:
         del sys.modules[loaded]
 
 
@@ -124,9 +131,19 @@ def test_modules_that_look_like_tests_are_skipped(project):
     assert discovery.seen == ["walkable.model.Real"]
 
 
-def test_a_missing_root_package_discovers_nothing_and_does_not_raise():
+def test_a_missing_root_package_raises_rather_than_discovering_nothing():
+    """It used to log and return `[]`, which the caller could not tell apart
+    from a project that genuinely declares no models."""
     discovery = _Probe("no_such_package_anywhere", settings=_StubSettings())
     discovery._cache_manager = None
+
+    with pytest.raises(PackageNotImportable, match="no_such_package_anywhere"):
+        discovery.discover_all()
+
+
+def test_a_root_package_that_imports_and_declares_nothing_is_not_an_error(project):
+    """The other half of the distinction: an empty layer is a real shape."""
+    discovery = project("empty", {})
 
     assert discovery.discover_all() == []
 
