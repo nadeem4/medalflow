@@ -365,3 +365,65 @@ on that path read the label defensively now.
 
 Still outstanding for Decision 2: nothing. Decisions 7 and 8 — `compile()`,
 `CompileResult`, `run(selector)` and the selector grammar — are next.
+
+## Amendment — Decision 8 implemented, and the selector grammar with it
+
+`compile(selector="*")` is `medalflow.compile`. It walks all three layers' configured
+packages, applies the selector, and builds one cross-layer plan through the
+`ExecutionPlanOrchestrator` that already existed — there is no second DAG mechanism. It
+returns a `CompileResult` carrying the models it compiled (`name`, `layer`, `schema`,
+`description`, `tags`), the plan, and `errors: list[CompileError]`, with an `ok`
+property. `CompileResult.to_dict()` is JSON-serialisable end to end.
+
+**Errors are collected, not raised.** This is the whole of the decision. A
+`@query_metadata` method whose own code raises, one that names no table to write, one
+returning something that is not SQL — each becomes one `CompileError` and compile keeps
+going, so an author fixing three models learns about all three from one run. The models
+that do compile still reach the plan; a broken sibling never shrinks it to nothing.
+`tests/fixtures/broken_project` is exactly that shape and
+`test_every_broken_model_is_reported_in_one_run` pins it.
+
+An unconfigured layer package is one of those errors rather than a crash. Discovery
+raises `ValueError` when `package_for_layer` resolves nothing, and compile turns it into
+a `CompileError` whose `suggestion` names both `MEDALFLOW_<LAYER>_PACKAGE` and
+`MEDALFLOW_MODELS_PACKAGE`. A project with no gold models compiles its bronze and silver.
+
+**Where the line is drawn.** A *project* problem is collected. The *caller's* own input
+is not: an unparseable selector raises `SelectorError` before any discovery runs, because
+returning an empty result would make a typo indistinguishable from a project that
+declares no matching model. Bugs inside MedalFlow itself still propagate — they are not
+something an author can act on.
+
+Selector grammar v0.1 is `medalflow.api.selectors.parse_selector`: `*`,
+`layer:bronze|silver|gold`, `tag:<value>`, and a bare word matching a model's declared
+`name`. It matches on `name`, `layer` and `tags`, never on `_dag_id`. `+name` and `name+`
+are recognised and refused by name, so v0.3 adds behaviour without changing the grammar
+or a call site. A selector that parses and matches nothing is an empty plan, not an
+error.
+
+Three details that had to be decided:
+
+- `CompiledModel.layer` is the layer the model was *discovered* in, not
+  `GoldMetadata.layer`. That field is free text an author may set to `gold_ml`, and
+  `layer:gold` has to keep working.
+- `CompileError.to_dict()` and `CompiledModel.to_dict()` are overridden rather than
+  inherited. `CTEBaseModel.to_dict` drops None fields, which would make `model` a key
+  that appears only when a model happens to be named — the opposite of a machine-readable
+  shape.
+- Compile forces discovery to re-walk its packages. It is what an author runs after
+  editing their models, so a cached walk would report the project as it used to be.
+
+`ExecutionPlan.get_all_operations(serialize=True)` is deliberately untouched: `run()`
+builds on that seam, and it still has no caller.
+
+Two silent behaviours were found and left alone, both older than this change:
+
+- `_walk_package` returns quietly when the configured package itself cannot be imported,
+  so a mistyped `MEDALFLOW_MODELS_PACKAGE` compiles to an empty plan rather than an
+  error. A missing *layer* package is now reported; a missing *root* package is not.
+- `ExecutionPlan.to_dict()` calls `self.metadata.to_dict()`, but
+  `create_plan_from_sequencers` passes a plain `dict` as metadata — so serialising a plan
+  from the per-layer API functions raises `AttributeError`. `compile()` passes no
+  metadata and is unaffected.
+
+Still outstanding: Decision 7's `run(selector)`.
