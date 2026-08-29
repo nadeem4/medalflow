@@ -75,13 +75,13 @@ def _discover(settings):
 
 def test_silver_discovery_finds_every_model_when_none_are_configured():
     """This is the bug: a new project's silver layer used to compile to zero."""
-    assert _discover(_settings()) == ["usp_load_dim_customer", "usp_load_fact_orders"]
+    assert _discover(_settings()) == ["DimCustomer", "FactOrders"]
 
 
 def test_silver_discovery_still_honours_a_configured_list():
     assert _discover(_settings(configured_models="sales")) == [
-        "usp_load_dim_customer",
-        "usp_load_fact_orders",
+        "DimCustomer",
+        "FactOrders",
     ]
 
 

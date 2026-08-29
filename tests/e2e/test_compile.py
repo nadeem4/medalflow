@@ -88,16 +88,16 @@ def test_compile_finds_every_model_in_every_layer(sample_project):
 
     assert _names(result) == [
         "Customers",
+        "DimCustomer",
+        "FactOrders",
         "Orders",
         "Revenue",
-        "usp_load_dim_customer",
-        "usp_load_fact_orders",
     ]
     assert {model.name: model.layer for model in result.models} == {
         "Customers": "bronze",
         "Orders": "bronze",
-        "usp_load_dim_customer": "silver",
-        "usp_load_fact_orders": "silver",
+        "DimCustomer": "silver",
+        "FactOrders": "silver",
         "Revenue": "gold",
     }
 
@@ -135,7 +135,7 @@ def test_a_healthy_project_compiles_without_errors(sample_project):
     ("selector", "expected"),
     [
         ("layer:bronze", ["Customers", "Orders"]),
-        ("layer:silver", ["usp_load_dim_customer", "usp_load_fact_orders"]),
+        ("layer:silver", ["DimCustomer", "FactOrders"]),
         ("layer:gold", ["Revenue"]),
     ],
 )
@@ -148,7 +148,7 @@ def test_a_layer_selector_compiles_only_that_layer(sample_project, selector, exp
 
 def test_a_tag_selector_crosses_layers(sample_project):
     """`daily` is declared by one silver model and by the gold model."""
-    assert _names(compile("tag:daily")) == ["Revenue", "usp_load_dim_customer"]
+    assert _names(compile("tag:daily")) == ["DimCustomer", "Revenue"]
 
 
 def test_a_configured_model_list_still_narrows_the_silver_layer(project):
@@ -164,9 +164,9 @@ def test_a_configured_model_list_still_narrows_the_silver_layer(project):
 
 
 def test_a_name_selector_compiles_one_model(sample_project):
-    result = compile("usp_load_fact_orders")
+    result = compile("FactOrders")
 
-    assert _names(result) == ["usp_load_fact_orders"]
+    assert _names(result) == ["FactOrders"]
     assert result.plan.total_queries == 1
 
 
@@ -209,9 +209,9 @@ def test_an_unconfigured_layer_package_becomes_an_error(project):
 
     assert _names(result) == [
         "Customers",
+        "DimCustomer",
+        "FactOrders",
         "Orders",
-        "usp_load_dim_customer",
-        "usp_load_fact_orders",
     ]
     assert result.plan.total_queries == 4
 

@@ -77,8 +77,8 @@ def test_discovery_finds_every_silver_model(discovery):
     transformations = discovery.discover_all_transformations(force_refresh=True)
 
     assert sorted(t.name for t in transformations) == [
-        "usp_load_dim_customer",
-        "usp_load_fact_orders",
+        "DimCustomer",
+        "FactOrders",
     ]
     assert {t.model for t in transformations} == {"sales"}
 
