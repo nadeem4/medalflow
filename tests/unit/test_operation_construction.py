@@ -215,3 +215,36 @@ def test_full_object_name_has_a_single_underscore_after_the_prefix(monkeypatch):
 
     assert settings.table_prefix == "fin_"
     assert operation.full_object_name == "silver.fin_Customers"
+
+
+# --- engine_hint is stored as a string, not an enum -------------------------
+
+
+def _select_with_engine_hint():
+    from medalflow.constants.compute import EngineType
+
+    return Select(
+        operation_type=QueryType.SELECT,
+        schema_name="gold",
+        object_name="vw_Revenue",
+        engine_hint=EngineType.SQL,
+    )
+
+
+def test_attaching_context_records_the_engine_hint():
+    """`CTEBaseModel` sets `use_enum_values=True`, so the field holds `'sql'`.
+
+    Both readers called `.value` on it, which a `str` does not have. Nothing
+    exercised it: the sequencer sets `engine_hint` on every operation it
+    builds, so the first plan attached to a context raised AttributeError.
+    """
+    operation = _select_with_engine_hint()
+    ctx = ExecutionRequestContext.generate()
+
+    operation.attach_context(ctx)
+
+    assert ctx.attributes["engine_hint"] == "sql"
+
+
+def test_telemetry_fields_report_the_engine_hint():
+    assert _select_with_engine_hint().telemetry_fields()["operation.engine_hint"] == "sql"

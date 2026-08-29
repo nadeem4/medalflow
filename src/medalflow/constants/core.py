@@ -4,8 +4,10 @@ from enum import Enum
 class LayerType(str, Enum):
     """Layer structure type for package naming.
 
-    Controls how Python packages are structured for business logic.
-    This affects import paths for silver and gold transformations.
+    Read by nothing. Model packages are configuration now
+    (`MEDALFLOW_MODELS_PACKAGE` and the per-layer overrides), so neither the
+    conventions below nor the `layer_type` setting that selects between them
+    influences any import path. Retained pending removal.
 
     Values:
         BASE: Traditional package structure

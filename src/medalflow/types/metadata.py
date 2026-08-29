@@ -99,12 +99,15 @@ with warnings.catch_warnings():
                 purpose and content. Used in data catalogs and documentation.
             tags: List of tags for categorizing and discovering views. Use
                 consistent tagging: ["domain:sales", "refresh:daily", "priority:high"].
+            disabled: If True, discovery leaves this model out of the plan.
+                Defaults to False.
         """
 
         schema: str
         layer: str = "gold"
         description: str | None = None
         tags: list[str] = Field(default_factory=list)
+        disabled: bool = False
 
 
 class TransformationMetadata(CTEBaseModel):

@@ -192,21 +192,21 @@ class ExecutionPlanOrchestrator:
 
         return self.create_plan_from_sequencers([bronze_sequencer])
 
-    def create_plan_for_gold_layer(self, gold_sequencer: "GoldSequencer") -> ExecutionPlan:
-        """Create an execution plan specifically for a gold layer sequencer.
+    def create_plan_for_gold_layer(self, gold_sequencers: list["GoldSequencer"]) -> ExecutionPlan:
+        """Create an execution plan for the gold layer's discovered models.
 
-        This method generates an execution plan tailored for gold layer
-        operations, ensuring that all necessary metadata and lineage
-        information is included.
+        Takes a list, like silver: gold is discovered by package walk now, so
+        a project declares as many gold models as it likes and they share one
+        plan.
 
         Args:
-            sequencer: The gold layer sequencer instance
-        Returns:
+            gold_sequencers: The gold layer sequencer instances
 
+        Returns:
             ExecutionPlan for the gold layer operations
         """
 
-        return self.create_plan_from_sequencers([gold_sequencer])
+        return self.create_plan_from_sequencers(gold_sequencers)
 
     def create_plan_for_silver_layer(
         self, silver_sequencers: list["SilverTransformationSequencer"]
