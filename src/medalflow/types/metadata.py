@@ -1,15 +1,14 @@
 """Metadata types for medallion architecture and query operations.
 
 This module contains all metadata classes including layer-specific metadata
-(Bronze, Silver, Gold, Snapshot) and query-related metadata types.
+(Bronze, Silver, Gold) and query-related metadata types.
 """
 
 from typing import Any, NamedTuple
 
-from pydantic import Field, field_serializer, model_validator
+from pydantic import Field, model_validator
 
 from medalflow.constants.compute import EngineType
-from medalflow.constants.medallion import SnapshotFrequency
 from medalflow.constants.sql import QueryType
 from medalflow.types.base import CTEBaseModel
 
@@ -57,8 +56,6 @@ class SilverMetadata(CTEBaseModel):
             Used for documentation and monitoring dashboards.
         tags: List of tags for categorizing and filtering ETL processes.
             Examples: ["dimension", "daily", "customer-data"].
-        preferred_engine: Engine preference for all queries in this sequencer.
-            Valid values: "sql", "spark", "auto". Defaults to "sql".
         disabled: If True, this transformation won't be executed. Used for
             client-specific features or gradual rollout. Defaults to False.
     """
@@ -67,17 +64,11 @@ class SilverMetadata(CTEBaseModel):
     group_file_name: str
     description: str | None = None
     tags: list[str] = Field(default_factory=list)
-    preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
     model_name: str | None = None
     disable_key_reshuffling: bool = False
     disabled: bool = (
         False  # If True, transformation won't be executed (for client-specific features)
     )
-
-    @field_serializer("preferred_engine")
-    def serialize_engine(self, value: str) -> str:
-        """Serialize engine preference to string value."""
-        return value
 
     @model_validator(mode="after")
     def set_model_name(self):
@@ -108,37 +99,6 @@ class GoldMetadata(CTEBaseModel):
 
     schema_name: str
     layer: str = "gold"
-    description: str | None = None
-    tags: list[str] = Field(default_factory=list)
-
-
-class SnapshotMetadata(CTEBaseModel):
-    """Metadata for Snapshot layer processes.
-
-    The Snapshot layer captures point-in-time states of data for historical
-    tracking, compliance, and temporal analysis. This metadata defines retention
-    policies, capture frequencies, and storage optimization strategies.
-
-    Attributes:
-        schema_name: Target schema for snapshot tables. Should be separate from
-            operational schemas to manage retention and permissions independently.
-        retention_days: How long to retain snapshots before automatic deletion.
-            Set to -1 for indefinite retention. Consider compliance requirements
-            and storage costs.
-        compression: Whether to compress snapshot data. Highly recommended for
-            data older than 30 days to reduce storage costs.
-        frequency: How often to capture snapshots. EVERY_RUN captures on each
-            ETL execution, while scheduled frequencies reduce storage overhead.
-        description: Description of what data is being snapshotted and why.
-            Important for compliance and audit purposes.
-        tags: Tags for categorizing snapshots. Include data classification
-            levels: ["pii:true", "compliance:gdpr", "retention:7years"].
-    """
-
-    schema_name: str
-    retention_days: int = 90
-    compression: bool = True
-    frequency: SnapshotFrequency = SnapshotFrequency.DAILY
     description: str | None = None
     tags: list[str] = Field(default_factory=list)
 
@@ -197,7 +157,7 @@ class TransformationMetadata(CTEBaseModel):
 
 
 # Union type for all class metadata
-ClassMetadata = BronzeMetadata | SilverMetadata | GoldMetadata | SnapshotMetadata
+ClassMetadata = BronzeMetadata | SilverMetadata | GoldMetadata
 
 
 # ============================================================================
@@ -220,8 +180,9 @@ class QueryMetadata(CTEBaseModel):
             the table being modified.
         schema_name: Database schema containing the target table. If empty,
             uses the default schema for the connection.
-        preferred_engine: Engine preference for query execution.
-            Valid values: "sql", "spark", "auto". Defaults to "sql".
+        preferred_engine: Internal engine hint, forwarded to the operation's
+            ``engine_hint``. Not settable by an author: engine selection is
+            inert, so every operation executes on SQL (ADR 002, D4).
         unique_idx: List of column names forming the natural/business key for dimensions.
             When specified, indicates this is a dimension table with unique constraints.
         filter: Enum name for filter-based dimensions. When specified and method returns None,
@@ -235,7 +196,7 @@ class QueryMetadata(CTEBaseModel):
     type: QueryType
     table_name: str = ""
     schema_name: str = ""
-    preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
+    preferred_engine: EngineType = EngineType.SQL  # internal plumbing; see ADR 002 D4
     unique_idx: list[str] | None = None  # Dimension natural key columns
     filter: str | None = None  # Enum name for auto-generation
     create_stats: bool = False  # Auto-create statistics after operation
@@ -311,7 +272,6 @@ __all__ = [
     "BronzeMetadata",
     "SilverMetadata",
     "GoldMetadata",
-    "SnapshotMetadata",
     "TransformationMetadata",
     "ClassMetadata",
     # Query metadata

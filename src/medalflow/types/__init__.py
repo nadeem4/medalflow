@@ -15,7 +15,6 @@ from .metadata import (
     # Query metadata
     QueryMetadata,
     SilverMetadata,
-    SnapshotMetadata,
     SQLDependencies,
     TransformationMetadata,
 )
@@ -31,7 +30,6 @@ __all__ = [
     "BronzeMetadata",
     "SilverMetadata",
     "GoldMetadata",
-    "SnapshotMetadata",
     "TransformationMetadata",
     "ClassMetadata",
     # Query metadata

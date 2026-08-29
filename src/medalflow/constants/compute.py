@@ -70,19 +70,18 @@ class EngineType(str, Enum):
             - Best for: Simple queries, small-medium datasets
             - Platforms: Synapse SQL
         SPARK: Distributed compute engine for large-scale processing.
-            - Best for: Complex transformations, large datasets, ML
-            - Platforms: none currently implemented
+            - Platforms: none currently implemented, so this never executes
+            - Retained as a member so an existing `EngineType("spark")` does
+              not become an import-time ValueError (ADR 002, D4). It is not
+              selectable from the authoring surface.
         AUTO: Automatic engine selection based on heuristics.
             - Platform analyzes query characteristics to choose
             - Considers: data volume, complexity, transformations
             - Falls back to platform defaults if unsure
 
-    Example:
-        >>> # Force SQL engine
-        >>> context = QueryContext(preferred_engine=EngineType.SQL)
-        >>>
-        >>> # Let platform decide
-        >>> context = QueryContext(preferred_engine=EngineType.AUTO)
+    Note:
+        Engine selection is internal plumbing. The `*_metadata` decorators
+        take no engine parameter (ADR 002, D4); every operation runs on SQL.
     """
 
     SQL = "sql"

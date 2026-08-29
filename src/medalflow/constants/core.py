@@ -5,7 +5,7 @@ class LayerType(str, Enum):
     """Layer structure type for package naming.
 
     Controls how Python packages are structured for business logic.
-    This affects import paths for silver, gold, and snapshot transformations.
+    This affects import paths for silver and gold transformations.
 
     Values:
         BASE: Traditional package structure

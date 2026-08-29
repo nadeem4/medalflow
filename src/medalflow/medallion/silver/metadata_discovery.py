@@ -50,11 +50,6 @@ class TransformationMetadata:
         return self.silver_metadata.group_file_name
 
     @property
-    def preferred_engine(self) -> str:
-        """Get preferred engine as string value."""
-        return self.silver_metadata.preferred_engine.value
-
-    @property
     def silver_table_name(self) -> str:
         """Compute silver table name from sp_name."""
         # removeprefix, not replace: only a leading "Load_" is the marker, so
@@ -75,7 +70,6 @@ class TransformationMetadata:
             "group_file_name": self.group_file_name,
             "description": self.description,
             "tags": self.tags,
-            "preferred_engine": self.preferred_engine,
             "module_path": self.module_path,
             "sequencer_class_name": self.sequencer_class.__name__,
         }

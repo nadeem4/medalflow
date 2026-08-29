@@ -95,8 +95,8 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
 
     layer_type: LayerType = Field(
         default=LayerType.BASE,
-        description="Layer structure: 'base' (default) or 'custom'. Determines the silver, "
-        "gold and snapshot package names.",
+        description="Layer structure: 'base' (default) or 'custom'. Determines the silver "
+        "and gold package names.",
     )
 
     configured_models: str = Field(
@@ -303,14 +303,6 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
             return f"custom_{self.ds_name}.gold.gold"
         else:
             return f"{self.ds_name}.layers.custom.gold.gold_query"
-
-    @property
-    def snapshot_package_name(self) -> str:
-        """Python package path for snapshot logic."""
-        if self.layer_type == LayerType.CUSTOM:
-            return f"custom_{self.ds_name}.snapshot.snapshot"
-        else:
-            return f"{self.ds_name}.layers.custom.snapshot.snapshot"
 
     @property
     def dimension_package_name(self) -> str:

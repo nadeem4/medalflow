@@ -7,7 +7,6 @@ within sequencer classes, providing execution control and dependency management.
 
 from collections.abc import Callable
 
-from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
 from medalflow.types.metadata import QueryMetadata
 
@@ -16,9 +15,6 @@ def query_metadata(
     type: str | QueryType,
     table_name: str = "",
     schema_name: str = "",
-    query: str | None = None,
-    name: str | None = None,
-    preferred_engine: str | EngineType = EngineType.SQL,
     unique_idx: list[str] | None = None,
     filter: str | None = None,
     create_stats: bool = False,
@@ -40,15 +36,6 @@ def query_metadata(
             Can be empty for operations that don't target a specific table.
         schema_name: Database schema for the target table. If empty, uses the
             default schema from connection settings. Include for cross-schema operations.
-        query: Optional static SQL string. Usually the decorated method returns
-            the SQL dynamically, but this allows inline query definition.
-            If provided, method return value is ignored.
-        name: Required for UPDATE operations to identify the target table.
-            Optional identifier for other operations, useful for logging and debugging.
-        preferred_engine: Engine preference for query execution. Can be string or
-            EngineType enum. Options: SQL (default), SPARK, AUTO. SQL maintains
-            backward compatibility. AUTO lets platform analyze query complexity and
-            choose optimal engine. Default is SQL.
         unique_idx: List of columns forming the natural/business key for dimensions.
             When specified, indicates this is a dimension table with unique constraints.
         filter: Enum name for filter-based dimensions. When specified and method returns None,
@@ -62,9 +49,6 @@ def query_metadata(
     Returns:
         Decorated method with QueryMetadata attached. The framework inspects
         this metadata during execution planning.
-
-    Raises:
-        ValueError: If UPDATE type is used without name parameter.
 
     Example:
         Basic SELECT with staging:
@@ -83,7 +67,7 @@ def query_metadata(
         UPDATE with specific target:
         >>> @query_metadata(
         ...     type=QueryType.UPDATE,
-        ...     name="DimCustomer"
+        ...     table_name="DimCustomer"
         ... )
         ... def update_customer_status(self) -> str:
         ...     return '''
@@ -93,7 +77,7 @@ def query_metadata(
         ...     '''
 
     Notes:
-        - Methods can return SQL strings or None (if query parameter is used)
+        - Methods return the SQL string to execute
         - The decorator preserves method signature and docstrings
         - Metadata is stored as _query_metadata attribute on the method
         - Framework validates dependency graphs for circular references
@@ -102,15 +86,11 @@ def query_metadata(
 
     def decorator(func: Callable) -> Callable:
         query_type = QueryType(type) if isinstance(type, str) else type
-        engine_type = (
-            EngineType(preferred_engine) if isinstance(preferred_engine, str) else preferred_engine
-        )
 
         metadata = QueryMetadata(
             type=query_type,
             table_name=table_name,
             schema_name=schema_name,
-            preferred_engine=engine_type,
             unique_idx=unique_idx,
             filter=filter,
             create_stats=create_stats,
