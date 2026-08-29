@@ -265,8 +265,10 @@ Gold and the package configuration landed together; bronze is a separate PR.
 - `gold_metadata` gained `disabled=`, and gold discovery respects it.
 - `settings.is_model_configured` stays **silver-only** by design: it is backed by
   `configured_models`, silver's grouping concept, and gold models declare no `model=`.
-- `layer_type` / `LayerType` now has no consumer at all. It is left in place; deleting it
-  is its own change.
+- `layer_type` / `LayerType` had no consumer left at all: it was the switch between the
+  two convention-derived package paths deleted above. **Since removed** — the settings
+  field, the enum, `constants/core.py` which held only it, and its `constants/` export.
+  `.env.example` never named it, so the drift guard there was unaffected.
 
 ## Amendment — Decision 6, part 2 implemented
 
