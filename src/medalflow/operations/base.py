@@ -107,7 +107,9 @@ class BaseOperation(CTEBaseModel):
         if self.logging_context:
             self.context.attributes.update(self.logging_context)
         if self.engine_hint is not None:
-            self.context.attributes["engine_hint"] = self.engine_hint.value
+            # `use_enum_values=True` on CTEBaseModel means this field holds the
+            # enum's *value*, a plain str. `.value` raised AttributeError.
+            self.context.attributes["engine_hint"] = str(self.engine_hint)
         self.context.telemetry_base = self.context.to_telemetry_dict()
 
     def telemetry_fields(self) -> dict[str, str]:
@@ -118,7 +120,7 @@ class BaseOperation(CTEBaseModel):
             "operation.object": self.object_name,
         }
         if self.engine_hint:
-            payload["operation.engine_hint"] = self.engine_hint.value
+            payload["operation.engine_hint"] = str(self.engine_hint)
         if self.metadata and getattr(self.metadata, "operation_id", None):
             payload["operation.id"] = str(self.metadata.operation_id)
         for key, value in (self.logging_context or {}).items():
