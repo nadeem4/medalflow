@@ -105,6 +105,21 @@ def test_the_plan_compiles_without_a_warehouse(sample_project_settings, no_wareh
     assert get_bronze_execution_plan(None).total_queries == 2
 
 
+def test_the_plan_this_entry_point_returns_is_serialisable(sample_project_settings, no_warehouse):
+    """`create_plan_from_sequencers` gives the plan a plain dict as metadata,
+    and `ExecutionPlan.to_dict` called `.to_dict()` on it -- so every plan the
+    per-layer entry points return raised AttributeError when serialised, next
+    to a `CompileResult` that serialises fine."""
+    import json
+
+    from medalflow.api.medallion import get_bronze_execution_plan
+
+    payload = json.loads(json.dumps(get_bronze_execution_plan(None).to_dict()))
+
+    assert payload["metadata"]["sequencers"] == ["Customers", "Orders"]
+    assert payload["total_queries"] == 2
+
+
 def test_the_selection_arrives_as_a_list(sample_project_settings, no_warehouse):
     """It used to be `",".join(...)` in and `.split(",")` out -- a round trip
     through a string that could only lose table names containing a comma."""
