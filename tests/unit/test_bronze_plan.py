@@ -264,7 +264,7 @@ def test_an_unreachable_warehouse_is_a_compile_error_not_a_crash(monkeypatch):
     try:
         result = compile("layer:bronze")
 
-        (error,) = (e for e in result.errors if e.error_type == "OSError")
+        (error,) = (e for e in result.errors if e.error_type == "UnreachableSource")
         assert error.model is None
         assert "could not connect" in error.message
         assert "MEDALFLOW_BRONZE_INTROSPECTION" in error.suggestion

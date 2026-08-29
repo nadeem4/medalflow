@@ -15,9 +15,16 @@ See ``.env.example`` at the repository root for the full minimal set.
 """
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from medalflow.core.mixins import NestedSecretsMixin
@@ -367,6 +374,197 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
         )
 
 
+class SettingsError(ValueError):
+    """MedalFlow could not construct its settings.
+
+    A :class:`ValueError`, like the ``ValidationError`` it replaces, so no
+    existing ``except`` clause has to learn a new name.
+
+    Raised with ``from None``. The pydantic report it is rewritten from names
+    fields rather than variables -- ``compute``, not
+    ``MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME`` -- and chaining would print that
+    exact block above the translation, in the one error every new user meets
+    before anything else works. Nothing is lost by suppressing it: for a
+    missing field this message carries everything the report did, and for
+    anything else pydantic's own text is quoted verbatim.
+
+    Attributes:
+        validation_error: The :class:`~pydantic.ValidationError` this was
+            rewritten from, kept off the screen but on the object so anything
+            debugging MedalFlow itself can still read the full pydantic
+            detail -- ``err.validation_error.errors()``.
+    """
+
+    def __init__(self, message: str, validation_error: ValidationError | None = None):
+        """Record the message a user reads and the report it came from.
+
+        Args:
+            message: What to tell the user
+            validation_error: The pydantic failure being rewritten, when there
+                is one
+        """
+        super().__init__(message)
+        self.validation_error = validation_error
+
+
+def _env_var(loc: tuple[str, ...]) -> str:
+    """The environment variable one settings field is read from.
+
+    Derived from the settings object's own ``env_prefix`` and
+    ``env_nested_delimiter`` rather than looked up, so it cannot fall out of
+    step with the configuration it describes.
+
+    Args:
+        loc: The field's location, as pydantic reports it -- ``('name',)``, or
+            ``('compute', 'lake_database_name')`` for a field inside a group
+
+    Returns:
+        The variable name, e.g. ``MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME``
+    """
+    config = MedalflowSettings.model_config
+    delimiter = config.get("env_nested_delimiter") or ""
+
+    return f"{config.get('env_prefix', '')}{delimiter.join(loc)}".upper()
+
+
+def _required_fields_of(model: type[BaseModel], loc: tuple[str, ...]) -> list[tuple[str, ...]]:
+    """Every required field under a settings group, located from its parent.
+
+    Pydantic reports a missing group as the group -- ``compute`` -- because
+    that is the field it could not fill. What the user has to set is inside
+    it, so the group is expanded into the fields that actually have no value,
+    descending through nested groups the same way.
+
+    Args:
+        model: The group's model class
+        loc: Where the group itself sits, e.g. ``('compute',)``
+
+    Returns:
+        One location per required field. The group's own location when it has
+        no required field, which cannot happen for a group pydantic reported
+        as missing but keeps the return honest.
+    """
+    required: list[tuple[str, ...]] = []
+
+    for field_name, field in model.model_fields.items():
+        if not field.is_required():
+            continue
+
+        annotation = field.annotation
+        if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+            required.extend(_required_fields_of(annotation, loc + (field_name,)))
+        else:
+            required.append(loc + (field_name,))
+
+    return required or [loc]
+
+
+def _locations_of(loc: tuple[str, ...]) -> list[tuple[str, ...]]:
+    """Expand one reported location into the fields a user can actually set.
+
+    Args:
+        loc: A location from ``ValidationError.errors()``
+
+    Returns:
+        The location itself, or -- when it names a group rather than a value
+        -- every required field inside that group
+    """
+    annotation: Any = MedalflowSettings
+
+    for part in loc:
+        fields = getattr(annotation, "model_fields", None)
+        if not fields or part not in fields:
+            return [loc]
+        annotation = fields[part].annotation
+
+    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        return _required_fields_of(annotation, loc)
+
+    return [loc]
+
+
+def _describe(loc: tuple[str, ...], fallback: str) -> str:
+    """What to say about one variable: its field's own description.
+
+    Args:
+        loc: The field's location
+        fallback: Pydantic's message, used when the field carries no
+            description of its own
+
+    Returns:
+        A single line of guidance
+    """
+    annotation: Any = MedalflowSettings
+    description = None
+
+    for part in loc:
+        fields = getattr(annotation, "model_fields", None)
+        if not fields or part not in fields:
+            return fallback
+        description = fields[part].description
+        annotation = fields[part].annotation
+
+    return description or fallback
+
+
+def _boot_error(error: ValidationError) -> SettingsError:
+    """Rewrite a settings ``ValidationError`` in environment-variable terms.
+
+    Pydantic reports the fields it could not fill: ``source_system``,
+    ``ds_env``, ``name``, ``compute``. Those are not what a user sets, and
+    ``compute`` -- a group whose one required field is
+    ``MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME`` -- is actively unhelpful.
+
+    Only a *missing* field is expanded into the variables to set. A field that
+    was given a value pydantic refused, and a whole-object rule like
+    `refuse_test_mode_in_production`, already say something worth reading --
+    rewriting those as "set these variables" would replace a real explanation
+    with a list, which is the failure mode this function exists to fix.
+
+    Args:
+        error: What constructing :class:`MedalflowSettings` raised
+
+    Returns:
+        The same failure, naming the variables to set
+    """
+    lines: list[str] = []
+    seen: set[str] = set()
+    rejected: list[str] = []
+
+    for detail in error.errors():
+        loc = tuple(str(part) for part in detail["loc"])
+
+        if not loc:
+            # A rule about the object as a whole names no field, so there is
+            # no variable to derive. It carries its own message.
+            rejected.append(detail["msg"])
+            continue
+
+        missing = detail["type"] == "missing"
+        for location in _locations_of(loc) if missing else [loc]:
+            variable = _env_var(location)
+            if variable in seen:
+                continue
+
+            seen.add(variable)
+            said = _describe(location, detail["msg"]) if missing else detail["msg"]
+            lines.append(f"  {variable}: {said}")
+
+    parts = ["MedalFlow could not read its configuration."]
+
+    if lines:
+        parts.append("Set these environment variables:\n\n" + "\n".join(lines))
+    if rejected:
+        parts.extend(rejected)
+
+    parts.append(
+        "They are read from the process environment and from a '.env' file in "
+        "the working directory. See '.env.example'."
+    )
+
+    return SettingsError("\n\n".join(parts), validation_error=error)
+
+
 # Singleton instance
 _settings: MedalflowSettings | None = None
 
@@ -385,6 +583,11 @@ def get_settings(force_reload: bool = False) -> MedalflowSettings:
     Returns:
         The singleton MedalflowSettings instance
 
+    Raises:
+        SettingsError: If the configuration is incomplete. The message names
+            the environment variables to set, not the pydantic fields that
+            could not be filled.
+
     Example:
         >>> settings = get_settings()
         >>> get_settings() is settings
@@ -399,6 +602,17 @@ def get_settings(force_reload: bool = False) -> MedalflowSettings:
     global _settings
 
     if _settings is None or force_reload:
-        _settings = MedalflowSettings()
+        try:
+            _settings = MedalflowSettings()
+        except ValidationError as e:
+            # Pydantic names fields; a user sets variables. Translating is the
+            # difference between 'compute -- Field required' and
+            # 'MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME'.
+            #
+            # `from None`, because chaining would print the field-name
+            # report above the translation -- the text this exists to
+            # replace, in front of the first error a new user ever hits.
+            # It stays reachable as `SettingsError.validation_error`.
+            raise _boot_error(e) from None
 
     return _settings

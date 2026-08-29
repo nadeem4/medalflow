@@ -414,6 +414,15 @@ Three details that had to be decided:
   shape.
 - Compile forces discovery to re-walk its packages. It is what an author runs after
   editing their models, so a cached walk would report the project as it used to be.
+- `CompileError.error_type` is a closed semantic vocabulary, not `type(error).__name__`.
+  It is the one field a consumer branches on, and a Python exception class name is an
+  implementation detail of MedalFlow's call stack — worse, a near-constant one, since
+  `get_queries` wraps everything it catches in `ValueError` and every model failure
+  therefore read `"ValueError"`. The six members are `UnconfiguredPackage`,
+  `UnimportablePackage`, `UndiscoverableLayer`, `UnreachableSource`, `UncompilableModel`
+  and `UnbuildablePlan`, enumerated in the `CompileError` docstring. The originating
+  exception's message stays in `message`; its class goes to the DEBUG log with the
+  traceback.
 
 `ExecutionPlan.get_all_operations(serialize=True)` is deliberately untouched: `run()`
 builds on that seam, and it still has no caller.
