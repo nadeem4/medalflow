@@ -140,6 +140,28 @@ def test_a_selector_matching_nothing_is_an_empty_plan_not_an_error(sample_projec
     assert result.ok is True
 
 
+# --- a layer selector prunes discovery, not just the results ---------------
+#
+# `compile()` used to discover every layer and narrow afterwards, so
+# `compile("layer:silver")` reached the warehouse `bronze_introspection` needs.
+# That the warehouse is no longer reached is pinned in
+# tests/unit/test_bronze_plan.py, where the warehouse seam is stubbed. What is
+# pinned here is what pruning does to the *errors*.
+
+
+def test_a_layer_selector_no_longer_reports_an_excluded_layers_misconfiguration(project):
+    """A behaviour change, pinned rather than discovered later: asking for
+    silver stops reporting that gold has no package configured. That is what
+    narrowing means -- and `compile("*")` still reports both."""
+    project(MEDALFLOW_SILVER_PACKAGE="sample_project.silver")
+
+    assert compile("layer:silver").errors == []
+    assert sorted(error.suggestion.split()[1] for error in compile("*").errors) == [
+        "MEDALFLOW_BRONZE_PACKAGE",
+        "MEDALFLOW_GOLD_PACKAGE",
+    ]
+
+
 # --- selectors the caller got wrong ----------------------------------------
 
 

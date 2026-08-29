@@ -1,9 +1,13 @@
 """`compile()` -- the public step between authoring a project and running it.
 
-ADR 002, Decision 8. `compile()` walks every layer's configured package,
-narrows what it found with a selector, builds one cross-layer execution plan,
-and hands back a :class:`CompileResult`: the models it compiled, the plan, and
-a list of structured errors.
+ADR 002, Decision 8. `compile()` walks the configured package of every layer
+the selector can reach, narrows what it found with that selector, builds one
+cross-layer execution plan, and hands back a :class:`CompileResult`: the models
+it compiled, the plan, and a list of structured errors.
+
+Only a `layer:` selector can prune the walk -- it is the one form whose answer
+is known before a model has been discovered. A bare name does not say which
+layer its model is in, and a tag can be carried by a model in any of them.
 
 Two properties carry the decision, and both are about the errors.
 
@@ -222,9 +226,16 @@ class CompileResult(CTEBaseModel):
 def compile(selector: str = "*") -> CompileResult:
     """Compile a project's models into one cross-layer execution plan.
 
-    Every layer is discovered, the selector narrows what was found, and the
-    surviving models' operations become a single staged plan with the
-    bronze -> silver -> gold edges the models' own SQL implies.
+    Every layer the selector can reach is discovered, the selector narrows
+    what was found, and the surviving models' operations become a single
+    staged plan with the bronze -> silver -> gold edges the models' own SQL
+    implies.
+
+    A ``layer:`` selector prunes: the layers it excludes are never walked at
+    all. That is what keeps ``compile("layer:silver")`` offline when bronze is
+    in introspection mode, and it means an excluded layer's own problems -- an
+    unconfigured package, an unreachable warehouse -- are not reported. Asking
+    about silver is not asking about gold.
 
     Offline, unless `bronze_introspection` is on -- that mode derives the
     bronze models from a live warehouse, which is the cost D6 named when it
@@ -257,6 +268,15 @@ def compile(selector: str = "*") -> CompileResult:
     operations: list[Any] = []
 
     for layer in MODEL_LAYERS:
+        # Pruned, not filtered afterwards. Discovering a layer is not free --
+        # with `bronze_introspection` on it queries a live warehouse -- so a
+        # `layer:` selector skips the layers it excludes entirely, and a
+        # silver-only compile needs no bronze credential. Only `layer:` can do
+        # this; every other form is answered by `matches` below, once the
+        # models it has to look at exist.
+        if not parsed.selects_layer(layer):
+            continue
+
         discovered, layer_errors = _discover(layer, settings)
         errors.extend(layer_errors)
 

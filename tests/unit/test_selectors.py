@@ -13,7 +13,7 @@ positional `_{i}` suffix, so it is not stable across selections.
 """
 
 import pytest
-from medalflow.api.selectors import SelectorError, parse_selector
+from medalflow.api.selectors import SELECTABLE_LAYERS, SelectorError, parse_selector
 
 
 class _Model:
@@ -101,3 +101,28 @@ def test_a_prefix_with_no_value_is_an_error():
 def test_selector_error_is_a_value_error():
     """Callers catching ValueError around the public API keep working."""
     assert issubclass(SelectorError, ValueError)
+
+
+# --- what a selector knows before anything has been discovered -------------
+#
+# `compile()` asks this to skip walking a layer entirely, which is what keeps a
+# silver-only compile off a warehouse `bronze_introspection` would reach.
+
+
+def test_a_layer_selector_selects_only_its_own_layer():
+    selector = parse_selector("layer:silver")
+
+    assert selector.selects_layer("silver") is True
+    assert selector.selects_layer("bronze") is False
+    assert selector.selects_layer("gold") is False
+
+
+@pytest.mark.parametrize("selector", ["*", "tag:daily", "DimCustomer"])
+def test_every_other_form_selects_every_layer(selector):
+    """A bare name does not know its layer and a tag can be carried by a model
+    in any of them. Only `layer:` can answer this before discovery."""
+    parsed = parse_selector(selector)
+
+    assert [layer for layer in SELECTABLE_LAYERS if parsed.selects_layer(layer)] == list(
+        SELECTABLE_LAYERS
+    )
