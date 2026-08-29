@@ -14,7 +14,6 @@ The fixture under tests/fixtures/sample_project is shaped like a real project:
 so the plan must contain both the silver->silver and the silver->gold edge.
 """
 
-import logging
 import sys
 from pathlib import Path
 
@@ -45,12 +44,7 @@ class _StubSettings:
 
 @pytest.fixture
 def discovery():
-    instance = SilverMetadataDiscovery.__new__(SilverMetadataDiscovery)
-    instance.settings = _StubSettings()
-    instance.silver_package = "sample_project.silver"
-    instance.logger = logging.getLogger("e2e-discovery")
-    instance._cache_manager = None
-    return instance
+    return SilverMetadataDiscovery("sample_project.silver", settings=_StubSettings())
 
 
 @pytest.fixture

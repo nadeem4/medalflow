@@ -6,9 +6,9 @@ silently vanished from the plan anyway:
 
 - `create_plan_from_sequencers` caught every exception from `get_queries()`
   and `continue`d to the next sequencer.
-- `discover_all_transformations` caught every exception from class extraction
-  and from `_extract_metadata_from_class`, counting them as `error_count` and
-  returning whatever survived.
+- discovery caught every exception from class extraction and from
+  `_extract_metadata_from_class`, counting them as `error_count` and returning
+  whatever survived.
 
 dbt-style: an authoring mistake fails the whole compile, it does not quietly
 shrink the plan.
@@ -74,21 +74,18 @@ class _ExplodingClass:
 
 @pytest.fixture
 def discovery(monkeypatch):
-    instance = SilverMetadataDiscovery.__new__(SilverMetadataDiscovery)
-    instance.settings = None
-    instance.silver_package = "irrelevant"
-    instance.logger = logging.getLogger("test-discovery")
-    instance._cache_manager = None
+    class _StubSettings:
+        """Discovery reads no settings once the walk is stubbed out."""
+
+    instance = SilverMetadataDiscovery("irrelevant", settings=_StubSettings())
 
     class _Module:
         __name__ = "acme.silver.customers"
 
-    monkeypatch.setattr(
-        SilverMetadataDiscovery, "_walk_silver_package", lambda self: iter([_Module()])
-    )
+    monkeypatch.setattr(SilverMetadataDiscovery, "_walk_package", lambda self: iter([_Module()]))
     monkeypatch.setattr(
         SilverMetadataDiscovery,
-        "_extract_transformation_classes",
+        "_extract_model_classes",
         lambda self, module: [_ExplodingClass],
     )
     return instance

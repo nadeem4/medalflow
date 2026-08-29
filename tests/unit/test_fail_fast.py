@@ -5,9 +5,9 @@ Two blanket handlers turned authoring mistakes into empty results:
 - `_BaseSequencer.get_queries` caught every exception, logged it, and returned
   `[]`. A model whose query method raised produced a plan with zero operations
   and no indication anything was wrong.
-- `_walk_silver_package` caught every import error at *debug* level and
-  continued, so a syntax error in a user model silently yielded zero
-  discovered transformations.
+- the package walk caught every import error at *debug* level and continued,
+  so a syntax error in a user model silently yielded zero discovered
+  transformations.
 
 dbt-style: authoring mistakes fail loudly at plan time.
 """
@@ -66,15 +66,14 @@ def _write_package(tmp_path, monkeypatch, name, modules):
     return name
 
 
+class _StubSettings:
+    """The walk reads no settings; discovery only needs one to exist."""
+
+
 @pytest.fixture
-def discovery_factory(monkeypatch):
+def discovery_factory():
     def build(package_name):
-        instance = SilverMetadataDiscovery.__new__(SilverMetadataDiscovery)
-        instance.settings = None
-        instance.silver_package = package_name
-        instance.logger = logging.getLogger("test-discovery")
-        instance._cache_manager = None
-        return instance
+        return SilverMetadataDiscovery(package_name, settings=_StubSettings())
 
     return build
 
@@ -90,7 +89,7 @@ def test_a_model_with_a_syntax_error_fails_discovery_naming_the_module(
     )
 
     with pytest.raises(Exception) as excinfo:
-        list(discovery_factory(package)._walk_silver_package())
+        list(discovery_factory(package)._walk_package())
 
     assert "broken_silver.customers" in str(excinfo.value)
 
@@ -106,7 +105,7 @@ def test_a_model_with_a_bad_import_fails_discovery_naming_the_module(
     )
 
     with pytest.raises(Exception) as excinfo:
-        list(discovery_factory(package)._walk_silver_package())
+        list(discovery_factory(package)._walk_package())
 
     assert "badimport_silver.orders" in str(excinfo.value)
 
@@ -119,6 +118,6 @@ def test_a_healthy_package_still_walks(tmp_path, monkeypatch, discovery_factory)
         {"customers": "VALUE = 1\n"},
     )
 
-    modules = list(discovery_factory(package)._walk_silver_package())
+    modules = list(discovery_factory(package)._walk_package())
 
     assert [m.__name__ for m in modules] == ["healthy_silver.customers"]
