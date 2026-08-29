@@ -69,11 +69,11 @@ def orchestrator(offline_settings):
 def test_discovery_finds_every_silver_model(discovery):
     transformations = discovery.discover_all_transformations(force_refresh=True)
 
-    assert sorted(t.sp_name for t in transformations) == [
+    assert sorted(t.name for t in transformations) == [
         "usp_load_dim_customer",
         "usp_load_fact_orders",
     ]
-    assert {t.model_name for t in transformations} == {"sales"}
+    assert {t.model for t in transformations} == {"sales"}
 
 
 def test_discovered_sequencer_classes_are_instantiable_types(discovery):

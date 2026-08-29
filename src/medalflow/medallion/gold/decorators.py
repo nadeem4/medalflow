@@ -10,7 +10,7 @@ from medalflow.types.metadata import GoldMetadata
 
 
 def gold_metadata(
-    schema_name: str,
+    schema: str,
     layer: str = "gold",
     description: str | None = None,
     tags: list[str] | None = None,
@@ -23,7 +23,7 @@ def gold_metadata(
     tracking, and refresh orchestration.
 
     Args:
-        schema_name: Target schema for creating analytical views. This should
+        schema: Target schema for creating analytical views. This should
             be a dedicated schema for Gold layer objects to maintain clear
             separation between layers.
         layer: Medallion layer identifier. Defaults to "gold" but can be
@@ -40,7 +40,7 @@ def gold_metadata(
     Example:
         Basic Gold layer configuration:
         >>> @gold_metadata(
-        ...     schema_name="gold",
+        ...     schema="gold",
         ...     description="Core business metrics and KPIs"
         ... )
         ... class BusinessMetricsViews(GoldSequencer):
@@ -49,7 +49,7 @@ def gold_metadata(
 
         Domain-specific Gold layer:
         >>> @gold_metadata(
-        ...     schema_name="gold_sales",
+        ...     schema="gold_sales",
         ...     description="Sales analytics views for performance tracking",
         ...     tags=["sales", "performance", "daily-refresh"]
         ... )
@@ -60,7 +60,7 @@ def gold_metadata(
 
         ML-ready feature views:
         >>> @gold_metadata(
-        ...     schema_name="gold_ml",
+        ...     schema="gold_ml",
         ...     layer="gold_ml",
         ...     description="Feature engineering views for ML models",
         ...     tags=["ml-features", "customer-360", "high-compute"]
@@ -78,7 +78,7 @@ def gold_metadata(
 
     def decorator(cls: type) -> type:
         metadata = GoldMetadata(
-            schema_name=schema_name, layer=layer, description=description, tags=tags or []
+            schema=schema, layer=layer, description=description, tags=tags or []
         )
 
         cls._gold_metadata = metadata

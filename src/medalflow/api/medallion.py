@@ -91,7 +91,7 @@ def get_execution_plan_for_sps(
         settings = get_settings()
         plan_orchestrator = ExecutionPlanOrchestrator(settings)
         metadata_discovery = SilverMetadataDiscovery(settings.silver_package_name)
-        transformations = metadata_discovery.get_transformation_by_sp(sp_names=sp_names)
+        transformations = metadata_discovery.get_transformations_by_names(names=sp_names)
         plan = plan_orchestrator.create_plan_for_silver_layer(
             silver_sequencers=_instantiate_sequencers(transformations)
         )

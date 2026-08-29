@@ -11,13 +11,12 @@ from medalflow.types.metadata import SilverMetadata
 
 
 def silver_metadata(
-    sp_name: str,
-    group_file_name: str,
+    name: str,
+    model: str,
     description: str | None = None,
     tags: list[str] | None = None,
     disable_key_reshuffling: bool = False,
     disabled: bool = False,
-    model_name: str | None = None,
 ) -> Callable[[type], type]:
     """Decorator for Silver layer ETL classes.
 
@@ -27,15 +26,19 @@ def silver_metadata(
     ready for analytics.
 
     Args:
-        sp_name: Name of the stored procedure that will be generated. Follow
-            naming conventions: "Load_{Entity}_{Type}" where Entity is the
-            business object and Type is Dim/Fact/Staging.
-        group_file_name: Path to JSON configuration file defining transformation
-            rules, groupings, and aggregations. Path is relative to config root.
+        name: Identity of this transformation. It is the name the plan reports,
+            the key discovery indexes on, and the name of the stored procedure
+            generated for it.
+        model: The model this transformation belongs to. Discovery filters on it
+            against the configured model list, so a transformation whose model is
+            not configured is skipped. It was previously back-derived from a
+            filename; it is now declared.
         description: Human-readable description of the ETL process purpose and
             business value. Used in documentation and monitoring dashboards.
         tags: List of tags for categorizing and filtering ETL processes.
             Use consistent taxonomy: ["layer:silver", "type:dimension", "domain:sales"].
+        disable_key_reshuffling: Carried on the metadata for downstream key
+            handling; the framework itself does not act on it.
         disabled: If True, this transformation won't be executed. Used for client-specific
             features or gradual feature rollout. Default is False (enabled).
 
@@ -45,8 +48,8 @@ def silver_metadata(
     Example:
         Basic dimension ETL:
         >>> @silver_metadata(
-        ...     sp_name="Load_Customer_Dim",
-        ...     group_file_name="dimensions/customer.json",
+        ...     name="Load_Customer_Dim",
+        ...     model="sales",
         ...     description="Customer dimension with CDC and data quality checks"
         ... )
         ... class CustomerDimensionETL(SilverTransformationSequencer):
@@ -54,10 +57,10 @@ def silver_metadata(
         ...         # Implement transformation logic
         ...         pass
 
-        Fact table ETL with complex grouping:
+        Fact table ETL:
         >>> @silver_metadata(
-        ...     sp_name="Load_Sales_Fact",
-        ...     group_file_name="facts/sales_aggregations.json",
+        ...     name="Load_Sales_Fact",
+        ...     model="sales",
         ...     description="Daily sales fact with product and customer dimensions",
         ...     tags=["fact", "sales", "daily", "high-priority"]
         ... )
@@ -66,45 +69,19 @@ def silver_metadata(
         ...     def aggregate_sales(self):
         ...         return "SELECT ... GROUP BY ..."
 
-        Real-time streaming ETL:
-        >>> @silver_metadata(
-        ...     sp_name="Load_Streaming_Events",
-        ...     group_file_name="streaming/event_processor.json",
-        ...     description="Near real-time event processing for IoT sensors",
-        ...     tags=["streaming", "iot", "real-time"]
-        ... )
-        ... class StreamingEventETL(SilverTransformationSequencer):
-        ...     def process_event_batch(self):
-        ...         # Handle micro-batches from streaming source
-        ...         pass
-
-    Configuration File Format (group_file_name):
-        The JSON configuration file should define:
-        - Source tables and join conditions
-        - Transformation rules and business logic
-        - Data quality validations
-        - Grouping and aggregation specifications
-        - Target table schema and data types
-
     Notes:
         - The decorated class should inherit from SilverTransformationSequencer
         - Stored procedures are auto-generated from class methods
-        - Use consistent SP naming for easier maintenance
-        - Configuration files enable no-code transformation changes
+        - Use consistent naming for easier maintenance
         - Tag consistently for automated orchestration
     """
 
     def decorator(cls: type) -> type:
-        final_model_name = (
-            model_name if model_name else group_file_name.split("/")[0].replace("group_", "")
-        )
-
         metadata = SilverMetadata(
-            sp_name=sp_name,
-            group_file_name=group_file_name,
+            name=name,
+            model=model,
             description=description,
             tags=tags or [],
-            model_name=final_model_name,
             disable_key_reshuffling=disable_key_reshuffling,
             disabled=disabled,
         )

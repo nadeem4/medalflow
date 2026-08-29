@@ -34,15 +34,15 @@ class SilverTransformationSequencer(_BaseSequencer):
     def get_obj_name(self) -> str:
         """Get unique object name for Silver transformation sequencer.
 
-        Returns the sp_name from the silver metadata if available,
+        Returns the name from the silver metadata if available,
         otherwise falls back to class name.
 
         Returns:
-            sp_name from metadata or class name
+            name from metadata or class name
         """
         metadata = self._get_class_metadata()
-        if metadata and "sp_name" in metadata:
-            return metadata["sp_name"]
+        if metadata and "name" in metadata:
+            return metadata["name"]
 
         return super().get_obj_name()
 

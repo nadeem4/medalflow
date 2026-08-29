@@ -53,7 +53,7 @@ def api_module(monkeypatch):
         def get_transformations_by_models(self, models):
             return [_transformation("usp_load_customer", "customer")]
 
-        def get_transformation_by_sp(self, sp_names):
+        def get_transformations_by_names(self, names):
             return [_transformation("usp_load_order", "order")]
 
     monkeypatch.setattr(api, "get_settings", lambda: _Settings())
@@ -73,10 +73,10 @@ def api_module(monkeypatch):
     return api
 
 
-def _transformation(sp_name, model_name):
+def _transformation(name, model):
     return TransformationMetadata(
-        sp_name=sp_name,
-        model_name=model_name,
+        name=name,
+        model=model,
         silver_metadata=None,
         sequencer_class=SilverTransformationSequencer,
     )
@@ -220,11 +220,11 @@ def test_detail_table_transformation_logs_without_crashing(caplog):
 # --- discovery contract ----------------------------------------------------
 
 
-def test_get_transformation_by_sp_is_annotated_as_a_list():
+def test_get_transformations_by_names_is_annotated_as_a_list():
     """It returns a list; the annotation said Optional[TransformationMetadata]."""
     from typing import get_type_hints
 
-    hints = get_type_hints(SilverMetadataDiscovery.get_transformation_by_sp)
+    hints = get_type_hints(SilverMetadataDiscovery.get_transformations_by_names)
 
     assert hints["return"] == list[TransformationMetadata]
 
