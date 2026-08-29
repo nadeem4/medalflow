@@ -375,3 +375,17 @@ def test_the_orchestrator_has_no_per_layer_plan_method():
 
     assert hasattr(ExecutionPlanOrchestrator, "create_plan_from_sequencers")
     assert hasattr(ExecutionPlanOrchestrator, "create_execution_plan")
+
+
+def test_the_request_context_reaches_the_executor_too(sample_project, executor):
+    """The third stamp `get_all_operations` adds. It is empty unless a context
+    was attached to the plan, so `run()` attaches one -- otherwise every
+    operation it executes is untraceable back to the run that issued it."""
+    recorder = executor()
+
+    run("layer:bronze")
+
+    request_ids = {call["_cte_request_context"]["request_id"] for call in recorder.calls}
+
+    assert len(request_ids) == 1
+    assert request_ids != {None}

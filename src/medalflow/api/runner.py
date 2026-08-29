@@ -31,8 +31,13 @@ tell an author where they stand.
 
 from typing import Any
 
+from medalflow.compute import OperationResult
 from medalflow.logging import get_logger
-from medalflow.observability.context import execution_request_scope, resolve_request_context
+from medalflow.observability.context import (
+    ExecutionRequestContext,
+    execution_request_scope,
+    resolve_request_context,
+)
 from medalflow.types.base import CTEBaseModel
 
 from .compiler import CompileResult, compile
@@ -116,12 +121,12 @@ class ExecutedOperation(PlannedOperation):
     error_message: str | None = None
 
     @classmethod
-    def of_result(cls, operation: dict, result: Any) -> "ExecutedOperation":
+    def of_result(cls, operation: dict, result: OperationResult) -> "ExecutedOperation":
         """Pair one operation with the result of executing it.
 
         Args:
             operation: The serialized operation that was executed
-            result: The :class:`OperationResult` it produced
+            result: What the platform returned for it
 
         Returns:
             The executed operation, as the run reports it
@@ -292,7 +297,7 @@ def _operations(compiled: CompileResult) -> list[dict]:
 
 
 def _execute(
-    operations: list[dict], ctx: Any
+    operations: list[dict], ctx: ExecutionRequestContext
 ) -> tuple[list[ExecutedOperation], ExecutedOperation | None, list[dict]]:
     """Execute operations in order, stopping at the first failure.
 
