@@ -9,6 +9,7 @@ caught it. Discovery results must be instantiated via `metadata.sequencer_class`
 """
 
 import logging
+from types import SimpleNamespace
 
 import pytest
 from medalflow.constants.sql import QueryType
@@ -50,6 +51,8 @@ def api_module(monkeypatch):
     created.clear()
 
     class _Settings:
+        bronze_introspection = False
+
         def package_for_layer(self, layer):
             return f"acme.{layer}"
 
@@ -157,10 +160,19 @@ def test_bronze_plan_passes_settings_and_the_table_list(api_module, monkeypatch)
             captured["settings"] = settings
             captured["selection"] = selection
 
-    def _capture(self, bronze_sequencer):
+    class _Discovery:
+        """Bronze reaches its sequencer classes through discovery now."""
+
+        def __init__(self, package, settings=None):
+            captured["package"] = package
+
+        def discover_all(self):
+            return [SimpleNamespace(name="Customer", sequencer_class=_Bronze)]
+
+    def _capture(self, bronze_sequencers):
         return _FakePlan()
 
-    monkeypatch.setattr(api_module, "BronzeSequencer", _Bronze)
+    monkeypatch.setattr(api_module, "BronzeMetadataDiscovery", _Discovery)
     monkeypatch.setattr(
         _RecordingOrchestrator, "create_plan_for_bronze_layer", _capture, raising=False
     )

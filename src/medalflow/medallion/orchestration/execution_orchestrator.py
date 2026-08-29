@@ -177,20 +177,24 @@ class ExecutionPlanOrchestrator:
             },
         )
 
-    def create_plan_for_bronze_layer(self, bronze_sequencer: "BronzeSequencer") -> ExecutionPlan:
-        """Create an execution plan specifically for a bronze layer sequencer.
+    def create_plan_for_bronze_layer(
+        self, bronze_sequencers: list["BronzeSequencer"]
+    ) -> ExecutionPlan:
+        """Create an execution plan for the bronze layer's models.
 
-        This method generates an execution plan tailored for bronze layer
-        operations, ensuring that all necessary metadata and lineage
-        information is included.
+        Takes a list, like silver and gold: bronze is discovered by package
+        walk now, so a project declares as many bronze models as it likes and
+        they share one plan. Introspection supplies a single sequencer to the
+        same list.
 
         Args:
-            sequencer: The bronze layer sequencer instance
+            bronze_sequencers: The bronze layer sequencer instances
+
         Returns:
             ExecutionPlan for the bronze layer operations
         """
 
-        return self.create_plan_from_sequencers([bronze_sequencer])
+        return self.create_plan_from_sequencers(bronze_sequencers)
 
     def create_plan_for_gold_layer(self, gold_sequencers: list["GoldSequencer"]) -> ExecutionPlan:
         """Create an execution plan for the gold layer's discovered models.

@@ -1,10 +1,11 @@
 from typing import Any
 
 from medalflow.medallion import (
-    BronzeSequencer,
     ExecutionPlan,
     ExecutionPlanOrchestrator,
+    IntrospectedBronzeSequencer,
 )
+from medalflow.medallion.bronze.metadata_discovery import BronzeMetadataDiscovery
 from medalflow.medallion.gold.metadata_discovery import GoldMetadataDiscovery
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 from medalflow.observability.context import execution_request_scope, resolve_request_context
@@ -27,6 +28,37 @@ def _instantiate_sequencers(transformations, settings) -> list[Any]:
     return [transformation.sequencer_class(settings) for transformation in transformations]
 
 
+def _bronze_sequencers(settings, table_names: list[str] | None) -> list[Any]:
+    """The bronze sequencers this deployment's configuration asks for.
+
+    Declared models are the default; introspection is opted into with
+    `bronze_introspection`. The mode is read off configuration and never
+    inferred from whether discovery found anything: a mistyped
+    `MEDALFLOW_BRONZE_PACKAGE` would otherwise fall back to querying a
+    warehouse, turning a loud authoring error into a silent one.
+
+    Args:
+        settings: Application settings
+        table_names: Optional selection, forwarded to each sequencer
+
+    Returns:
+        One sequencer per declared bronze model, or a single introspecting
+        sequencer over the whole source schema
+    """
+    if settings.bronze_introspection:
+        return [IntrospectedBronzeSequencer(settings, table_names)]
+
+    # No `is_model_configured` gate here, deliberately: that setting is
+    # `configured_models`, silver's grouping concept. Bronze models declare
+    # no `model=`, so gating bronze on it would drop every one of them --
+    # the same reasoning that keeps the gate off gold.
+    metadata_discovery = BronzeMetadataDiscovery(settings.package_for_layer("bronze"))
+
+    return [
+        model.sequencer_class(settings, table_names) for model in metadata_discovery.discover_all()
+    ]
+
+
 def get_bronze_execution_plan(
     table_names: list[str] | None,
     *,
@@ -38,7 +70,7 @@ def get_bronze_execution_plan(
         settings = get_settings()
         plan_orchestrator = ExecutionPlanOrchestrator(settings)
         plan = plan_orchestrator.create_plan_for_bronze_layer(
-            bronze_sequencer=BronzeSequencer(settings, table_names)
+            bronze_sequencers=_bronze_sequencers(settings, table_names)
         )
         return _attach_plan_context(plan, context)
 

@@ -124,6 +124,15 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
         description="Python package holding the gold models. Overrides " "'{models_package}.gold'.",
     )
 
+    bronze_introspection: bool = Field(
+        default=False,
+        description="Derive bronze tables from a live INFORMATION_SCHEMA query "
+        "instead of from declared @bronze_metadata models. Off by default: "
+        "introspection makes compiling a plan require a warehouse. The mode is "
+        "never inferred from whether models are found, so a mistyped "
+        "bronze_package fails loudly rather than falling back to the warehouse.",
+    )
+
     configured_models: str = Field(
         default="",
         description=(
