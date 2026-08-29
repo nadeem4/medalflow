@@ -23,7 +23,12 @@ from tests.conftest import OFFLINE_ENV
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
-FIXTURE_PACKAGES = ("sample_project", "broken_project")
+FIXTURE_PACKAGES = (
+    "sample_project",
+    "broken_project",
+    "duplicate_project",
+    "cyclic_project",
+)
 
 
 @pytest.fixture
@@ -285,6 +290,53 @@ def test_a_compile_error_carries_the_underlying_failure(broken_project):
 
     assert "this model" in error.message
     assert error.error_type
+
+
+# --- the layer itself will not discover ------------------------------------
+
+
+def test_a_layer_that_cannot_be_discovered_is_an_error_not_a_crash(project):
+    """Two gold models share a name, so the gold walk cannot say which model
+    the name means and fails as a whole. The other layers still compile."""
+    project(MEDALFLOW_MODELS_PACKAGE="duplicate_project")
+
+    result = compile("*")
+
+    (error,) = result.errors
+    assert error.model is None
+    assert "gold" in error.message
+    assert "Revenue" in error.message
+    assert "same name" in error.suggestion
+    assert result.ok is False
+
+
+# --- the models compile but the plan does not ------------------------------
+
+
+def test_a_dependency_cycle_is_an_error_not_a_crash(project):
+    """Both silver models build their operations fine; it is the graph those
+    operations imply that has no execution order."""
+    project(MEDALFLOW_MODELS_PACKAGE="cyclic_project")
+
+    result = compile("*")
+
+    assert _names(result) == ["usp_load_alpha", "usp_load_beta"]
+
+    (error,) = result.errors
+    assert error.model is None
+    assert "Circular dependency" in error.message
+    assert "reads from each other" in error.suggestion
+
+
+def test_a_plan_that_could_not_be_built_is_empty_rather_than_absent(project):
+    """`plan` is always a plan, so a caller never has to test it for None."""
+    project(MEDALFLOW_MODELS_PACKAGE="cyclic_project")
+
+    result = compile("*")
+
+    assert result.plan.total_queries == 0
+    assert result.plan.stages == []
+    assert json.loads(json.dumps(result.to_dict()))["ok"] is False
 
 
 # --- structured first, human text rendered from it -------------------------
