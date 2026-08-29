@@ -14,16 +14,14 @@ class ComputeType(str, Enum):
     for data processing and query execution.
 
     Values:
-        SYNAPSE: Azure Synapse Analytics
-            - Dedicated SQL pools
-            - Serverless SQL pools
-            - Apache Spark pools
-            - External table support
+        SYNAPSE: Azure Synapse Analytics, reached over ODBC. Dedicated and
+            serverless SQL pools both work -- the difference is in the
+            connection string, not here.
 
-            - Lakehouse SQL endpoint
-            - SQL Data Warehouse
-            - Spark compute
-            - Direct lake access
+    One member, deliberately. This enum is what
+    :func:`~medalflow.compute.create_platform` reads to pick a platform, and
+    Synapse is the only one implemented, so a second member would be a
+    selectable value with nothing behind it.
     """
 
     SYNAPSE = "synapse"
@@ -74,10 +72,10 @@ class EngineType(str, Enum):
             - Retained as a member so an existing `EngineType("spark")` does
               not become an import-time ValueError (ADR 002, D4). It is not
               selectable from the authoring surface.
-        AUTO: Automatic engine selection based on heuristics.
-            - Platform analyzes query characteristics to choose
-            - Considers: data volume, complexity, transformations
-            - Falls back to platform defaults if unsure
+        AUTO: Let the platform choose.
+            - With SQL the only implemented engine, the choice is already
+              made: ``_select_engine_for_operation`` returns SQL. AUTO is
+              the shape the decision would take, not a decision being taken.
 
     Note:
         Engine selection is internal plumbing. The `*_metadata` decorators
