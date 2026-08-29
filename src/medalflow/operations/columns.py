@@ -25,13 +25,13 @@ _SQL_TYPE_NAME = re.compile(
 class ColumnDefinition(BaseModel):
     """Column definition for table creation.
 
-    Users must provide platform-specific SQL data types in the data_type field.
-    The data_type should include the complete type specification including
-    size/precision where applicable.
+    ``data_type`` is emitted into the generated SQL verbatim, so it has to be
+    a type the target warehouse accepts. Nothing here translates between
+    dialects: the validator checks only that the string is *shaped* like a
+    type name, which is a safety rule, not a compatibility one. A type your
+    warehouse does not know reaches it unchanged and fails there.
 
-    Common Platform-Specific Types:
-
-    **Azure Synapse (T-SQL):**
+    Synapse (T-SQL) is the warehouse MedalFlow generates for today:
         - Strings: NVARCHAR(60), NVARCHAR(MAX), VARCHAR(100), CHAR(10)
         - Numbers: INT, BIGINT, SMALLINT, TINYINT, DECIMAL(18,2), NUMERIC(10,5), FLOAT, REAL
         - Dates: DATETIME2, DATETIME, DATE, TIME, DATETIMEOFFSET
@@ -39,37 +39,15 @@ class ColumnDefinition(BaseModel):
         - Binary: VARBINARY(MAX), BINARY(100)
         - Others: UNIQUEIDENTIFIER, XML, JSON
 
-    **Databricks / Spark SQL:**
-        - Strings: STRING, VARCHAR(100), CHAR(10)
-        - Numbers: INT, BIGINT, SMALLINT, TINYINT, DECIMAL(18,2), DOUBLE, FLOAT
-        - Dates: TIMESTAMP, DATE, INTERVAL
-        - Boolean: BOOLEAN
-        - Binary: BINARY
-        - Complex: ARRAY<type>, MAP<key_type, value_type>, STRUCT<fields>
-
-    **Snowflake:**
-        - Strings: VARCHAR(16777216), STRING, TEXT, CHAR(10)
-        - Numbers: NUMBER(38,0), INT, BIGINT, DECIMAL(18,2), FLOAT, DOUBLE
-        - Dates: TIMESTAMP_NTZ, TIMESTAMP_TZ, DATE, TIME
-        - Boolean: BOOLEAN
-        - Binary: BINARY, VARBINARY
-        - Semi-structured: VARIANT, OBJECT, ARRAY
+    Include the full specification, size and precision included. A type too
+    rich for the shape rule -- ``ARRAY<STRING>``, ``STRUCT<...>`` -- has to be
+    declared :class:`~medalflow.types.RawSQL`, which skips validation and
+    makes the risk the caller's.
 
     Examples:
-        >>> # For a string column that stores names (T-SQL)
         >>> ColumnDefinition(name="customer_name", data_type="NVARCHAR(100)")
-
-        >>> # For a decimal column (works across platforms)
         >>> ColumnDefinition(name="price", data_type="DECIMAL(10,2)")
-
-        >>> # For Databricks/Spark
-        >>> ColumnDefinition(name="description", data_type="STRING")
-
-        >>> # For a non-nullable ID column
         >>> ColumnDefinition(name="id", data_type="BIGINT", nullable=False, primary_key=True)
-
-    Note: When migrating between platforms, ensure data types are compatible
-    or adjust them accordingly for the target platform.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
