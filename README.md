@@ -40,9 +40,12 @@ MedalFlow is **not yet on PyPI**, so install it from a clone. Python 3.13+:
 ```bash
 git clone https://github.com/nadeem4/medalflow.git
 cd medalflow
+
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install .
 
-cd examples
+cd examples                    # MedalFlow reads `.env` from the working directory
 cp .env.example .env
 python run.py
 ```
