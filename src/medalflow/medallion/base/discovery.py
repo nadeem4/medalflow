@@ -14,6 +14,13 @@ What a subclass supplies:
 * ``_extract_metadata_from_class`` -- turns one decorated class into the
   layer's own metadata record, or None to drop it (a disabled model, or one
   the layer filters out). Whatever it returns must carry a ``name``.
+
+Two things the walk guarantees for every layer, because getting either wrong
+loses a model without saying so:
+
+* A model is a class that carries the layer's metadata attribute **itself**.
+  Inheriting one from a decorated base class does not make a subclass a model.
+* A ``name`` identifies exactly one model. Declaring it twice raises.
 """
 
 import importlib
@@ -28,6 +35,18 @@ from medalflow.protocols import CacheProtocol
 
 if TYPE_CHECKING:
     from medalflow.settings import MedalflowSettings
+
+
+def _qualified_name(cls: type) -> str:
+    """Import path an author can search for.
+
+    Args:
+        cls: The class to name
+
+    Returns:
+        ``module.QualName``
+    """
+    return f"{cls.__module__}.{cls.__qualname__}"
 
 
 class _BaseDiscovery:
@@ -135,17 +154,21 @@ class _BaseDiscovery:
         """Walk the package and collect one metadata record per model.
 
         Returns:
-            One metadata record per discovered model, keyed by name so a name
-            declared twice resolves to the last one walked
+            One metadata record per discovered model
 
         Raises:
-            ValueError: If a module cannot be processed, or a decorated class
-                in it cannot be read. A model that fails is an authoring error,
-                never a reason to quietly shrink the plan.
+            ValueError: If a module cannot be processed, if a decorated class
+                in it cannot be read, or if two models declare the same name.
+                A model that fails is an authoring error, never a reason to
+                quietly shrink the plan.
         """
         self.logger.info(f"Starting discovery of {self.layer} models in {self.package}")
 
         discovered: dict[str, Any] = {}
+        # Which class each name came from, so a collision can name both ends.
+        # Kept separate from `discovered` because the base promises only that a
+        # metadata record carries a `name`, not that it carries its class.
+        declared_by: dict[str, type] = {}
 
         for module in self._walk_package():
             try:
@@ -160,6 +183,20 @@ class _BaseDiscovery:
                         ) from e
 
                     if metadata:
+                        previous = declared_by.get(metadata.name)
+                        if previous is not None:
+                            # `discovered` is keyed by name, so this used to
+                            # resolve to whichever class the walk reached last
+                            # and the other simply vanished from the plan.
+                            raise ValueError(
+                                f"Two {self.layer} models are both named "
+                                f"{metadata.name!r}: {_qualified_name(previous)} and "
+                                f"{_qualified_name(cls)}. A model's name is its "
+                                f"identity -- discovery keys on it -- so one of them "
+                                f"would be left out of the plan. Rename one."
+                            )
+
+                        declared_by[metadata.name] = cls
                         discovered[metadata.name] = metadata
                         self.logger.debug(
                             f"Discovered {self.layer} model: {metadata.name} "
@@ -239,15 +276,25 @@ class _BaseDiscovery:
         return classes
 
     def _is_model_class(self, cls: type) -> bool:
-        """Check whether a class carries this layer's decorator.
+        """Check whether a class carries this layer's decorator itself.
+
+        The attribute has to be declared on `cls`, not merely reachable from
+        it. This was `hasattr`, which is satisfied by an *inherited* attribute,
+        so any subclass of a decorated model was discovered as though it had
+        been decorated too. The `__module__` guard in `_extract_model_classes`
+        does not catch it: a subclass genuinely belongs to its own module.
+
+        Where a layer takes its `name` from the metadata, the subclass
+        inherited the parent's name as well -- and, keyed by name, displaced
+        the model it inherited from.
 
         Args:
             cls: Class to check
 
         Returns:
-            True if the layer's metadata attribute is present
+            True if the layer's metadata attribute is defined on this class
         """
-        return hasattr(cls, self.metadata_attribute)
+        return self.metadata_attribute in cls.__dict__
 
     def _extract_metadata_from_class(self, cls: type) -> Any | None:
         """Turn one decorated class into this layer's metadata record.

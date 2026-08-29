@@ -18,27 +18,51 @@ from medalflow.types.base import CTEBaseModel
 # ============================================================================
 
 
-class BronzeMetadata(CTEBaseModel):
-    """Metadata for Bronze layer ingestion processes.
+# Pydantic warns that a field named `schema` shadows `BaseModel.schema()`, the
+# deprecated v1 compatibility shim. Shadowing it is the point: ADR 002 D2 makes
+# `schema` the layers' vocabulary for their write target, and nothing calls the
+# shim.
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        message=r'Field name "schema" in "BronzeMetadata" shadows an attribute',
+        category=UserWarning,
+    )
 
-    The Bronze layer is the landing zone for raw data from source systems.
-    This metadata defines how data is ingested, stored, and prepared for
-    downstream processing.
+    class BronzeMetadata(CTEBaseModel):
+        """One declared Bronze model, which is one Bronze table.
 
-    Attributes:
-        source_system: Name of the source system providing the data.
-            Examples: "salesforce", "sap", "postgres_orders".
-        ingestion_mode: How data is ingested - "incremental" for changes only,
-            "full" for complete refresh, "append" for adding new records only.
-        description: Description of the data being ingested and its purpose.
-        tags: Tags for categorizing ingestion processes. Include source type
-            and data domain: ["source:api", "domain:sales", "frequency:hourly"].
-    """
+        The Bronze layer is the landing zone for raw data from source systems.
+        A model declares which source table it reads and which Bronze table it
+        writes; everything else about the ingest -- the CTAS, the soft-delete
+        filter, the statistics -- is generated from that.
 
-    source_system: str
-    ingestion_mode: str = "incremental"  # "incremental", "full", "append"
-    description: str | None = None
-    tags: list[str] = Field(default_factory=list)
+        Attributes:
+            name: The model's identity: what discovery keys on, what the plan
+                reports, and the name of the Bronze table it creates.
+            schema: Target schema the Bronze table is created in. Was the
+                hardcoded literal ``"bronze"`` until Decision 6 part 2.
+            source_system: Name of the source system providing the data.
+                Examples: "salesforce", "sap", "postgres_orders".
+            source_table: Source table the rows are read from. Defaults to
+                ``name``, which is the usual case.
+            source_schema: Source schema the rows are read from. None means the
+                sequencer's own ``source_schema`` stands in.
+            description: Description of the data being ingested and its purpose.
+            tags: Tags for categorizing ingestion processes. Include source type
+                and data domain: ["source:api", "domain:sales", "frequency:hourly"].
+            disabled: If True, discovery leaves this model out of the plan.
+                Defaults to False.
+        """
+
+        name: str
+        schema: str
+        source_system: str
+        source_table: str
+        source_schema: str | None = None
+        description: str | None = None
+        tags: list[str] = Field(default_factory=list)
+        disabled: bool = False
 
 
 class SilverMetadata(CTEBaseModel):
@@ -73,9 +97,7 @@ class SilverMetadata(CTEBaseModel):
     )
 
 
-# Pydantic warns that a field named `schema` shadows `BaseModel.schema()`, the
-# deprecated v1 compatibility shim. Shadowing it is the point: ADR 002 D2 makes
-# `schema` the gold layer's vocabulary, and nothing calls the shim.
+# Suppressed for the same reason as `BronzeMetadata.schema` above.
 with warnings.catch_warnings():
     warnings.filterwarnings(
         "ignore",

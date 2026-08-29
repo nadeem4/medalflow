@@ -9,7 +9,7 @@ from .base.decorators import query_metadata
 from .bronze.decorators import bronze_metadata
 
 # Import Bronze layer components
-from .bronze.sequencer import BronzeSequencer
+from .bronze.sequencer import BronzeSequencer, IntrospectedBronzeSequencer
 from .gold.decorators import gold_metadata, view_metadata
 
 # Import Gold layer components
@@ -25,6 +25,7 @@ __all__ = [
     "SilverTransformationSequencer",
     "GoldSequencer",
     "BronzeSequencer",
+    "IntrospectedBronzeSequencer",
     # Metadata decorators (public API)
     "bronze_metadata",
     "silver_metadata",

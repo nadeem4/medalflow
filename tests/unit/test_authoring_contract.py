@@ -78,7 +78,9 @@ def test_snapshot_stays_a_schema_name():
 
 
 def test_every_layer_decorator_stores_its_description():
-    @bronze_metadata(source_system="d365", description="raw customers")
+    @bronze_metadata(
+        name="Customers", schema="bronze", source_system="d365", description="raw customers"
+    )
     class Bronze:
         pass
 

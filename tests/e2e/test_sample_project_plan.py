@@ -7,11 +7,12 @@ no network.
 
 The fixture under tests/fixtures/sample_project is shaped like a real project:
 
-    bronze.Customers ─┐
-                      ├─> silver.DimCustomer ──> silver.FactOrders ──> gold.vw_Revenue
-    bronze.Orders ────┘
+    bronze.Customers ──> silver.DimCustomer ─┐
+                                             ├─> silver.FactOrders ──> gold.vw_Revenue
+    bronze.Orders ───────────────────────────┘
 
-so the plan must contain both the silver->silver and the silver->gold edge.
+so the plan must contain the bronze->silver, silver->silver and silver->gold
+edges. Every layer, bronze included, arrives through discovery.
 """
 
 import sys
@@ -19,6 +20,7 @@ from pathlib import Path
 
 import pytest
 from medalflow.constants.sql import QueryType
+from medalflow.medallion.bronze.metadata_discovery import BronzeMetadataDiscovery
 from medalflow.medallion.gold.metadata_discovery import GoldMetadataDiscovery
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
@@ -54,6 +56,11 @@ def gold_discovery():
 
 
 @pytest.fixture
+def bronze_discovery():
+    return BronzeMetadataDiscovery("sample_project.bronze", settings=_StubSettings())
+
+
+@pytest.fixture
 def analyzer(offline_settings):
     return SQLDependencyAnalyzer(offline_settings)
 
@@ -76,6 +83,14 @@ def test_discovery_finds_every_silver_model(discovery):
     assert {t.model for t in transformations} == {"sales"}
 
 
+def test_discovery_finds_the_bronze_models(bronze_discovery):
+    """Bronze is walked too. Nothing here reaches a warehouse: the models
+    declare their own tables (D6)."""
+    discovered = bronze_discovery.discover_all(force_refresh=True)
+
+    assert sorted(model.name for model in discovered) == ["Customers", "Orders"]
+
+
 def test_discovery_finds_the_gold_model(gold_discovery):
     """Gold is walked, not hand-imported. `is_model_configured` is not applied
     here: `_StubSettings` answers True only for 'sales', and gold declares no
@@ -96,13 +111,18 @@ def test_discovered_sequencer_classes_are_instantiable_types(discovery):
 # --- the models' SQL reaches operations ------------------------------------
 
 
-def _operations_from_sample_project():
-    """Build the four operations the sample project describes.
+def _operations_from_sample_project(settings):
+    """Build the five operations the sample project describes.
 
-    Sequencer construction resolves live settings, so the operations are built
-    from each model's decorated methods directly — the same SQL and metadata
-    discovery hands to `_get_queries`. The gold model arrives through
-    discovery, which is how a real project reaches it.
+    The bronze operations come out of the bronze models themselves, through
+    discovery and `get_queries()` — the hand-built `CreateTable` that used to
+    stand in for them is gone, and with it the last place this suite described
+    bronze rather than running it.
+
+    The silver operations are still built from each model's decorated methods
+    directly: that is the same SQL and metadata discovery hands to
+    `_get_queries`. The gold model arrives through discovery, which is how a
+    real project reaches it.
     """
     from sample_project.silver.customers import DimCustomer
     from sample_project.silver.orders import FactOrders
@@ -114,15 +134,13 @@ def _operations_from_sample_project():
         if model.name == "Revenue"
     )
 
-    bronze = CreateTable(
-        operation_type=QueryType.CREATE_TABLE,
-        schema_name="bronze",
-        object_name="Customers",
-        select_query="SELECT * FROM dbo.Customers",
-        recreate=True,
-    )
+    bronze = BronzeMetadataDiscovery("sample_project.bronze", settings=_StubSettings())
+    operations = [
+        operation
+        for model in sorted(bronze.discover_all(force_refresh=True), key=lambda m: m.name)
+        for operation in model.sequencer_class(settings).get_queries()
+    ]
 
-    operations = [bronze]
     for model, method_name in (
         (DimCustomer, "build_dim_customer"),
         (FactOrders, "build_fact_orders"),
@@ -183,7 +201,7 @@ def test_dependencies_are_extracted_from_the_model_sql(analyzer, gold_discovery)
 
 
 @pytest.fixture
-def plan(orchestrator):
+def plan(orchestrator, offline_settings):
     """The real path: operations -> query builder -> analyzer -> DAG -> plan.
 
     Nothing here supplies dependencies. `create_execution_plan` renders each
@@ -191,16 +209,20 @@ def plan(orchestrator):
     of that SQL, guard, table prefix and all.
     """
     return orchestrator.create_execution_plan(
-        operations=_operations_from_sample_project(), sequencer_name="sample_project"
+        operations=_operations_from_sample_project(offline_settings),
+        sequencer_name="sample_project",
     )
 
 
 def test_plan_has_one_stage_per_dependency_level(plan):
-    assert plan.total_queries == 4
+    assert plan.total_queries == 5
     assert len(plan.stages) == 4
 
-    staged = [[operation.object_name for operation in stage.operations] for stage in plan.stages]
-    assert staged == [["Customers"], ["DimCustomer"], ["FactOrders"], ["vw_Revenue"]]
+    staged = [
+        sorted(operation.object_name for operation in stage.operations) for stage in plan.stages
+    ]
+    # Both bronze tables are independent, so they share the first stage.
+    assert staged == [["Customers", "Orders"], ["DimCustomer"], ["FactOrders"], ["vw_Revenue"]]
 
 
 def test_plan_contains_the_silver_to_silver_edge(plan):
@@ -231,6 +253,21 @@ def test_plan_contains_the_bronze_to_silver_edge(plan):
     }
 
     assert by_name["Customers"] in plan.dependency_graph[by_name["DimCustomer"]]
+    assert by_name["Orders"] in plan.dependency_graph[by_name["FactOrders"]]
+
+
+def test_the_bronze_model_reads_its_declared_source_table(plan):
+    """`Orders` lands `dbo.SalesOrders` as `bronze.Orders`, so the edge into
+    silver has to match on the target name, not the source's."""
+    orders = next(
+        operation
+        for stage in plan.stages
+        for operation in stage.operations
+        if operation.object_name == "Orders"
+    )
+
+    assert orders.schema_name == "bronze"
+    assert orders.select_query == "SELECT * FROM [dbo].[SalesOrders]"
 
 
 def test_plan_validates(plan):
