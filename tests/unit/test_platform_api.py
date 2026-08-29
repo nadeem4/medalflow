@@ -25,3 +25,18 @@ def test_execute_compute_environment_is_optional_as_documented():
     parameter = inspect.signature(platform.execute).parameters["compute_environment"]
 
     assert parameter.default is ComputeEnvironment.ETL
+
+
+def test_connection_declares_the_type_it_actually_returns():
+    """`api.test_connection` was annotated `-> bool`, but it forwards
+    `_BasePlatform.test_connection()`, which returns one entry per engine:
+    `{"sql": True}`. A truthy dict reads as True at a call site that believes
+    the annotation, so the lie is silent -- and `{"sql": False}` is truthy too,
+    which makes a failed connection test look like a passing one.
+    """
+    from medalflow.compute.platforms.base import _BasePlatform
+
+    hints = get_type_hints(platform.test_connection)
+
+    assert hints["return"] == get_type_hints(_BasePlatform.test_connection)["return"]
+    assert hints["return"] == dict[str, bool]
