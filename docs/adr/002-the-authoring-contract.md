@@ -246,3 +246,27 @@ overrides `get_queries` outright and applies `selection` to `INFORMATION_SCHEMA`
 `get_internal_datalake_client()` → `get_settings()`. Constructing a sequencer therefore still
 requires a resolvable global environment, which is why several tests set an offline env first.
 This is a D6 leftover and needs its own change; Decision 5 does not close it.
+
+## Amendment — Decision 6, part 1 implemented
+
+Gold and the package configuration landed together; bronze is a separate PR.
+
+- The five convention-derived package properties are **deleted**, including the live
+  `silver_package_name` recorded above. Where a project's models live is now
+  configuration: `models_package` with per-layer `bronze_package` / `silver_package` /
+  `gold_package` overrides, resolved by `MedalflowSettings.package_for_layer(layer)`.
+  It is optional at boot — the contract stays at four required variables — and an
+  unconfigured layer raises at discovery time naming the variables to set.
+- The package walk moved out of `SilverMetadataDiscovery` into `_BaseDiscovery`
+  (`medallion/base/discovery.py`), parameterised by package and metadata attribute.
+- `GoldMetadataDiscovery` walks the gold package and `get_gold_execution_plan`
+  instantiates what it finds with `(settings, selection)`. The bare `GoldSequencer` that
+  made a user's `@gold_metadata` class undiscoverable is gone.
+- `gold_metadata` gained `disabled=`, and gold discovery respects it.
+- `settings.is_model_configured` stays **silver-only** by design: it is backed by
+  `configured_models`, silver's grouping concept, and gold models declare no `model=`.
+- `layer_type` / `LayerType` now has no consumer at all. It is left in place; deleting it
+  is its own change.
+
+Still outstanding for Decision 6: declared bronze models, bronze discovery, and
+introspection as an explicit opt-in.

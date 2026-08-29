@@ -44,7 +44,7 @@ Be aware of what is and is not proven today:
 | SQL generation for Azure Synapse serverless | **Works, asserted against golden strings** |
 | Executing a plan against a live warehouse | **Not verified.** No test exercises it; treat it as unproven |
 | Microsoft Fabric, Databricks, Snowflake, Spark | **Not supported.** See the roadmap |
-| Configuration | **Four environment variables construct settings**, six for a real deployment. All are prefixed `MEDALFLOW_`; see [`.env.example`](.env.example) |
+| Configuration | **Four environment variables construct settings**, six for a real deployment, plus `MEDALFLOW_MODELS_PACKAGE` to point discovery at your models. All are prefixed `MEDALFLOW_`; see [`.env.example`](.env.example) |
 
 An earlier version of this README claimed four execution platforms and native OpenTelemetry
 export. Neither was true. This document now describes only what the code does.
@@ -53,6 +53,10 @@ export. Neither was true. This document now describes only what the code does.
 
 - **Authoring by decorator.** One class decorator per layer (`@bronze_metadata`,
   `@silver_metadata`, `@gold_metadata`) plus `@query_metadata` on methods that return SQL.
+- **Discovery by package walk.** Point `MEDALFLOW_MODELS_PACKAGE` at the package holding
+  your models and MedalFlow imports each layer's subpackage and collects the decorated
+  classes it finds. Silver and Gold are discovered this way; Bronze still introspects a
+  live warehouse. A model marked `disabled=True` is left out of the plan.
 - **Automatic dependency extraction.** Model SQL is parsed with
   [sqlglot](https://github.com/tobymao/sqlglot); source and target tables become
   fully-qualified `schema.table` names.

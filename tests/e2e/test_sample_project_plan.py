@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pytest
 from medalflow.constants.sql import QueryType
+from medalflow.medallion.gold.metadata_discovery import GoldMetadataDiscovery
 from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPlanOrchestrator
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
@@ -48,6 +49,11 @@ def discovery():
 
 
 @pytest.fixture
+def gold_discovery():
+    return GoldMetadataDiscovery("sample_project.gold", settings=_StubSettings())
+
+
+@pytest.fixture
 def analyzer(offline_settings):
     return SQLDependencyAnalyzer(offline_settings)
 
@@ -70,6 +76,15 @@ def test_discovery_finds_every_silver_model(discovery):
     assert {t.model for t in transformations} == {"sales"}
 
 
+def test_discovery_finds_the_gold_model(gold_discovery):
+    """Gold is walked, not hand-imported. `is_model_configured` is not applied
+    here: `_StubSettings` answers True only for 'sales', and gold declares no
+    model at all."""
+    discovered = gold_discovery.discover_all(force_refresh=True)
+
+    assert [model.name for model in discovered] == ["Revenue"]
+
+
 def test_discovered_sequencer_classes_are_instantiable_types(discovery):
     transformations = discovery.discover_all_transformations(force_refresh=True)
 
@@ -86,11 +101,18 @@ def _operations_from_sample_project():
 
     Sequencer construction resolves live settings, so the operations are built
     from each model's decorated methods directly — the same SQL and metadata
-    discovery hands to `_get_queries`.
+    discovery hands to `_get_queries`. The gold model arrives through
+    discovery, which is how a real project reaches it.
     """
-    from sample_project.gold.revenue import Revenue
     from sample_project.silver.customers import DimCustomer
     from sample_project.silver.orders import FactOrders
+
+    gold = GoldMetadataDiscovery("sample_project.gold", settings=_StubSettings())
+    Revenue = next(
+        model.sequencer_class
+        for model in gold.discover_all(force_refresh=True)
+        if model.name == "Revenue"
+    )
 
     bronze = CreateTable(
         operation_type=QueryType.CREATE_TABLE,
@@ -144,9 +166,10 @@ def test_model_methods_produce_the_expected_sql():
 # --- dependency extraction over the real model SQL -------------------------
 
 
-def test_dependencies_are_extracted_from_the_model_sql(analyzer):
-    from sample_project.gold.revenue import Revenue
+def test_dependencies_are_extracted_from_the_model_sql(analyzer, gold_discovery):
     from sample_project.silver.orders import FactOrders
+
+    Revenue = gold_discovery.discover_all(force_refresh=True)[0].sequencer_class
 
     orders = analyzer.extract_dependencies(FactOrders.build_fact_orders(FactOrders))
     revenue = analyzer.extract_dependencies(Revenue.build_revenue_view(Revenue))

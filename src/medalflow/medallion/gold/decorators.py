@@ -14,6 +14,7 @@ def gold_metadata(
     layer: str = "gold",
     description: str | None = None,
     tags: list[str] | None = None,
+    disabled: bool = False,
 ) -> Callable[[type], type]:
     """Decorator for Gold layer sequencer classes.
 
@@ -33,6 +34,8 @@ def gold_metadata(
             and content. This appears in data catalogs and documentation.
         tags: List of tags for categorizing and discovering views. Use consistent
             tagging strategies like ["domain:sales", "refresh:daily", "priority:high"].
+        disabled: If True, discovery leaves this model out of the plan. Used for
+            client-specific features or gradual rollout. Default is False (enabled).
 
     Returns:
         Decorated class with GoldMetadata attached as _gold_metadata attribute.
@@ -78,7 +81,11 @@ def gold_metadata(
 
     def decorator(cls: type) -> type:
         metadata = GoldMetadata(
-            schema=schema, layer=layer, description=description, tags=tags or []
+            schema=schema,
+            layer=layer,
+            description=description,
+            tags=tags or [],
+            disabled=disabled,
         )
 
         cls._gold_metadata = metadata

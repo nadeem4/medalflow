@@ -4,8 +4,8 @@ from medalflow.medallion import (
     BronzeSequencer,
     ExecutionPlan,
     ExecutionPlanOrchestrator,
-    GoldSequencer,
 )
+from medalflow.medallion.gold.metadata_discovery import GoldMetadataDiscovery
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 from medalflow.observability.context import execution_request_scope, resolve_request_context
 from medalflow.settings import get_settings
@@ -53,8 +53,13 @@ def get_gold_execution_plan(
     with execution_request_scope(context, operation="medalflow.medallion.plan.gold"):
         settings = get_settings()
         plan_orchestrator = ExecutionPlanOrchestrator(settings)
+        # No `is_model_configured` gate here, deliberately: that setting is
+        # `configured_models`, silver's grouping concept. Gold models declare
+        # no `model=`, so gating gold on it would drop every one of them.
+        metadata_discovery = GoldMetadataDiscovery(settings.package_for_layer("gold"))
+        models = metadata_discovery.discover_all()
         plan = plan_orchestrator.create_plan_for_gold_layer(
-            gold_sequencer=GoldSequencer(settings, table_names)
+            gold_sequencers=[model.sequencer_class(settings, table_names) for model in models]
         )
         return _attach_plan_context(plan, context)
 
