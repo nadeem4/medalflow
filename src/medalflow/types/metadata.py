@@ -6,7 +6,7 @@ This module contains all metadata classes including layer-specific metadata
 
 from typing import Any, NamedTuple
 
-from pydantic import Field, field_serializer, model_validator
+from pydantic import Field, model_validator
 
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
@@ -56,8 +56,6 @@ class SilverMetadata(CTEBaseModel):
             Used for documentation and monitoring dashboards.
         tags: List of tags for categorizing and filtering ETL processes.
             Examples: ["dimension", "daily", "customer-data"].
-        preferred_engine: Engine preference for all queries in this sequencer.
-            Valid values: "sql", "spark", "auto". Defaults to "sql".
         disabled: If True, this transformation won't be executed. Used for
             client-specific features or gradual rollout. Defaults to False.
     """
@@ -66,17 +64,11 @@ class SilverMetadata(CTEBaseModel):
     group_file_name: str
     description: str | None = None
     tags: list[str] = Field(default_factory=list)
-    preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
     model_name: str | None = None
     disable_key_reshuffling: bool = False
     disabled: bool = (
         False  # If True, transformation won't be executed (for client-specific features)
     )
-
-    @field_serializer("preferred_engine")
-    def serialize_engine(self, value: str) -> str:
-        """Serialize engine preference to string value."""
-        return value
 
     @model_validator(mode="after")
     def set_model_name(self):
@@ -188,8 +180,9 @@ class QueryMetadata(CTEBaseModel):
             the table being modified.
         schema_name: Database schema containing the target table. If empty,
             uses the default schema for the connection.
-        preferred_engine: Engine preference for query execution.
-            Valid values: "sql", "spark", "auto". Defaults to "sql".
+        preferred_engine: Internal engine hint, forwarded to the operation's
+            ``engine_hint``. Not settable by an author: engine selection is
+            inert, so every operation executes on SQL (ADR 002, D4).
         unique_idx: List of column names forming the natural/business key for dimensions.
             When specified, indicates this is a dimension table with unique constraints.
         filter: Enum name for filter-based dimensions. When specified and method returns None,
@@ -203,7 +196,7 @@ class QueryMetadata(CTEBaseModel):
     type: QueryType
     table_name: str = ""
     schema_name: str = ""
-    preferred_engine: EngineType = EngineType.SQL  # Valid values: "sql", "spark", "auto"
+    preferred_engine: EngineType = EngineType.SQL  # internal plumbing; see ADR 002 D4
     unique_idx: list[str] | None = None  # Dimension natural key columns
     filter: str | None = None  # Enum name for auto-generation
     create_stats: bool = False  # Auto-create statistics after operation

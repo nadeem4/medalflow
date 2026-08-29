@@ -30,7 +30,8 @@ class BaseOperation(CTEBaseModel):
         operation_type: The type of operation to perform
         schema_name: Database schema name
         object_name: Name of the database object (table/view/etc)
-        engine_hint: Optional hint for engine selection (SQL/SPARK/AUTO)
+        engine_hint: Internal hint for engine selection. Set by the framework,
+            not by an author (ADR 002, D4); SQL is the only engine implemented.
     """
 
     operation_type: QueryType

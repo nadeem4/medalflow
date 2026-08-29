@@ -7,7 +7,6 @@ processing with SCD support.
 
 from collections.abc import Callable
 
-from medalflow.constants.compute import EngineType
 from medalflow.types.metadata import SilverMetadata
 
 
@@ -16,10 +15,8 @@ def silver_metadata(
     group_file_name: str,
     description: str | None = None,
     tags: list[str] | None = None,
-    preferred_engine: str | EngineType = EngineType.SQL,
     disable_key_reshuffling: bool = False,
     disabled: bool = False,
-    take_snapshot: bool = False,
     model_name: str | None = None,
 ) -> Callable[[type], type]:
     """Decorator for Silver layer ETL classes.
@@ -39,9 +36,6 @@ def silver_metadata(
             business value. Used in documentation and monitoring dashboards.
         tags: List of tags for categorizing and filtering ETL processes.
             Use consistent taxonomy: ["layer:silver", "type:dimension", "domain:sales"].
-        preferred_engine: Engine preference for all queries in this sequencer. Can be string
-            or EngineType enum. Options: SQL (default), SPARK, AUTO. SQL maintains backward
-            compatibility. AUTO lets platform analyze query complexity. Default is SQL.
         disabled: If True, this transformation won't be executed. Used for client-specific
             features or gradual feature rollout. Default is False (enabled).
 
@@ -101,9 +95,6 @@ def silver_metadata(
     """
 
     def decorator(cls: type) -> type:
-        engine_type = (
-            EngineType(preferred_engine) if isinstance(preferred_engine, str) else preferred_engine
-        )
         final_model_name = (
             model_name if model_name else group_file_name.split("/")[0].replace("group_", "")
         )
@@ -113,7 +104,6 @@ def silver_metadata(
             group_file_name=group_file_name,
             description=description,
             tags=tags or [],
-            preferred_engine=engine_type,
             model_name=final_model_name,
             disable_key_reshuffling=disable_key_reshuffling,
             disabled=disabled,
