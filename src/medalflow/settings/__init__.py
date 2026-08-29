@@ -27,6 +27,12 @@ Four variables are enough to construct settings::
     MEDALFLOW_NAME               # short data source name, e.g. fin
     MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME
 
+Configuration that is missing or wrong raises :class:`SettingsError`, whose
+message names the *environment variables* to set rather than the pydantic
+fields that could not be filled -- ``MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME``,
+not ``compute``. The names are derived from ``env_prefix`` and
+``env_nested_delimiter``, so they cannot drift from the fields they describe.
+
 A real deployment adds two more -- the processed lake account and the Key Vault
 that holds its credentials::
 
@@ -66,10 +72,12 @@ from medalflow.constants.compute import ComputeEnvironment  # noqa: F401
 from .compute import ComputeSettings  # noqa: F401
 from .main import (
     MedalflowSettings,  # noqa: F401
+    SettingsError,
     get_settings,
 )
 
 __all__ = [
-    # Public API - only expose the settings accessor
+    # Public API - the settings accessor, and what it raises
     "get_settings",
+    "SettingsError",
 ]
