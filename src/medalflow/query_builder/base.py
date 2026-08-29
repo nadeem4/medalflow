@@ -1,3 +1,17 @@
+"""SQL generation, and the only place identifiers are validated.
+
+A query builder turns an operation -- ``CreateTable``, ``Insert``, ``Merge``
+and the rest -- into SQL text for one platform. It does not execute anything;
+that is the engine, one layer down.
+
+It is also the injection boundary, and it is a real boundary rather than a
+shared responsibility. The engine binds no parameters: it is handed a string
+and runs it. So every schema, table and column name that reaches generated
+SQL is validated here first, against a character whitelist, and a caller that
+genuinely needs arbitrary SQL has to say so with
+:class:`~medalflow.types.RawSQL` and own the risk explicitly.
+"""
+
 import re
 from abc import ABC, abstractmethod
 from typing import Any

@@ -1,3 +1,18 @@
+"""What every layer's sequencer shares: decorated methods in, a plan out.
+
+:class:`_BaseSequencer` finds the ``@query_metadata`` methods on a model,
+calls each one for its SQL, turns the results into operations, and hands them
+to the orchestrator, which reads the dependencies out of the SQL and groups
+everything into the stages of an
+:class:`~medalflow.medallion.types.ExecutionPlan`. Plans are cached per
+sequencer when the cache feature is enabled.
+
+It is an ``ABC`` with no abstract methods, deliberately. Every method has a
+working default, so there is nothing a layer is *required* to override, and
+marking one ``@abstractmethod`` would invent a contract the layer sequencers
+do not have. ``ABC`` is here to say "not this class directly".
+"""
+
 import inspect
 from abc import ABC
 from typing import TYPE_CHECKING, Any

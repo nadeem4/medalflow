@@ -41,6 +41,13 @@ class ExecutionRequestContext(CTEBaseModel):
         return str(value)
 
     def to_telemetry_dict(self) -> dict[str, str]:
+        """Flatten the context into the string-only dict telemetry wants.
+
+        Span attributes and log fields are strings, so everything is coerced
+        and anything that coerces to nothing is dropped rather than emitted
+        as ``"None"``. Caller-supplied ``attributes`` are namespaced under
+        ``ctx.`` so they cannot collide with ``request_id`` and its siblings.
+        """
         payload: dict[str, str] = {"request_id": self.request_id}
         if self.user_id:
             payload["user_id"] = self.user_id

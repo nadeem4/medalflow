@@ -1,3 +1,5 @@
+"""Listing the tables that already exist in the lake database."""
+
 from typing import TYPE_CHECKING
 
 from medalflow.compute.factory import create_platform
@@ -16,6 +18,26 @@ logger = get_logger(__name__)
 
 
 class LakeDatabase:
+    """The tables in one schema of the configured lake database.
+
+    Answers two questions -- what is here (``get_tables``) and does this
+    exist (``validate_tables``) -- from a single ``INFORMATION_SCHEMA.TABLES``
+    query, cached through the ``cache`` feature manager and shared by every
+    caller asking about the same database and schema. ``refresh_cache`` drops
+    that entry and refills it.
+
+    The platform is built on first use rather than in ``__init__``, so
+    constructing one of these opens no connection. Bronze holds a
+    ``LakeDatabase`` it may never ask anything.
+
+    Two behaviours worth knowing before relying on them:
+
+    * Naming a table that is not there raises ``ValueError``. Returning a
+      shorter list would let a plan be built from sources that do not exist.
+    * ``get_tables([])`` is "no filter", not "no tables" -- an empty list
+      falls through to returning everything.
+    """
+
     def __init__(self, settings: "MedalflowSettings", schema: str = "dbo"):
         self.settings = settings
         self.compute_settings = self.settings.compute

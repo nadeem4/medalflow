@@ -1,3 +1,24 @@
+"""The platform contract: an operation in, an ``OperationResult`` out.
+
+A platform is what the medallion layer talks to when it wants something to
+happen in the warehouse, and :class:`_BasePlatform` is nearly all of one. A
+concrete platform supplies three things -- ``name()``, ``supported_engines()``
+and ``_initialize_dependencies()``, which builds its engine and query builder
+-- and inherits the rest: choose an engine, build the SQL through the query
+builder, run it, and wrap whatever happened in an ``OperationResult``.
+
+Exceptions do not escape ``execute_operation``. A failure comes back as a
+result with ``success=False`` and the error on it, because a caller walking a
+plan stage by stage needs the same shape from every operation whether it
+worked or not -- an exception from one and a result from the next is two
+control flows for one question.
+
+One thing happens after a successful CREATE TABLE: if the operation asked for
+statistics, they are created here, one operation per discovered column, and a
+failure is logged rather than raised. Auto-stats is best effort; failing the
+table for it would undo work that succeeded.
+"""
+
 import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
@@ -208,6 +229,14 @@ class _BasePlatform(ABC):
     def execute(
         self, operation_dict: dict, telemetry: dict[str, str] | None = None
     ) -> OperationResult:
+        """Execute one operation given as a serialized dict.
+
+        The entry point for a caller holding the output of
+        ``ExecutionPlan.get_all_operations(serialize=True)`` -- an external
+        orchestrator, or :func:`medalflow.api.execute`. The dict is rebuilt
+        into the operation it describes and then takes the same path as one
+        constructed directly.
+        """
         operation = OperationBuilder.create_operation_from_dict(operation_dict)
 
         return self.execute_operation(operation, telemetry=telemetry)
@@ -218,6 +247,13 @@ class _BasePlatform(ABC):
         return_results: bool = True,
         result_format: ResultFormat = ResultFormat.DATAFRAME,
     ) -> OperationResult:
+        """Run arbitrary SQL, bypassing the operation types.
+
+        For queries that are not a modelled operation -- an
+        ``INFORMATION_SCHEMA`` lookup, a count. The SQL is passed through
+        untouched, so nothing validates it: a caller building it from
+        anything but its own constants owns that.
+        """
         operation = ExecuteSQL(
             sql=sql,
             returns_results=return_results,

@@ -1,3 +1,21 @@
+"""One exception class, categorised by code rather than by subclass.
+
+Every failure MedalFlow raises is a :class:`CTEError` carrying an
+:class:`ErrorCode`. Callers branch on the code. The alternative -- a class per
+failure mode -- spreads the taxonomy across the ``except`` clauses of every
+caller and makes adding a category a breaking change.
+
+Constructing one logs it at ERROR, with the code and details attached. So
+build a ``CTEError`` where the failure is real, not somewhere it is expected
+to be caught and continued past.
+
+The three helpers build the codes that have a conventional set of details:
+``connection_error`` (the service and host that would not answer),
+``query_execution_error`` (the failing SQL, truncated to 500 characters, and
+the driver exception as ``cause``), and ``feature_not_enabled_error`` (the
+settings key that would turn the feature on).
+"""
+
 from enum import Enum
 from typing import Any
 
