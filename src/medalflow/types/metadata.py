@@ -1,7 +1,7 @@
 """Metadata types for medallion architecture and query operations.
 
 This module contains all metadata classes including layer-specific metadata
-(Bronze, Silver, Gold, Snapshot) and query-related metadata types.
+(Bronze, Silver, Gold) and query-related metadata types.
 """
 
 from typing import Any, NamedTuple
@@ -9,7 +9,6 @@ from typing import Any, NamedTuple
 from pydantic import Field, field_serializer, model_validator
 
 from medalflow.constants.compute import EngineType
-from medalflow.constants.medallion import SnapshotFrequency
 from medalflow.constants.sql import QueryType
 from medalflow.types.base import CTEBaseModel
 
@@ -112,37 +111,6 @@ class GoldMetadata(CTEBaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
-class SnapshotMetadata(CTEBaseModel):
-    """Metadata for Snapshot layer processes.
-
-    The Snapshot layer captures point-in-time states of data for historical
-    tracking, compliance, and temporal analysis. This metadata defines retention
-    policies, capture frequencies, and storage optimization strategies.
-
-    Attributes:
-        schema_name: Target schema for snapshot tables. Should be separate from
-            operational schemas to manage retention and permissions independently.
-        retention_days: How long to retain snapshots before automatic deletion.
-            Set to -1 for indefinite retention. Consider compliance requirements
-            and storage costs.
-        compression: Whether to compress snapshot data. Highly recommended for
-            data older than 30 days to reduce storage costs.
-        frequency: How often to capture snapshots. EVERY_RUN captures on each
-            ETL execution, while scheduled frequencies reduce storage overhead.
-        description: Description of what data is being snapshotted and why.
-            Important for compliance and audit purposes.
-        tags: Tags for categorizing snapshots. Include data classification
-            levels: ["pii:true", "compliance:gdpr", "retention:7years"].
-    """
-
-    schema_name: str
-    retention_days: int = 90
-    compression: bool = True
-    frequency: SnapshotFrequency = SnapshotFrequency.DAILY
-    description: str | None = None
-    tags: list[str] = Field(default_factory=list)
-
-
 class TransformationMetadata(CTEBaseModel):
     """Metadata for transformation processes in model groups.
 
@@ -197,7 +165,7 @@ class TransformationMetadata(CTEBaseModel):
 
 
 # Union type for all class metadata
-ClassMetadata = BronzeMetadata | SilverMetadata | GoldMetadata | SnapshotMetadata
+ClassMetadata = BronzeMetadata | SilverMetadata | GoldMetadata
 
 
 # ============================================================================
@@ -311,7 +279,6 @@ __all__ = [
     "BronzeMetadata",
     "SilverMetadata",
     "GoldMetadata",
-    "SnapshotMetadata",
     "TransformationMetadata",
     "ClassMetadata",
     # Query metadata

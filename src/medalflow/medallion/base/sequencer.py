@@ -25,7 +25,7 @@ class _BaseSequencer(ABC):  # noqa: B024
 
     This abstract base class provides the core functionality for discovering methods
     annotated with metadata decorators and organizing them into execution plans. All
-    layer-specific sequencers (Bronze, Silver, Gold, Snapshot) inherit from this
+    layer-specific sequencers (Bronze, Silver, Gold) inherit from this
     class and implement the abstract methods to define their specific behavior.
 
     The BaseSequencer orchestrates specialized components to handle different aspects
@@ -347,7 +347,7 @@ class _BaseSequencer(ABC):  # noqa: B024
         This is used for loading layer-specific configurations.
 
         Returns:
-            str: Layer name ('bronze', 'silver', 'gold', 'snapshot')
+            str: Layer name ('bronze', 'silver', 'gold')
         """
         # Default implementation - subclasses should override
         return self.__class__.__name__.lower().replace("sequencer", "")
