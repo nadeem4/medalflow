@@ -42,6 +42,11 @@ def project(monkeypatch):
         for name in [m for m in sys.modules if m.split(".")[0] in FIXTURE_PACKAGES]:
             del sys.modules[name]
 
+        # Nothing below sets it, and that is the point: an unset model list
+        # filters nothing. A developer with it exported would otherwise be
+        # testing a different contract from CI.
+        monkeypatch.delenv("MEDALFLOW_CONFIGURED_MODELS", raising=False)
+
         for key, value in {**OFFLINE_ENV, **overrides}.items():
             monkeypatch.setenv(key, value)
 
@@ -57,19 +62,13 @@ def project(monkeypatch):
 @pytest.fixture
 def sample_project(project):
     """The five-model project: two bronze, two silver, one gold."""
-    return project(
-        MEDALFLOW_MODELS_PACKAGE="sample_project",
-        MEDALFLOW_CONFIGURED_MODELS="sales",
-    )
+    return project(MEDALFLOW_MODELS_PACKAGE="sample_project")
 
 
 @pytest.fixture
 def broken_project(project):
     """Three silver models broken three different ways, and one that works."""
-    return project(
-        MEDALFLOW_MODELS_PACKAGE="broken_project",
-        MEDALFLOW_CONFIGURED_MODELS="sales",
-    )
+    return project(MEDALFLOW_MODELS_PACKAGE="broken_project")
 
 
 def _names(result):
@@ -147,6 +146,18 @@ def test_a_tag_selector_crosses_layers(sample_project):
     assert _names(compile("tag:daily")) == ["Revenue", "usp_load_dim_customer"]
 
 
+def test_a_configured_model_list_still_narrows_the_silver_layer(project):
+    """Every fixture above leaves `configured_models` unset, which filters
+    nothing. Setting it narrows, and naming a group the project does not
+    declare leaves silver out -- without touching bronze or gold."""
+    project(
+        MEDALFLOW_MODELS_PACKAGE="sample_project",
+        MEDALFLOW_CONFIGURED_MODELS="purchase",
+    )
+
+    assert _names(compile("*")) == ["Customers", "Orders", "Revenue"]
+
+
 def test_a_name_selector_compiles_one_model(sample_project):
     result = compile("usp_load_fact_orders")
 
@@ -187,7 +198,6 @@ def test_an_unconfigured_layer_package_becomes_an_error(project):
     project(
         MEDALFLOW_BRONZE_PACKAGE="sample_project.bronze",
         MEDALFLOW_SILVER_PACKAGE="sample_project.silver",
-        MEDALFLOW_CONFIGURED_MODELS="sales",
     )
 
     result = compile("*")

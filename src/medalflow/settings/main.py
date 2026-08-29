@@ -136,10 +136,11 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
     configured_models: str = Field(
         default="",
         description=(
-            "Comma-separated list of configured model names. "
-            "These correspond to subdirectories in silver_grouping "
-            "(e.g., 'sales,purchase,inventory,finance'). "
-            "Each model represents a logical domain of related tables."
+            "Comma-separated list of silver model groups to discover, matched "
+            "against each silver transformation's `model=` "
+            "(e.g. 'sales,purchase,inventory,finance'). Narrowing only: unset "
+            "-- the default -- discovers every silver model rather than none. "
+            "Bronze and gold declare no `model=` and are never filtered by it."
         ),
     )
 
@@ -297,25 +298,41 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
         return self.name
 
     def get_configured_model_list(self) -> list[str]:
-        """Get the list of configured models.
+        """The silver model groups this deployment narrowed discovery to.
 
         Returns:
-            List of model names, or empty list if none configured
+            The configured model names. Empty means no list was configured,
+            which ``is_model_configured`` reads as "no filter" -- not as
+            "no models".
         """
         if not self.configured_models:
             return []
         return [m.strip() for m in self.configured_models.split(",")]
 
     def is_model_configured(self, model_name: str) -> bool:
-        """Check if a specific model is configured.
+        """Whether silver discovery should keep a model with this ``model=``.
+
+        An unset ``configured_models`` filters nothing. This asked whether the
+        name was *in* the list, and the list is empty until someone populates
+        it -- so a project that had never heard of the setting had every silver
+        model skipped and its layer compiled to nothing, with no error saying
+        why. A filter nobody configured must not delete the thing it filters,
+        which is also what ``selection=None`` means everywhere else here:
+        absent is everything, empty is nothing.
 
         Args:
-            model_name: Name of the model to check
+            model_name: The ``model=`` a silver transformation declares
 
         Returns:
-            True if the model is configured, False otherwise
+            True when no list is configured, otherwise whether the list names
+            this model
         """
-        return model_name in self.get_configured_model_list()
+        configured = self.get_configured_model_list()
+
+        if not configured:
+            return True
+
+        return model_name in configured
 
     # --- Where the models live ----------------------------------------------
     def package_for_layer(self, layer: str) -> str:
