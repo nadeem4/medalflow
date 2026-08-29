@@ -12,6 +12,8 @@ keyword-only and comes after.
 """
 
 import pytest
+from medalflow.constants.sql import QueryType
+from medalflow.medallion.base.decorators import query_metadata
 from medalflow.medallion.bronze.sequencer import BronzeSequencer
 from medalflow.medallion.gold.sequencer import GoldSequencer
 from medalflow.medallion.silver.sequencer import SilverTransformationSequencer
@@ -188,3 +190,75 @@ def test_gold_selection_of_none_means_every_table():
     """`None` = all, `[]` = nothing. The rename must not collapse the two."""
     assert GoldSequencer(_settings(), None).selection is None
     assert GoldSequencer(_settings(), []).selection == []
+
+
+# --- selection is one behaviour, not gold's private one --------------------
+
+
+class _TwoTableSilver(SilverTransformationSequencer):
+    """Two decorated methods, so a selection has something to choose between."""
+
+    @query_metadata(type=QueryType.CREATE_TABLE, table_name="DimCustomer", schema_name="silver")
+    def build_dim_customer(self) -> str:
+        return "SELECT CustomerId FROM bronze.Customers"
+
+    @query_metadata(type=QueryType.CREATE_TABLE, table_name="FactOrders", schema_name="silver")
+    def build_fact_orders(self) -> str:
+        return "SELECT OrderId FROM bronze.Orders"
+
+
+class _TwoViewGold(GoldSequencer):
+    @query_metadata(
+        type=QueryType.CREATE_OR_ALTER_VIEW, table_name="vw_Revenue", schema_name="gold"
+    )
+    def build_revenue(self) -> str:
+        return "SELECT 1 AS Revenue"
+
+    @query_metadata(type=QueryType.CREATE_OR_ALTER_VIEW, table_name="vw_Churn", schema_name="gold")
+    def build_churn(self) -> str:
+        return "SELECT 1 AS Churn"
+
+
+SELECTABLE = [
+    (_TwoSilver := _TwoTableSilver, ["DimCustomer", "FactOrders"], "FactOrders"),
+    (_TwoGold := _TwoViewGold, ["vw_Churn", "vw_Revenue"], "vw_Revenue"),
+]
+
+
+@pytest.mark.parametrize("sequencer_class,all_tables,one_table", SELECTABLE, ids=["silver", "gold"])
+def test_selection_of_none_yields_every_operation(sequencer_class, all_tables, one_table):
+    operations = sequencer_class(_settings()).get_queries()
+
+    assert sorted(operation.object_name for operation in operations) == all_tables
+
+
+@pytest.mark.parametrize("sequencer_class,all_tables,one_table", SELECTABLE, ids=["silver", "gold"])
+def test_selection_filters_down_to_the_named_tables(sequencer_class, all_tables, one_table):
+    """`selection` had to mean the same thing in every layer, or it means nothing.
+
+    Gold owned this filter privately; silver accepted `selection` and discarded
+    it, which is the exact "parameter that lied" shape D3 deleted. The filter
+    lives on the base now.
+    """
+    operations = sequencer_class(_settings(), [one_table]).get_queries()
+
+    assert [operation.object_name for operation in operations] == [one_table]
+
+
+@pytest.mark.parametrize("sequencer_class,all_tables,one_table", SELECTABLE, ids=["silver", "gold"])
+def test_an_empty_selection_yields_nothing(sequencer_class, all_tables, one_table):
+    """`[]` is a selection of no tables, distinct from `None` meaning all."""
+    assert sequencer_class(_settings(), []).get_queries() == []
+
+
+def test_an_unmatched_selection_warns(caplog):
+    with caplog.at_level("WARNING"):
+        operations = _TwoTableSilver(_settings(), ["NoSuchTable"]).get_queries()
+
+    assert operations == []
+    assert "No methods found for selected tables" in caplog.text
+
+
+def test_gold_no_longer_owns_a_private_selection_filter():
+    """The override is gone; the behaviour it held is the base's now."""
+    assert "_get_queries" not in GoldSequencer.__dict__

@@ -56,9 +56,8 @@ class BronzeSequencer(_BaseSequencer):
                 every table in the source schema.
             source_schema: Source schema name (default: "dbo")
         """
-        super().__init__(settings)
+        super().__init__(settings, selection)
 
-        self.selection = selection
         self.source_schema = source_schema
         self.layer = Layer.BRONZE
 

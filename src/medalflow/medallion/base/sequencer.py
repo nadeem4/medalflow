@@ -49,15 +49,19 @@ class _BaseSequencer(ABC):  # noqa: B024
         >>> plan = sequencer.get_execution_plan()
     """
 
-    def __init__(self, settings: "MedalflowSettings"):
+    def __init__(self, settings: "MedalflowSettings", selection: list[str] | None = None):
         """Initialize the base sequencer.
 
         Args:
             settings: Configuration settings for the sequencer
+            selection: Optional list of target table names to restrict this
+                sequencer to. None means every table it declares; an empty list
+                means none. Applied by `_get_queries`.
         """
         self.logger = get_logger(self.__class__.__name__)
 
         self.settings = settings
+        self.selection = selection
         self.table_prefix = self.settings.table_prefix
         self.sql_dialect = self.settings.compute.active_config.dialect
 
@@ -440,12 +444,39 @@ class _BaseSequencer(ABC):  # noqa: B024
                 f"({self.__class__.__name__}): {e}"
             ) from e
 
+    def _select(self, discovered_methods: list[DiscoveredMethod]) -> list[DiscoveredMethod]:
+        """Narrow discovered methods to `self.selection`.
+
+        This was gold's private override of `_get_queries`, but nothing about
+        filtering a sequencer's methods by their target table is gold-specific.
+        Held there, `selection` meant one thing in gold and nothing at all in
+        silver, which is the "parameter that lied" shape ADR 002 D3 deleted.
+
+        Args:
+            discovered_methods: List of discovered methods with metadata and SQL
+
+        Returns:
+            Every method when `selection` is None, otherwise only those writing
+            a table it names — an empty list included, which selects nothing.
+        """
+        if self.selection is None:
+            return discovered_methods
+
+        selected = [
+            method for method in discovered_methods if method.metadata.table_name in self.selection
+        ]
+
+        if not selected:
+            self.logger.warning(f"No methods found for selected tables: {self.selection}")
+
+        return selected
+
     def _get_queries(self, discovered_methods: list[DiscoveredMethod]) -> list[BaseOperation]:
         """Internal hook to extract operations from discovered methods.
 
-        Default implementation creates BaseOperation instances from each method,
-        and optionally creates statistics operations based on metadata.create_stats.
-        Subclasses can override to apply transformations or filtering.
+        Default implementation applies `self.selection`, then creates
+        BaseOperation instances from each surviving method. Subclasses can
+        override to apply transformations of their own.
 
         Args:
             discovered_methods: List of discovered methods with metadata and SQL
@@ -455,7 +486,7 @@ class _BaseSequencer(ABC):  # noqa: B024
         """
         operations = []
 
-        for method_name, _method, metadata, sql in discovered_methods:
+        for method_name, _method, metadata, sql in self._select(discovered_methods):
             if not sql:
                 self.logger.info(
                     "sequencer.operation_missing_sql",

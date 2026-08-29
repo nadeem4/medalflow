@@ -69,12 +69,14 @@ class _StubSequencer(_BaseSequencer):
     """Minimal sequencer that exercises `_get_queries` without any warehouse.
 
     `_BaseSequencer.__init__` needs live settings; this subclass supplies only
-    the four members `_get_queries` actually reads, keeping the test offline
-    per Decision D6.
+    the members `_get_queries` actually reads, keeping the test offline per
+    Decision D6. `selection` is None: this test is about operation
+    construction, so it selects everything.
     """
 
     def __init__(self):
         self.logger = logging.getLogger("stub-sequencer")
+        self.selection = None
 
     def get_obj_name(self) -> str:
         return "StubModel"

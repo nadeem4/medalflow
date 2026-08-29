@@ -24,12 +24,11 @@ class SilverTransformationSequencer(_BaseSequencer):
 
         Args:
             settings: Configuration settings for the sequencer
-            selection: Reserved for parity with the other layers. A silver
-                sequencer is one model, so there is nothing to select from;
-                it is accepted and unused.
+            selection: Optional list of target table names. Only the
+                `@query_metadata` methods writing a table it names become
+                operations. None means every method; an empty list means none.
         """
-        super().__init__(settings)
-        self.selection = selection
+        super().__init__(settings, selection)
         self.layer = Layer.SILVER
 
     def get_layer_name(self) -> str:
