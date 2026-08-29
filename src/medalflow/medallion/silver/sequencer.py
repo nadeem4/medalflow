@@ -174,7 +174,6 @@ class SilverTransformationSequencer(_BaseSequencer):
 
         Args:
             detail_query: The final detail SELECT query from transformation
-            table_name: Optional table name for custom default handling
 
         Returns:
             Transformed SELECT query ready for direct silver table creation

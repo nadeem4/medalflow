@@ -1,27 +1,22 @@
-"""SQL Dependency Analyzer for automatic DAG generation.
+"""Where the DAG comes from: the SQL, not a `depends_on` an author maintains.
 
-This module provides SQL parsing and dependency extraction capabilities
-using SQLGlot to automatically detect table dependencies in SQL queries.
-It enables automatic DAG generation for ETL sequencers without requiring
-manual specification of dependencies.
+Ordering is derived by parsing each query with sqlglot and reading the tables
+it touches -- sources from FROM and JOIN, the target from INSERT, UPDATE,
+MERGE or CTAS. An author never declares dependencies, so the plan cannot drift
+from the SQL the way a hand-maintained list does.
 
-The analyzer extracts:
-- Source tables (FROM, JOIN clauses)
-- Target tables (INSERT, UPDATE, MERGE operations)
-- medalflow dependencies within queries
-- Cross-query dependencies for DAG building
+CTE names are resolved and excluded: ``WITH cte AS (...) SELECT * FROM cte``
+depends on what the CTE reads, not on a table called ``cte``.
 
 Example:
-    >>> analyzer = SQLDependencyAnalyzer()
+    >>> analyzer = SQLDependencyAnalyzer(get_settings())
     >>> deps = analyzer.extract_dependencies(
     ...     "INSERT INTO silver.customers SELECT * FROM bronze.raw_customers"
     ... )
-    >>> print(deps)
-    {
-        'reads_from': {'bronze.raw_customers'},
-        'writes_to': 'silver.customers',
-        'query_type': 'INSERT'
-    }
+    >>> deps.reads_from
+    {'bronze.raw_customers'}
+    >>> deps.writes_to
+    'silver.customers'
 """
 
 import re
@@ -127,27 +122,30 @@ _WRITER_QUERY_TYPES = frozenset(
 
 
 class SQLDependencyAnalyzer:
-    """Analyzes SQL queries to extract table dependencies using SQLGlot parser.
+    """Reads a SQL query and reports the tables it depends on.
 
-    This analyzer uses SQLGlot's AST (Abstract Syntax Tree) parsing to accurately
-    extract table dependencies from SQL queries. It handles complex SQL patterns
-    including CTEs, subqueries, joins, and various SQL dialects.
+    Parsing is sqlglot AST, never a regex over the text: CTEs, subqueries and
+    joins all have to be understood structurally to answer correctly. There is
+    no regex fallback -- SQL that cannot be parsed at all raises rather than
+    returning an empty answer, because "no dependencies" and "I could not
+    read this" would otherwise be the same result (see ``_parse_statements``).
 
     Attributes:
-        dialect: SQL dialect to use for parsing (default: tsql for Synapse)
-        fallback_on_error: Whether to use regex fallback on parse errors
+        dialect: Parsing dialect, from ``compute.active_config.dialect``
+        table_prefix: Configured table prefix, used to recognise prefixed
+            schemas when qualifying names
+        skip_prefix_on_schema: Schemas the prefix is not applied to
 
     Example:
-        >>> analyzer = SQLDependencyAnalyzer(dialect="tsql")
-        >>> sql = '''
-        ...     WITH cte AS (SELECT * FROM staging.temp)
-        ...     INSERT INTO silver.fact_sales
-        ...     SELECT * FROM cte JOIN dim.products p ON cte.product_id = p.id
-        ... '''
-        >>> deps = analyzer.extract_dependencies(sql)
-        >>> print(deps['reads_from'])
-        {'staging.temp', 'dim.products'}
-        >>> print(deps['writes_to'])
+        >>> analyzer = SQLDependencyAnalyzer(get_settings())
+        >>> deps = analyzer.extract_dependencies(
+        ...     "WITH cte AS (SELECT * FROM staging.temp) "
+        ...     "INSERT INTO silver.fact_sales "
+        ...     "SELECT * FROM cte JOIN dim.products p ON cte.id = p.id"
+        ... )
+        >>> deps.reads_from == {'staging.temp', 'dim.products'}
+        True
+        >>> deps.writes_to
         'silver.fact_sales'
     """
 
@@ -155,8 +153,10 @@ class SQLDependencyAnalyzer:
         """Initialize the SQL dependency analyzer.
 
         Args:
-            dialect: SQL dialect for parsing (tsql, spark, snowflake, etc.)
-            fallback_on_error: Use regex fallback if SQLGlot parsing fails
+            settings: Application settings. The parsing dialect comes from
+                ``compute.active_config.dialect``; it is not a parameter,
+                so it cannot disagree with the dialect the rest of the run
+                uses.
         """
         self.settings = settings
         self.dialect = settings.compute.active_config.dialect

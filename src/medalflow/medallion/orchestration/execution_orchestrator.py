@@ -39,9 +39,10 @@ class ExecutionPlanOrchestrator:
 
     Attributes:
         settings: Application settings
-        sql_analyzer: SQL dependency analyzer
-        dag_builder: Operation DAG builder
-        plan_builder: Execution plan builder
+        sql_analyzer: SQL dependency analyzer, which reads each operation's
+            SQL to find the tables it depends on
+        plan_builder: Execution plan builder, which groups the resulting DAG
+            into stages
     """
 
     def __init__(self, settings: "MedalflowSettings"):

@@ -50,11 +50,14 @@ class BaseQueryBuilder(ABC):
     """
 
     def __init__(self, settings: MedalflowSettings):
-        """Initialize query builder with optional table prefix.
+        """Initialize query builder.
+
+        Everything the builder needs is read from ``settings`` -- including
+        the table prefix, which used to be a constructor parameter and so
+        could disagree with the configured one.
 
         Args:
-            table_prefix: Optional prefix to add to table names (e.g., 'sap_', 'oracle_').
-                         If not provided, no prefix will be added to table names.
+            settings: Application settings.
         """
 
         self.settings = settings
