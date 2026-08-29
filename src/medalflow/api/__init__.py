@@ -6,6 +6,7 @@ from .medallion import (
     get_silver_execution_plan_for_models,
 )
 from .platform import execute, test_connection
+from .runner import ExecutedOperation, PlannedOperation, RunResult, run
 from .selectors import Selector, SelectorError, parse_selector
 
 __all__ = [
@@ -20,6 +21,11 @@ __all__ = [
     "CompileResult",
     "CompileError",
     "CompiledModel",
+    # run (ADR 002, Decision 7)
+    "run",
+    "RunResult",
+    "ExecutedOperation",
+    "PlannedOperation",
     # selectors (ADR 002, Decision 7)
     "Selector",
     "SelectorError",

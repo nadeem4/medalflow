@@ -3,6 +3,7 @@ from medalflow.api import (
     CompiledModel,
     CompileError,
     CompileResult,
+    RunResult,
     SelectorError,
     compile,
     execute,
@@ -10,6 +11,7 @@ from medalflow.api import (
     get_execution_plan_for_sps,
     get_gold_execution_plan,
     get_silver_execution_plan_for_models,
+    run,
 )
 from medalflow.common.exceptions import CTEError, ErrorCode
 from medalflow.medallion import (
@@ -49,6 +51,9 @@ __all__ = [
     "CompileError",
     "CompiledModel",
     "SelectorError",
+    # run (ADR 002, Decision 7)
+    "run",
+    "RunResult",
     # api
     "get_bronze_execution_plan",
     "get_gold_execution_plan",
