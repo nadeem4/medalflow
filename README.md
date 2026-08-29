@@ -10,7 +10,13 @@ execution plan with observability built in.
 ```python
 from medalflow.constants.sql import QueryType
 from medalflow.medallion.base.decorators import query_metadata
+from medalflow.medallion.bronze import BronzeSequencer, bronze_metadata
 from medalflow.medallion.silver import SilverTransformationSequencer, silver_metadata
+
+
+@bronze_metadata(name="Customers", schema="bronze", source_system="d365")
+class Customers(BronzeSequencer):
+    """dbo.Customers -> bronze.Customers. One model, one table, no SQL to write."""
 
 
 @silver_metadata(
@@ -55,8 +61,13 @@ export. Neither was true. This document now describes only what the code does.
   `@silver_metadata`, `@gold_metadata`) plus `@query_metadata` on methods that return SQL.
 - **Discovery by package walk.** Point `MEDALFLOW_MODELS_PACKAGE` at the package holding
   your models and MedalFlow imports each layer's subpackage and collects the decorated
-  classes it finds. Silver and Gold are discovered this way; Bronze still introspects a
-  live warehouse. A model marked `disabled=True` is left out of the plan.
+  classes it finds. All three layers are discovered this way, so a plan compiles with no
+  warehouse and no credentials. A model marked `disabled=True` is left out of the plan.
+- **Bronze models are declared, and one model is one table.** `@bronze_metadata` names the
+  table, its target schema, and the source table and schema it lands. Deriving the table
+  list from a live `INFORMATION_SCHEMA` query instead is still available behind
+  `MEDALFLOW_BRONZE_INTROSPECTION=true`, but it is opt-in and it means compiling needs a
+  warehouse.
 - **Automatic dependency extraction.** Model SQL is parsed with
   [sqlglot](https://github.com/tobymao/sqlglot); source and target tables become
   fully-qualified `schema.table` names.
@@ -142,7 +153,7 @@ poetry run pytest
 The suite runs entirely offline — no warehouse, no network, no cloud credentials. CI runs
 lint, the test suite on Python 3.13, and an import smoke test on every pull request.
 
-`tests/fixtures/sample_project/` is a miniature MedalFlow project — one bronze table,
+`tests/fixtures/sample_project/` is a miniature MedalFlow project — two Bronze models,
 two Silver models (one reading the other) and a Gold model — used by the end-to-end suite in
 `tests/e2e/`. It is the clearest worked example of the authoring model until a proper
 `examples/` project lands.

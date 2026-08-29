@@ -268,5 +268,46 @@ Gold and the package configuration landed together; bronze is a separate PR.
 - `layer_type` / `LayerType` now has no consumer at all. It is left in place; deleting it
   is its own change.
 
-Still outstanding for Decision 6: declared bronze models, bronze discovery, and
-introspection as an explicit opt-in.
+## Amendment — Decision 6, part 2 implemented
+
+Bronze is declared and discovered now, so no layer derives its models from a live
+warehouse by default.
+
+- `bronze_metadata` gained `name`, `schema`, `source_schema`, `source_table` and
+  `disabled`, and lost `ingestion_mode` (accepted, stored, read by nothing). It was
+  write-only until this change: nothing in `src/` read `_bronze_metadata`.
+- **One bronze model is one bronze table.** `name` is both the model's identity and the
+  table it creates; `schema` is the target, replacing the hardcoded `"bronze"` literal
+  recorded in ground-truth item 3 above. `source_table` defaults to `name` and
+  `source_schema` to the sequencer's own.
+- Introspection's only contribution was ever a `list[TableInfo]` — the CTAS, the
+  soft-delete filter and the statistics are all generated from it. That list is extracted
+  as `BronzeSequencer._source_tables()`. `BronzeSequencer` reads it off its own
+  declaration; `IntrospectedBronzeSequencer` overrides it with the previous
+  `INFORMATION_SCHEMA` query, moved rather than rewritten.
+- Two smaller seams come with it, because a declared target can differ from its source:
+  `_target_table_name(source)` and the `target_schema` property. `_create_table_op` and
+  `get_queries` stay shared.
+- **The mode is configuration, never inference.** `bronze_introspection` defaults to
+  False. Choosing the mode by whether discovery happened to find models would make a
+  mistyped `MEDALFLOW_BRONZE_PACKAGE` fall back to a warehouse silently; it raises and
+  names the variable instead.
+- `BronzeMetadataDiscovery` is a thin subclass of the shared walk, keyed on the declared
+  `name`. `is_model_configured` stays silver-only, for the reason it is off gold.
+- `create_plan_for_bronze_layer` takes a list, like silver and gold.
+- Two live bugs fell out, neither reachable before because rendering bronze SQL required a
+  warehouse: `_create_select_operation` passed `columns=["*"]`, which the builder's
+  identifier whitelist rejects (`Invalid identifier name: *`); and
+  `LakeDatabase.get_tables([])` treats an empty list as "no filter", so an empty selection
+  returned every table instead of none.
+- `QueryMetadata.schema_name` receives the target schema string rather than a `Layer`
+  member, which only validated because `Layer` subclasses `str`.
+
+This supersedes the note under Decision 5 that "Bronze is the exception on purpose: it
+overrides `get_queries` outright and applies `selection` to `INFORMATION_SCHEMA` instead."
+Bronze still overrides `get_queries`, but `selection` filters declared models by name in
+the default mode, and `[]` means no tables in both.
+
+Still outstanding for Decision 2: `name` on `gold_metadata` and `schema` on
+`silver_metadata`, with a class-level `schema` defaulting that class's `@query_metadata`
+methods.
