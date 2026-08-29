@@ -61,10 +61,10 @@ def api_module(monkeypatch):
             created["package"] = package_name
 
         def get_transformations_by_models(self, models):
-            return [_transformation("usp_load_customer", "customer")]
+            return [_transformation("DimCustomer", "customer")]
 
         def get_transformations_by_names(self, names):
-            return [_transformation("usp_load_order", "order")]
+            return [_transformation("FactOrders", "order")]
 
     monkeypatch.setattr(api, "get_settings", lambda: _Settings())
     monkeypatch.setattr(api, "SilverMetadataDiscovery", _Discovery)
@@ -121,7 +121,7 @@ def test_sp_plan_passes_sequencer_instances_not_metadata(api_module, monkeypatch
 
     monkeypatch.setattr(_RecordingOrchestrator, "create_plan_for_silver_layer", _capture)
 
-    api_module.get_execution_plan_for_sps(sp_names="usp_load_order")
+    api_module.get_execution_plan_for_sps(sp_names="FactOrders")
 
     assert captured["value"]
     for sequencer in captured["value"]:

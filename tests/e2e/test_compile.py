@@ -256,9 +256,9 @@ def test_every_broken_model_is_reported_in_one_run(broken_project):
     result = compile("*")
 
     assert sorted(error.model for error in result.errors) == [
-        "usp_load_no_table",
-        "usp_load_not_sql",
-        "usp_load_raises",
+        "NoTable",
+        "NotSql",
+        "Raises",
     ]
     assert result.ok is False
 
@@ -275,18 +275,18 @@ def test_the_models_that_work_still_reach_the_plan(broken_project):
 
 def test_a_broken_model_is_still_reported_as_discovered(broken_project):
     """Discovery found it; building its operations is what failed."""
-    assert "usp_load_raises" in _names(compile("*"))
+    assert "Raises" in _names(compile("*"))
 
 
 def test_a_compile_error_names_the_file_it_is_in(broken_project):
-    error = next(error for error in compile("*").errors if error.model == "usp_load_raises")
+    error = next(error for error in compile("*").errors if error.model == "Raises")
 
     assert Path(error.file).name == "models.py"
     assert Path(error.file).parent.name == "silver"
 
 
 def test_a_compile_error_carries_the_underlying_failure(broken_project):
-    error = next(error for error in compile("*").errors if error.model == "usp_load_raises")
+    error = next(error for error in compile("*").errors if error.model == "Raises")
 
     assert "this model" in error.message
     assert error.error_type
@@ -320,7 +320,7 @@ def test_a_dependency_cycle_is_an_error_not_a_crash(project):
 
     result = compile("*")
 
-    assert _names(result) == ["usp_load_alpha", "usp_load_beta"]
+    assert _names(result) == ["Alpha", "Beta"]
 
     (error,) = result.errors
     assert error.model is None
@@ -345,7 +345,7 @@ def test_a_plan_that_could_not_be_built_is_empty_rather_than_absent(project):
 def test_human_text_is_rendered_from_the_structured_fields():
     error = CompileError(
         file="models.py",
-        model="usp_load_raises",
+        model="Raises",
         error_type="ValueError",
         message="the model failed",
         suggestion="Fix the method it names.",
@@ -354,7 +354,7 @@ def test_human_text_is_rendered_from_the_structured_fields():
     rendered = str(error)
 
     assert "models.py" in rendered
-    assert "usp_load_raises" in rendered
+    assert "Raises" in rendered
     assert "the model failed" in rendered
     assert "Fix the method it names." in rendered
 
@@ -368,12 +368,12 @@ def test_a_compile_result_survives_a_json_round_trip(broken_project):
     assert restored["ok"] is False
     assert restored["selector"] == "*"
     assert sorted(error["model"] for error in restored["errors"]) == [
-        "usp_load_no_table",
-        "usp_load_not_sql",
-        "usp_load_raises",
+        "NoTable",
+        "NotSql",
+        "Raises",
     ]
     assert restored["plan"]["total_queries"] == 1
-    assert {model["name"] for model in restored["models"]} >= {"usp_load_good"}
+    assert {model["name"] for model in restored["models"]} >= {"Good"}
 
 
 def test_a_healthy_compile_result_survives_a_json_round_trip(sample_project):

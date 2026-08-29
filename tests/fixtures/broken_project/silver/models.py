@@ -14,7 +14,7 @@ from medalflow.medallion.base.decorators import query_metadata
 from medalflow.medallion.silver import SilverTransformationSequencer, silver_metadata
 
 
-@silver_metadata(name="usp_load_good", schema="silver", model="sales", tags=["healthy"])
+@silver_metadata(name="Good", schema="silver", model="sales", tags=["healthy"])
 class Good(SilverTransformationSequencer):
     """The one model in this project that compiles."""
 
@@ -23,7 +23,7 @@ class Good(SilverTransformationSequencer):
         return "SELECT Id FROM bronze.Source"
 
 
-@silver_metadata(name="usp_load_raises", schema="silver", model="sales")
+@silver_metadata(name="Raises", schema="silver", model="sales")
 class Raises(SilverTransformationSequencer):
     """A model whose own code raises while its SQL is being read."""
 
@@ -32,7 +32,7 @@ class Raises(SilverTransformationSequencer):
         raise RuntimeError("this model's own code failed")
 
 
-@silver_metadata(name="usp_load_no_table", schema="silver", model="sales")
+@silver_metadata(name="NoTable", schema="silver", model="sales")
 class NoTable(SilverTransformationSequencer):
     """A `@query_metadata` that names no table to write."""
 
@@ -41,7 +41,7 @@ class NoTable(SilverTransformationSequencer):
         return "SELECT Id FROM bronze.Source"
 
 
-@silver_metadata(name="usp_load_not_sql", schema="silver", model="sales")
+@silver_metadata(name="NotSql", schema="silver", model="sales")
 class NotSql(SilverTransformationSequencer):
     """A `@query_metadata` method that does not return SQL."""
 

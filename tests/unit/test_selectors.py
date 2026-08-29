@@ -26,7 +26,7 @@ class _Model:
 
 
 CUSTOMERS = _Model("Customers", "bronze", ["domain:sales"])
-DIM_CUSTOMER = _Model("usp_load_dim_customer", "silver", ["daily"])
+DIM_CUSTOMER = _Model("DimCustomer", "silver", ["daily"])
 REVENUE = _Model("Revenue", "gold", ["daily", "domain:sales"])
 
 EVERY_MODEL = [CUSTOMERS, DIM_CUSTOMER, REVENUE]
@@ -40,17 +40,17 @@ def _selected(selector):
 
 
 def test_star_selects_everything():
-    assert _selected("*") == ["Customers", "usp_load_dim_customer", "Revenue"]
+    assert _selected("*") == ["Customers", "DimCustomer", "Revenue"]
 
 
 def test_layer_selects_one_layer():
     assert _selected("layer:bronze") == ["Customers"]
-    assert _selected("layer:silver") == ["usp_load_dim_customer"]
+    assert _selected("layer:silver") == ["DimCustomer"]
     assert _selected("layer:gold") == ["Revenue"]
 
 
 def test_tag_selects_every_model_carrying_it():
-    assert _selected("tag:daily") == ["usp_load_dim_customer", "Revenue"]
+    assert _selected("tag:daily") == ["DimCustomer", "Revenue"]
 
 
 def test_a_bare_word_selects_by_model_name():

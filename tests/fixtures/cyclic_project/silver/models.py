@@ -5,7 +5,7 @@ from medalflow.medallion.base.decorators import query_metadata
 from medalflow.medallion.silver import SilverTransformationSequencer, silver_metadata
 
 
-@silver_metadata(name="usp_load_alpha", schema="silver", model="sales")
+@silver_metadata(name="Alpha", schema="silver", model="sales")
 class Alpha(SilverTransformationSequencer):
     """Reads the model that reads it."""
 
@@ -14,7 +14,7 @@ class Alpha(SilverTransformationSequencer):
         return "SELECT Id FROM silver.Beta"
 
 
-@silver_metadata(name="usp_load_beta", schema="silver", model="sales")
+@silver_metadata(name="Beta", schema="silver", model="sales")
 class Beta(SilverTransformationSequencer):
     """Reads the model that reads it."""
 
