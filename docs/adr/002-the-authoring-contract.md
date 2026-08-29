@@ -175,3 +175,74 @@ document, discover and eventually delete. There are no users to break.
 is genuinely useful for a wide landing zone, but making it the *only* option means
 compile cannot run offline — which breaks the quickstart, the example project, and the
 agent iteration loop.
+## Amendment — 2026-08-29
+
+The Context section above describes the tree **before** PR #28. Decisions 3, 4 and 9 are
+implemented and pinned by `tests/unit/test_authoring_contract.py`; read the Context as the
+historical record that motivated this ADR, not as a description of `main`.
+
+A ground-truth pass against `dcaab21` found six claims in this ADR that are wrong about the
+code. Recording them so the next reader does not act on them:
+
+1. **"`snapshot_package_name` … exists and is unused"** (Decision 6) — no such setting ever
+   existed. The dead package settings are `gold_package_name`, `dimension_package_name`,
+   `silver_proc_mapping_package_name` and `silver_proc_crud_mapping_package_name`
+   (`settings/main.py:300-329`) — four of them, all with zero references. Only
+   `silver_package_name` is live.
+
+2. **"Only `description` and `tags` are shared across the four layer decorators"** — there are
+   three layer decorators, not four.
+
+3. **"gold and snapshot on `schema_name`"** frames the schema problem as a *disagreement*. It
+   is an *absence*: `gold_metadata` is the only layer decorator with a schema parameter at all.
+   `bronze_metadata` and `silver_metadata` have none, and bronze hardcodes `schema_name="bronze"`
+   at `bronze/sequencer.py:100`. The only `schema=` spellings in the codebase
+   (`BronzeSequencer`, `LakeDatabase`) mean *source* schema — a different thing.
+
+4. **"`ExecutionPlan` currently has no consumer anywhere"** — overstated.
+   `ExecutionPlanBuilder.validate_plan` (`execution_plan_builder.py:85-139`) consumes a plan to
+   field-check it, and is exercised by `test_execution_plan.py:121-138`. It is a validator, not
+   an executor, so the conclusion holds — but it must keep working.
+
+5. **"The plan→executor seam that does exist is `get_all_operations(serialize=True)`"** —
+   that method has zero callers in the entire repo. The receiving end (`api.execute` reading
+   `_cte_stage`, `api/platform.py:35`) exists, but nothing produces its input. The seam is
+   *designed*, never *invoked*.
+
+6. **"`settings` is always injected … that is what forces the `__new__` gymnastics in the
+   current tests"** — half wrong, and the half that is wrong is load-bearing. `BronzeSequencer`
+   already takes injected settings (`bronze/sequencer.py:42`), yet the tests still use `__new__`.
+   The real cause is `LakeDatabase(settings, schema)` running in `__init__` (`:55`), which needs
+   a warehouse. Decision 5 alone does not fix bronze; `lake_db` has to become lazy.
+
+Two further findings that change the work rather than the record:
+
+- **Decision 2's uniform `schema` lands across two PRs, not one.** `GoldMetadata.schema_name` is
+  currently *write-only* — nothing reads it. Adding `schema` to bronze and silver before
+  discovery consumes it would recreate precisely the parameter-that-lies problem Decision 3
+  deleted. The rename lands with this contract change; the new parameters land with discovery.
+
+- **Decision 5 fixes a live bug, not just a signature.** `_BaseSequencer.__init__` sets
+  `self.sql_dialect` from `settings.compute.active_config.dialect` (`base/sequencer.py:62`), and
+  `SilverTransformationSequencer.__init__` then overwrites it with the hardcoded default
+  `"tsql"` — `if sql_dialect:` at `silver/sequencer.py:23` is always true. Any non-T-SQL
+  configured dialect was silently discarded. Dropping the parameter restores it.
+
+**`name` is overloaded, deliberately.** `MedalflowSettings.name` (`settings/main.py:63`) is a
+required env var meaning the *data source* short name, and it derives `table_prefix` and
+`ds_name`. The decorator's `name` means the *model's* identity. Different objects, no code
+collision, but the word does two jobs and docs must not blur them.
+
+**`selection` is a base concept, not a per-layer parameter.** Decision 5 fixes the *signature*;
+that is not sufficient. Gold owned a private `_get_queries` override filtering methods by target
+table, and silver had no equivalent — so a uniform signature would have meant `selection` doing
+one thing in gold and nothing at all in silver, which is the Decision 3 shape again. The filter
+belongs on `_BaseSequencer`, which also declares `selection`, so the three layers share one
+implementation rather than three interpretations. Bronze is the exception on purpose: it
+overrides `get_queries` outright and applies `selection` to `INFORMATION_SCHEMA` instead.
+
+**Injection does not reach bottom yet.** Every sequencer is now handed its settings, but
+`_BaseSequencer._init_feature_managers` still calls `get_configuration_service()` →
+`get_internal_datalake_client()` → `get_settings()`. Constructing a sequencer therefore still
+requires a resolvable global environment, which is why several tests set an offline env first.
+This is a D6 leftover and needs its own change; Decision 5 does not close it.

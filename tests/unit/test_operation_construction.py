@@ -26,17 +26,35 @@ from medalflow.operations.builder import OperationBuilder
 from medalflow.settings.main import MedalflowSettings
 from medalflow.types.metadata import DiscoveredMethod, QueryMetadata
 
+
+@pytest.fixture
+def offline_env(monkeypatch):
+    """`_BaseSequencer._init_feature_managers` resolves the settings singleton."""
+    from medalflow.settings import main as settings_main
+
+    from tests.conftest import OFFLINE_ENV
+
+    for key, value in OFFLINE_ENV.items():
+        monkeypatch.setenv(key, value)
+    settings_main._settings = None
+    try:
+        yield
+    finally:
+        settings_main._settings = None
+
+
 # --- 1. schema= vs schema_name= -------------------------------------------
 
 
-def test_bronze_select_operation_sets_schema_name():
+def test_bronze_select_operation_sets_schema_name(offline_env):
     """bronze/sequencer.py:130 passed `schema=`, so schema_name was never set."""
-    sequencer = BronzeSequencer.__new__(BronzeSequencer)
-    sequencer.source_schema = "dbo"
+    # A real constructor call: `lake_db` is lazy (D5), so this stays offline (D6).
     # The soft-delete convention is read off settings now (Phase 3, task 8);
     # unconfigured, it contributes no WHERE clause.
-    sequencer.settings = MedalflowSettings(
-        source_system="sap", ds_env="dev", name="fin", compute={"lake_database_name": "lakedb"}
+    sequencer = BronzeSequencer(
+        MedalflowSettings(
+            source_system="sap", ds_env="dev", name="fin", compute={"lake_database_name": "lakedb"}
+        )
     )
 
     operation = sequencer._create_select_operation(
@@ -51,12 +69,14 @@ class _StubSequencer(_BaseSequencer):
     """Minimal sequencer that exercises `_get_queries` without any warehouse.
 
     `_BaseSequencer.__init__` needs live settings; this subclass supplies only
-    the four members `_get_queries` actually reads, keeping the test offline
-    per Decision D6.
+    the members `_get_queries` actually reads, keeping the test offline per
+    Decision D6. `selection` is None: this test is about operation
+    construction, so it selects everything.
     """
 
     def __init__(self):
         self.logger = logging.getLogger("stub-sequencer")
+        self.selection = None
 
     def get_obj_name(self) -> str:
         return "StubModel"

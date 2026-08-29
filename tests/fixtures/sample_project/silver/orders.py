@@ -6,9 +6,8 @@ from medalflow.medallion.silver import SilverTransformationSequencer, silver_met
 
 
 @silver_metadata(
-    sp_name="usp_load_fact_orders",
-    group_file_name="group_sales/orders.json",
-    model_name="sales",
+    name="usp_load_fact_orders",
+    model="sales",
     description="Order facts joined to the customer dimension",
 )
 class FactOrders(SilverTransformationSequencer):

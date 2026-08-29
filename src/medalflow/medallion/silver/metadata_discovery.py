@@ -29,8 +29,8 @@ class TransformationMetadata:
     from the stored silver_metadata object.
     """
 
-    sp_name: str
-    model_name: str
+    name: str
+    model: str
     sequencer_class: type[SilverTransformationSequencer]
     silver_metadata: SilverMetadata
 
@@ -45,34 +45,9 @@ class TransformationMetadata:
         return self.silver_metadata.tags or []
 
     @property
-    def group_file_name(self) -> str:
-        """Get group file name from silver metadata."""
-        return self.silver_metadata.group_file_name
-
-    @property
-    def silver_table_name(self) -> str:
-        """Compute silver table name from sp_name."""
-        # removeprefix, not replace: only a leading "Load_" is the marker, so
-        # `Load_Load_Order` is `Load_Order`, not `Order`.
-        return self.sp_name.removeprefix("Load_")
-
-    @property
     def module_path(self) -> str:
         """Get full module path of the sequencer class."""
         return f"{self.sequencer_class.__module__}.{self.sequencer_class.__name__}"
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary including computed properties."""
-        return {
-            "sp_name": self.sp_name,
-            "model_name": self.model_name,
-            "silver_table_name": self.silver_table_name,
-            "group_file_name": self.group_file_name,
-            "description": self.description,
-            "tags": self.tags,
-            "module_path": self.module_path,
-            "sequencer_class_name": self.sequencer_class.__name__,
-        }
 
 
 class SilverMetadataDiscovery:
@@ -171,11 +146,11 @@ class SilverMetadataDiscovery:
                     try:
                         metadata = self._extract_metadata_from_class(cls)
                         if metadata:
-                            metadata_dict[metadata.sp_name] = metadata
+                            metadata_dict[metadata.name] = metadata
                             discovered_count += 1
                             self.logger.debug(
-                                f"Discovered transformation: {metadata.sp_name} "
-                                f"[{metadata.model_name}] in {metadata.module_path}"
+                                f"Discovered transformation: {metadata.name} "
+                                f"[{metadata.model}] in {metadata.module_path}"
                             )
                     except Exception as e:
                         self.logger.error(f"Failed to extract metadata from {cls.__name__}: {e}")
@@ -217,35 +192,31 @@ class SilverMetadataDiscovery:
         result = []
         all_transformations = self.discover_all_transformations()
 
-        result = [
-            metadata for metadata in all_transformations if metadata.model_name.lower() in models
-        ]
+        result = [metadata for metadata in all_transformations if metadata.model.lower() in models]
 
         self.logger.debug(f"Found {len(result)} transformations for models: {models}")
 
         return result
 
-    def get_transformation_by_sp(self, sp_names: str) -> list[TransformationMetadata]:
-        """Get transformations by stored procedure name.
+    def get_transformations_by_names(self, names: str) -> list[TransformationMetadata]:
+        """Get transformations by name.
 
         Uses cache for improved performance when available.
 
         Args:
-            sp_names: Comma-separated stored procedure names
+            names: Comma-separated transformation names
 
         Returns:
-            Every transformation whose sp_name matches, empty if none do
+            Every transformation whose name matches, empty if none do
         """
 
-        sp_names = [name.strip().lower() for name in sp_names.strip().split(",")]
+        names = [name.strip().lower() for name in names.strip().split(",")]
 
         all_transformations = self.discover_all_transformations()
 
-        result = [
-            metadata for metadata in all_transformations if metadata.sp_name.lower() in sp_names
-        ]
+        result = [metadata for metadata in all_transformations if metadata.name.lower() in names]
 
-        self.logger.debug(f"Found {len(result)} transformations for SPs: {sp_names}")
+        self.logger.debug(f"Found {len(result)} transformations for names: {names}")
 
         return result
 
@@ -328,21 +299,19 @@ class SilverMetadataDiscovery:
 
             meta: SilverMetadata = cls._silver_metadata
 
-            model_name = meta.model_name or self._extract_model_from_group(meta.group_file_name)
-
             if meta.disabled:
-                self.logger.debug(f"Skipping disabled transformation: {meta.sp_name}")
+                self.logger.debug(f"Skipping disabled transformation: {meta.name}")
                 return None
 
-            if not self.settings.is_model_configured(model_name):
+            if not self.settings.is_model_configured(meta.model):
                 self.logger.debug(
-                    f"Skipping transformation {meta.sp_name}: model '{model_name}' not configured"
+                    f"Skipping transformation {meta.name}: model '{meta.model}' not configured"
                 )
                 return None
 
             return TransformationMetadata(
-                sp_name=meta.sp_name,
-                model_name=model_name,
+                name=meta.name,
+                model=meta.model,
                 sequencer_class=cls,
                 silver_metadata=meta,
             )
@@ -352,25 +321,6 @@ class SilverMetadataDiscovery:
             # an authoring error, not a reason to drop it from the plan.
             self.logger.error(f"Failed to extract metadata from {cls.__name__}: {e}")
             raise
-
-    def _extract_model_from_group(self, group_file_name: str) -> str:
-        """Extract model name from group_file_name.
-
-        Args:
-            group_file_name: Group file path (e.g., 'group_sales/parallel_group_1.json')
-
-        Returns:
-            Model name (e.g., 'sales')
-        """
-        if not group_file_name:
-            raise ValueError("group_file_name is required to extract model name")
-
-        if "/" not in group_file_name:
-            raise ValueError("group_file_name must contain a '/' to extract model name")
-
-        # format: 'group_sales/parallel_group_1.json'
-        group = group_file_name.split("/")[0]
-        return group.replace("group_", "")
 
     def clear_cache(self, pattern: str | None = None) -> None:
         """Clear silver metadata cache.

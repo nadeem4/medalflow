@@ -6,9 +6,8 @@ from medalflow.medallion.silver import SilverTransformationSequencer, silver_met
 
 
 @silver_metadata(
-    sp_name="usp_load_dim_customer",
-    group_file_name="group_sales/customers.json",
-    model_name="sales",
+    name="usp_load_dim_customer",
+    model="sales",
     description="Cleansed customer dimension",
 )
 class DimCustomer(SilverTransformationSequencer):

@@ -37,11 +37,17 @@ class _FakePlan:
         return None
 
 
+# What the seam handed to the discovery service and the sequencer, for the
+# tests below to read back. Reset by the `api_module` fixture on every use.
+SEAM_CALLS: dict = {}
+
+
 @pytest.fixture
 def api_module(monkeypatch):
     from medalflow.api import medallion as api
 
-    created = {}
+    created = SEAM_CALLS
+    created.clear()
 
     class _Settings:
         silver_package_name = "acme.silver"
@@ -53,30 +59,34 @@ def api_module(monkeypatch):
         def get_transformations_by_models(self, models):
             return [_transformation("usp_load_customer", "customer")]
 
-        def get_transformation_by_sp(self, sp_names):
+        def get_transformations_by_names(self, names):
             return [_transformation("usp_load_order", "order")]
 
     monkeypatch.setattr(api, "get_settings", lambda: _Settings())
     monkeypatch.setattr(api, "SilverMetadataDiscovery", _Discovery)
     monkeypatch.setattr(api, "ExecutionPlanOrchestrator", _RecordingOrchestrator)
 
-    # SilverTransformationSequencer.__init__ resolves live settings of its own;
-    # this test is about the seam instantiating sequencer_class at all, so keep
-    # that construction offline (D6).
+    # The sequencer takes its settings injected now (D5), but the base still
+    # resolves the global singleton to wire up its feature managers. This test
+    # is about the seam instantiating sequencer_class at all, so keep that
+    # construction offline (D6) while recording what it was handed.
     from medalflow.medallion.silver import sequencer as silver_sequencer
+
+    def _record(self, settings=None, selection=None):
+        created["settings"] = settings
 
     monkeypatch.setattr(
         silver_sequencer.SilverTransformationSequencer,
         "__init__",
-        lambda self, *a, **kw: None,
+        _record,
     )
     return api
 
 
-def _transformation(sp_name, model_name):
+def _transformation(name, model):
     return TransformationMetadata(
-        sp_name=sp_name,
-        model_name=model_name,
+        name=name,
+        model=model,
         silver_metadata=None,
         sequencer_class=SilverTransformationSequencer,
     )
@@ -114,16 +124,37 @@ def test_sp_plan_passes_sequencer_instances_not_metadata(api_module, monkeypatch
         assert isinstance(sequencer, SilverTransformationSequencer)
 
 
-# --- bronze entry point: settings + CSV table names ------------------------
+def test_the_seam_injects_settings_into_each_sequencer(api_module, monkeypatch):
+    """D5: `sequencer_class()` took no arguments and the sequencer resolved
+    global settings for itself. It is handed the plan's settings now."""
+    monkeypatch.setattr(
+        _RecordingOrchestrator,
+        "create_plan_for_silver_layer",
+        lambda self, silver_sequencers: _FakePlan(),
+    )
+
+    api_module.get_silver_execution_plan_for_models(models="all")
+
+    assert SEAM_CALLS["settings"] is not None
 
 
-def test_bronze_plan_passes_settings_and_csv_table_names(api_module, monkeypatch):
+# --- bronze entry point: settings + a list of tables -----------------------
+
+
+def test_bronze_plan_passes_settings_and_the_table_list(api_module, monkeypatch):
+    """The list arrives as a list.
+
+    It used to be `",".join(table_names)` on the way in and `.split(",")` on
+    the way out — a round trip through a string that could only lose table
+    names containing a comma. D5 makes `selection` a `list[str] | None` at both
+    ends.
+    """
     captured = {}
 
     class _Bronze:
-        def __init__(self, settings, table_names=None, **kwargs):
+        def __init__(self, settings, selection=None, **kwargs):
             captured["settings"] = settings
-            captured["table_names"] = table_names
+            captured["selection"] = selection
 
     def _capture(self, bronze_sequencer):
         return _FakePlan()
@@ -136,7 +167,7 @@ def test_bronze_plan_passes_settings_and_csv_table_names(api_module, monkeypatch
     api_module.get_bronze_execution_plan(["Customer", "Order"])
 
     assert captured["settings"] is not None
-    assert captured["table_names"] == "Customer,Order"
+    assert captured["selection"] == ["Customer", "Order"]
 
 
 # --- silver sequencer: import path and logger kwargs -----------------------
@@ -220,11 +251,11 @@ def test_detail_table_transformation_logs_without_crashing(caplog):
 # --- discovery contract ----------------------------------------------------
 
 
-def test_get_transformation_by_sp_is_annotated_as_a_list():
+def test_get_transformations_by_names_is_annotated_as_a_list():
     """It returns a list; the annotation said Optional[TransformationMetadata]."""
     from typing import get_type_hints
 
-    hints = get_type_hints(SilverMetadataDiscovery.get_transformation_by_sp)
+    hints = get_type_hints(SilverMetadataDiscovery.get_transformations_by_names)
 
     assert hints["return"] == list[TransformationMetadata]
 

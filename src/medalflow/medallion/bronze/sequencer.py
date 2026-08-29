@@ -6,6 +6,7 @@ with minimal transformation.
 """
 
 import logging
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 from medalflow.constants.medallion import Layer
@@ -33,43 +34,42 @@ class BronzeSequencer(_BaseSequencer):
     table creation queries and statistics generation.
 
     Attributes:
+        selection: Optional list of specific tables to process
         source_schema: Source database schema name
-        lake_db: LakeDatabase instance for accessing source tables
+        lake_db: LakeDatabase instance for accessing source tables, built on
+            first use
         table_prefix: Prefix to add to bronze table names (inherited from base)
-        requested_table_names: Optional list of specific tables to process
     """
 
     def __init__(
-        self, settings: "MedalflowSettings", schema: str = "dbo", table_names: str | None = None
+        self,
+        settings: "MedalflowSettings",
+        selection: list[str] | None = None,
+        *,
+        source_schema: str = "dbo",
     ):
         """Initialize the Bronze sequencer.
 
         Args:
             settings: Configuration settings for the sequencer
-            schema: Source schema name (default: "dbo")
-            table_names: Optional comma-separated list of table names to process
+            selection: Optional list of table names to process. None means
+                every table in the source schema.
+            source_schema: Source schema name (default: "dbo")
         """
-        super().__init__(settings)
+        super().__init__(settings, selection)
 
-        self.source_schema = schema
-        self.lake_db = LakeDatabase(settings, schema)
-        self.requested_table_names = self._parse_table_names(table_names)
+        self.source_schema = source_schema
         self.layer = Layer.BRONZE
 
-    def _parse_table_names(self, table_names: str | None) -> list[str] | None:
-        """Parse comma-separated table names into a list.
+    @cached_property
+    def lake_db(self) -> LakeDatabase:
+        """The source lake database, opened on first use.
 
-        Args:
-            table_names: Comma-separated string of table names
-
-        Returns:
-            List of table names or None if not provided
+        Built lazily so that constructing a sequencer stays offline (D6): a
+        plan can be described, and its constructor exercised, without a
+        warehouse to connect to.
         """
-        if not table_names:
-            return None
-        # Handle comma-separated values, trim whitespace
-        names = [name.strip() for name in table_names.split(",") if name.strip()]
-        return names if names else None
+        return LakeDatabase(self.settings, self.source_schema)
 
     def get_layer_name(self) -> str:
         """Return the layer name for this sequencer.
@@ -152,9 +152,9 @@ class BronzeSequencer(_BaseSequencer):
         return convention.predicate
 
     def get_queries(self) -> list[BaseOperation]:
-        tables = self.lake_db.get_tables(table_names=self.requested_table_names)
+        tables = self.lake_db.get_tables(table_names=self.selection)
 
-        if self.requested_table_names:
+        if self.selection:
             logger.info(f"Processing {len(tables)} requested tables for bronze layer")
         else:
             logger.info(

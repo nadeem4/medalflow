@@ -16,7 +16,7 @@ def _attach_plan_context(plan: ExecutionPlan, ctx) -> ExecutionPlan:
     return plan
 
 
-def _instantiate_sequencers(transformations) -> list[Any]:
+def _instantiate_sequencers(transformations, settings) -> list[Any]:
     """Turn discovered transformation metadata into sequencer instances.
 
     Discovery yields `TransformationMetadata` dataclasses, but the orchestrator
@@ -24,7 +24,7 @@ def _instantiate_sequencers(transformations) -> list[Any]:
     it receives. Passing the metadata through raised AttributeError on the very
     first line of its loop.
     """
-    return [transformation.sequencer_class() for transformation in transformations]
+    return [transformation.sequencer_class(settings) for transformation in transformations]
 
 
 def get_bronze_execution_plan(
@@ -38,10 +38,7 @@ def get_bronze_execution_plan(
         settings = get_settings()
         plan_orchestrator = ExecutionPlanOrchestrator(settings)
         plan = plan_orchestrator.create_plan_for_bronze_layer(
-            bronze_sequencer=BronzeSequencer(
-                settings,
-                table_names=",".join(table_names) if table_names else None,
-            )
+            bronze_sequencer=BronzeSequencer(settings, table_names)
         )
         return _attach_plan_context(plan, context)
 
@@ -57,7 +54,7 @@ def get_gold_execution_plan(
         settings = get_settings()
         plan_orchestrator = ExecutionPlanOrchestrator(settings)
         plan = plan_orchestrator.create_plan_for_gold_layer(
-            gold_sequencer=GoldSequencer(selected_tables=table_names)
+            gold_sequencer=GoldSequencer(settings, table_names)
         )
         return _attach_plan_context(plan, context)
 
@@ -75,7 +72,7 @@ def get_silver_execution_plan_for_models(
         metadata_discovery = SilverMetadataDiscovery(settings.silver_package_name)
         transformations = metadata_discovery.get_transformations_by_models(models=models)
         plan = plan_orchestrator.create_plan_for_silver_layer(
-            silver_sequencers=_instantiate_sequencers(transformations)
+            silver_sequencers=_instantiate_sequencers(transformations, settings)
         )
         return _attach_plan_context(plan, context)
 
@@ -91,8 +88,8 @@ def get_execution_plan_for_sps(
         settings = get_settings()
         plan_orchestrator = ExecutionPlanOrchestrator(settings)
         metadata_discovery = SilverMetadataDiscovery(settings.silver_package_name)
-        transformations = metadata_discovery.get_transformation_by_sp(sp_names=sp_names)
+        transformations = metadata_discovery.get_transformations_by_names(names=sp_names)
         plan = plan_orchestrator.create_plan_for_silver_layer(
-            silver_sequencers=_instantiate_sequencers(transformations)
+            silver_sequencers=_instantiate_sequencers(transformations, settings)
         )
         return _attach_plan_context(plan, context)

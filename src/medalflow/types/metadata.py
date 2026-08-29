@@ -4,9 +4,10 @@ This module contains all metadata classes including layer-specific metadata
 (Bronze, Silver, Gold) and query-related metadata types.
 """
 
+import warnings
 from typing import Any, NamedTuple
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from medalflow.constants.compute import EngineType
 from medalflow.constants.sql import QueryType
@@ -48,59 +49,62 @@ class SilverMetadata(CTEBaseModel):
     and executed, including grouping strategies and stored procedure generation.
 
     Attributes:
-        sp_name: Name of the stored procedure that will be generated for this
-            ETL process. Should follow naming conventions like "Load_[Entity]_[Type]".
-        group_file_name: Path to the JSON configuration file that defines
-            grouping and transformation rules for the Silver layer process.
+        name: Identity of the transformation — what the plan reports, what
+            discovery indexes on, and the name of the generated stored procedure.
+        model: The model this transformation belongs to. Discovery filters on it
+            against the configured model list.
         description: Human-readable description of what this ETL process does.
             Used for documentation and monitoring dashboards.
         tags: List of tags for categorizing and filtering ETL processes.
             Examples: ["dimension", "daily", "customer-data"].
+        disable_key_reshuffling: Carried for downstream key handling; the
+            framework itself does not act on it.
         disabled: If True, this transformation won't be executed. Used for
             client-specific features or gradual rollout. Defaults to False.
     """
 
-    sp_name: str
-    group_file_name: str
+    name: str
+    model: str
     description: str | None = None
     tags: list[str] = Field(default_factory=list)
-    model_name: str | None = None
     disable_key_reshuffling: bool = False
     disabled: bool = (
         False  # If True, transformation won't be executed (for client-specific features)
     )
 
-    @model_validator(mode="after")
-    def set_model_name(self):
-        """Set the model name for this SilverMetadata instance."""
-        if not self.model_name:
-            self.model_name = self.group_file_name.split("/")[0].replace("group_", "")
 
-        return self
+# Pydantic warns that a field named `schema` shadows `BaseModel.schema()`, the
+# deprecated v1 compatibility shim. Shadowing it is the point: ADR 002 D2 makes
+# `schema` the gold layer's vocabulary, and nothing calls the shim.
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        message=r'Field name "schema" in "GoldMetadata" shadows an attribute',
+        category=UserWarning,
+    )
 
+    class GoldMetadata(CTEBaseModel):
+        """Metadata for Gold layer analytical processes.
 
-class GoldMetadata(CTEBaseModel):
-    """Metadata for Gold layer analytical processes.
+        The Gold layer contains business-ready data products optimized for
+        analytics, reporting, and machine learning. This metadata configures
+        how Gold layer views and aggregations are created and managed.
 
-    The Gold layer contains business-ready data products optimized for
-    analytics, reporting, and machine learning. This metadata configures
-    how Gold layer views and aggregations are created and managed.
+        Attributes:
+            schema: Target schema for Gold layer objects. This should be
+                a dedicated schema for analytical views and aggregations.
+            layer: Medallion layer identifier. Defaults to "gold" but can be
+                customized for specialized layers like "gold_ml" or "gold_executive".
+            description: Human-readable description of the analytical dataset's
+                purpose and content. Used in data catalogs and documentation.
+            tags: List of tags for categorizing and discovering views. Use
+                consistent tagging: ["domain:sales", "refresh:daily", "priority:high"].
+        """
 
-    Attributes:
-        schema_name: Target schema for Gold layer objects. This should be
-            a dedicated schema for analytical views and aggregations.
-        layer: Medallion layer identifier. Defaults to "gold" but can be
-            customized for specialized layers like "gold_ml" or "gold_executive".
-        description: Human-readable description of the analytical dataset's
-            purpose and content. Used in data catalogs and documentation.
-        tags: List of tags for categorizing and discovering views. Use
-            consistent tagging: ["domain:sales", "refresh:daily", "priority:high"].
-    """
-
-    schema_name: str
-    layer: str = "gold"
-    description: str | None = None
-    tags: list[str] = Field(default_factory=list)
+        schema: str
+        layer: str = "gold"
+        description: str | None = None
+        tags: list[str] = Field(default_factory=list)
 
 
 class TransformationMetadata(CTEBaseModel):
@@ -110,7 +114,7 @@ class TransformationMetadata(CTEBaseModel):
     model groups, particularly in Silver layer processing.
 
     Attributes:
-        sp_name: Stored procedure name for the transformation
+        name: Name of the transformation
         silver_table_name: Target table in Silver layer
         intermediate_synapse_object: Intermediate object in Synapse
         function_name: Azure Function name if applicable
@@ -121,7 +125,7 @@ class TransformationMetadata(CTEBaseModel):
         disable_key_reshuffling: Whether to disable key reshuffling
     """
 
-    sp_name: str
+    name: str
     silver_table_name: str
     intermediate_synapse_object: str
     add_default_row: bool = False

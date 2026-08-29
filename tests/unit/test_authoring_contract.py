@@ -83,14 +83,14 @@ def test_every_layer_decorator_stores_its_description():
         pass
 
     @silver_metadata(
-        sp_name="Load_Customer_Dim",
-        group_file_name="group_sales/customer.json",
+        name="Load_Customer_Dim",
+        model="sales",
         description="cleansed customers",
     )
     class Silver:
         pass
 
-    @gold_metadata(schema_name="gold", description="customer revenue")
+    @gold_metadata(schema="gold", description="customer revenue")
     class Gold:
         pass
 
@@ -100,7 +100,7 @@ def test_every_layer_decorator_stores_its_description():
 
 
 def test_description_is_optional_and_defaults_to_none():
-    @gold_metadata(schema_name="gold")
+    @gold_metadata(schema="gold")
     class Gold:
         pass
 
@@ -115,8 +115,8 @@ def test_description_is_optional_and_defaults_to_none():
 def test_silver_metadata_rejects_take_snapshot():
     with pytest.raises(TypeError, match="take_snapshot"):
         silver_metadata(
-            sp_name="Load_Customer_Dim",
-            group_file_name="group_sales/customer.json",
+            name="Load_Customer_Dim",
+            model="sales",
             take_snapshot=True,
         )
 
@@ -149,8 +149,8 @@ def test_update_without_name_is_simply_accepted():
 def test_silver_metadata_rejects_preferred_engine():
     with pytest.raises(TypeError, match="preferred_engine"):
         silver_metadata(
-            sp_name="Load_Customer_Dim",
-            group_file_name="group_sales/customer.json",
+            name="Load_Customer_Dim",
+            model="sales",
             preferred_engine="spark",
         )
 
@@ -172,3 +172,68 @@ def test_engine_hint_survives_as_internal_plumbing():
 def test_spark_stays_an_enum_member():
     """Removing it would turn a documented input into an import-time ValueError."""
     assert EngineType("spark") is EngineType.SPARK
+
+
+# ---------------------------------------------------------------------------
+# D2 — one identity vocabulary: `name` and `model`, and nothing else
+# ---------------------------------------------------------------------------
+
+
+def test_silver_metadata_stores_name_and_model():
+    @silver_metadata(name="Load_Customer_Dim", model="sales")
+    class Silver:
+        pass
+
+    assert Silver._silver_metadata.name == "Load_Customer_Dim"
+    assert Silver._silver_metadata.model == "sales"
+
+
+def test_silver_metadata_takes_name_and_model_positionally():
+    @silver_metadata("Load_Customer_Dim", "sales")
+    class Silver:
+        pass
+
+    assert Silver._silver_metadata.name == "Load_Customer_Dim"
+    assert Silver._silver_metadata.model == "sales"
+
+
+def test_silver_metadata_requires_model():
+    """`model` was optional and back-derived from a filename. It is now declared."""
+    with pytest.raises(TypeError, match="model"):
+        silver_metadata(name="Load_Customer_Dim")
+
+
+@pytest.mark.parametrize("parameter", ["sp_name", "group_file_name", "model_name"])
+def test_silver_metadata_rejects_the_old_identity_parameters(parameter):
+    with pytest.raises(TypeError, match=parameter):
+        silver_metadata(name="Load_Customer_Dim", model="sales", **{parameter: "x"})
+
+
+@pytest.mark.parametrize("field", ["sp_name", "group_file_name", "model_name"])
+def test_silver_metadata_model_drops_the_old_identity_fields(field):
+    assert field not in SilverMetadata.model_fields
+
+
+def test_silver_metadata_model_carries_name_and_model():
+    assert "name" in SilverMetadata.model_fields
+    assert "model" in SilverMetadata.model_fields
+
+
+def test_gold_metadata_stores_schema():
+    @gold_metadata(schema="gold_sales")
+    class Gold:
+        pass
+
+    assert Gold._gold_metadata.schema == "gold_sales"
+
+
+def test_gold_metadata_rejects_schema_name():
+    with pytest.raises(TypeError, match="schema_name"):
+        gold_metadata(schema_name="gold")
+
+
+def test_gold_metadata_model_drops_schema_name():
+    from medalflow.types.metadata import GoldMetadata
+
+    assert "schema_name" not in GoldMetadata.model_fields
+    assert "schema" in GoldMetadata.model_fields
