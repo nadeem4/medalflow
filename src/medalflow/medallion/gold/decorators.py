@@ -10,6 +10,7 @@ from medalflow.types.metadata import GoldMetadata
 
 
 def gold_metadata(
+    name: str,
     schema: str,
     layer: str = "gold",
     description: str | None = None,
@@ -24,9 +25,14 @@ def gold_metadata(
     tracking, and refresh orchestration.
 
     Args:
+        name: The model's identity. Discovery keys on it, the plan reports it,
+            and a selector matches it. It used to be the class name, so
+            renaming a class renamed the model; it is declared now, as bronze
+            and silver already declare theirs.
         schema: Target schema for creating analytical views. This should
             be a dedicated schema for Gold layer objects to maintain clear
-            separation between layers.
+            separation between layers. It is also the default `schema_name`
+            for this class's own `@query_metadata` methods.
         layer: Medallion layer identifier. Defaults to "gold" but can be
             customized for specialized analytical layers like "gold_ml" or
             "gold_executive".
@@ -43,6 +49,7 @@ def gold_metadata(
     Example:
         Basic Gold layer configuration:
         >>> @gold_metadata(
+        ...     name="BusinessMetrics",
         ...     schema="gold",
         ...     description="Core business metrics and KPIs"
         ... )
@@ -52,6 +59,7 @@ def gold_metadata(
 
         Domain-specific Gold layer:
         >>> @gold_metadata(
+        ...     name="SalesAnalytics",
         ...     schema="gold_sales",
         ...     description="Sales analytics views for performance tracking",
         ...     tags=["sales", "performance", "daily-refresh"]
@@ -63,6 +71,7 @@ def gold_metadata(
 
         ML-ready feature views:
         >>> @gold_metadata(
+        ...     name="MLFeatures",
         ...     schema="gold_ml",
         ...     layer="gold_ml",
         ...     description="Feature engineering views for ML models",
@@ -81,6 +90,7 @@ def gold_metadata(
 
     def decorator(cls: type) -> type:
         metadata = GoldMetadata(
+            name=name,
             schema=schema,
             layer=layer,
             description=description,

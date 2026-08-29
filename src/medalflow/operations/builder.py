@@ -105,13 +105,19 @@ class OperationBuilder:
             ...     source_query="SELECT * FROM temp_users"
             ... )
         """
+        # `QueryMetadata.type` is stored as a plain `str` (`use_enum_values=True`),
+        # so every call from a sequencer arrives with one. Both messages below
+        # used to read `query_type.value` and raise `AttributeError` on it --
+        # inside the handler, which meant the *real* failure never surfaced.
+        type_label = getattr(query_type, "value", query_type)
+
         # Get operation class from registry
         operation_class = cls._registry.get(query_type)
 
         if operation_class is None:
             raise ValueError(
                 f"No operation class registered for query type "
-                f"'{query_type.value}'. Register one in OperationBuilder._registry."
+                f"'{type_label}'. Register one in OperationBuilder._registry."
             )
 
         # Create operation instance
@@ -129,7 +135,7 @@ class OperationBuilder:
                 f"Failed to create {operation_class.__name__} for "
                 f"{schema_name}.{object_name}: {e}"
             )
-            raise ValueError(f"Cannot create operation {query_type.value}: {e}") from e
+            raise ValueError(f"Cannot create operation {type_label}: {e}") from e
 
     @classmethod
     def create_operation_from_dict(cls, operation_dict: dict) -> BaseOperation:

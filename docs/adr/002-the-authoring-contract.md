@@ -321,6 +321,47 @@ overrides `get_queries` outright and applies `selection` to `INFORMATION_SCHEMA`
 Bronze still overrides `get_queries`, but `selection` filters declared models by name in
 the default mode, and `[]` means no tables in both.
 
-Still outstanding for Decision 2: `name` on `gold_metadata` and `schema` on
-`silver_metadata`, with a class-level `schema` defaulting that class's `@query_metadata`
-methods.
+## Amendment — Decision 2, the parameter set is uniform
+
+The last two gaps are closed, together with the consumer that makes `schema` mean
+something. All three layer decorators now take `name`, `schema`, `description=` and
+`tags=`, plus at most one layer-specific extra.
+
+- `gold_metadata` gained a required `name`. Gold discovery took the *class* name as the
+  model's identity, so renaming a class renamed the model, and the duplicate-name guard
+  fired only when two classes happened to share a class name rather than when two models
+  declared the same identity. `GoldModelMetadata.name` and `GoldSequencer.get_obj_name()`
+  both read the declaration now, so discovery keys, cache keys and log names agree.
+- `silver_metadata` gained a required `schema`. Silver's target schema lived only on each
+  `@query_metadata` method, which made it the one layer whose declaration did not say
+  where the model writes.
+- **A class's `schema` is the default `schema_name` for its own `@query_metadata`
+  methods.** `query_metadata(schema_name="")` means the method did not say, so it writes
+  where its model writes; a method that states one keeps it. Both parameters were being
+  stored and read by nothing, which is the D3 shape — they land with their consumer.
+- **The default is applied after `_transform_query_result`, not before.** Silver promotes
+  a staged detail table by comparing `metadata.schema_name` against
+  `conventions.detail_tables.source_schema`, and that comparison runs during discovery.
+  Defaulting earlier would feed it an inherited schema no author wrote, so a silver model
+  whose declared `schema` happened to equal the configured source schema would have every
+  suffix-matching method silently promoted. The convention keys on what the *method*
+  declared; inheritance fills in afterwards, and the rewrite's own target schema is
+  non-empty so it survives. Pinned by
+  `test_the_class_schema_is_applied_after_the_detail_rewrite`.
+- A method that omits `schema_name` on a class with no declaration is unchanged: it still
+  raises. Inventing a schema — the layer name, `dbo` — would be a worse answer than
+  saying so.
+- The three per-class `warnings.catch_warnings()` blocks around the metadata models (
+  pydantic warns that a `schema` field shadows its deprecated v1 `.schema()` shim, and
+  the message names the class) are one `_shadowing_schema_is_intended()` context manager.
+  Its filter stays narrow on purpose: an unrelated `UserWarning` raised while a class body
+  runs still reaches the author.
+
+One live bug fell out of it. `OperationBuilder.create_operation` reported construction
+failures as `f"...{query_type.value}"`, but `QueryMetadata.type` is stored as a plain
+`str` (`use_enum_values=True`), so every call from a sequencer passed one and the handler
+raised `AttributeError` *on itself* — swallowing the real validation error. Both messages
+on that path read the label defensively now.
+
+Still outstanding for Decision 2: nothing. Decisions 7 and 8 — `compile()`,
+`CompileResult`, `run(selector)` and the selector grammar — are next.

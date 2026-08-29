@@ -43,18 +43,16 @@ SILVER_MODEL = """
     from medalflow.medallion.silver import SilverTransformationSequencer, silver_metadata
 
 
-    @silver_metadata(name="{name}", model="sales")
+    @silver_metadata(name="{name}", schema="silver", model="sales")
     class {cls}(SilverTransformationSequencer):
         pass
 """
 
-# Gold takes its identity from the class name, so `name` is unused here and a
-# duplicate is two classes sharing a class name in different modules.
 GOLD_MODEL = """
     from medalflow.medallion.gold import GoldSequencer, gold_metadata
 
 
-    @gold_metadata(schema="gold")
+    @gold_metadata(name="{name}", schema="gold")
     class {cls}(GoldSequencer):
         pass
 """
@@ -82,7 +80,7 @@ DECORATED_SUBCLASS = {
     from medalflow.medallion.silver import silver_metadata
 
 
-    @silver_metadata(name="Archived", model="sales")
+    @silver_metadata(name="Archived", schema="silver", model="sales")
     class Archived(Customers):
         pass
 """,
@@ -91,17 +89,19 @@ DECORATED_SUBCLASS = {
     from medalflow.medallion.gold import gold_metadata
 
 
-    @gold_metadata(schema="gold")
+    @gold_metadata(name="Archived", schema="gold")
     class Archived(Customers):
         pass
 """,
 }
 
+# All three layers now declare `name`, so a duplicate is two *differently
+# named classes* declaring one name -- gold included, which used to key on the
+# class name and so could only collide by reusing it.
 LAYERS = {
     "bronze": (BronzeMetadataDiscovery, BRONZE_MODEL, "Duplicate"),
     "silver": (SilverMetadataDiscovery, SILVER_MODEL, "Duplicate"),
-    # Gold keys on the class name, so its duplicate has to reuse it.
-    "gold": (GoldMetadataDiscovery, GOLD_MODEL, "Customers"),
+    "gold": (GoldMetadataDiscovery, GOLD_MODEL, "Duplicate"),
 }
 
 

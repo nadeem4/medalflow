@@ -189,6 +189,41 @@ def test_create_operation_from_dict_rejects_unregistered_query_type(monkeypatch)
         )
 
 
+# --- the failure message must survive a plain-string query type ------------
+
+
+def test_a_construction_failure_reports_the_underlying_validation_error():
+    """The error handler raised on itself and swallowed the real message.
+
+    `QueryMetadata.type` is stored as a plain `str` (`use_enum_values=True`), so
+    every call from `_BaseSequencer._get_queries` passes one. The handler then
+    did `query_type.value` and died with `'str' object has no attribute
+    'value'` -- masking, for instance, the empty `schema_name` that actually
+    failed.
+    """
+    with pytest.raises(ValueError, match="schema_name"):
+        OperationBuilder.create_operation(
+            query_type=QueryType.CREATE_TABLE.value,
+            schema_name="",
+            object_name="DimCustomer",
+            select_query="SELECT 1 AS n",
+        )
+
+
+def test_an_unregistered_string_query_type_is_named_in_the_error(monkeypatch):
+    """The same `.value` assumption, in the other message on this path."""
+    registry = dict(OperationBuilder._registry)
+    del registry[QueryType.SELECT]
+    monkeypatch.setattr(OperationBuilder, "_registry", registry)
+
+    with pytest.raises(ValueError, match="No operation class registered for query type 'SELECT'"):
+        OperationBuilder.create_operation(
+            query_type=QueryType.SELECT.value,
+            schema_name="silver",
+            object_name="Customer",
+        )
+
+
 # --- 4. full_object_name doubled the prefix separator ----------------------
 
 

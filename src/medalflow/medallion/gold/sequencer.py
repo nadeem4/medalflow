@@ -29,6 +29,20 @@ class GoldSequencer(_BaseSequencer):
         """
         return self.layer.value
 
+    def get_obj_name(self) -> str:
+        """The model's declared name, or the class name when undecorated.
+
+        Never raises: it is the cache key and the log name, and it is read
+        while reporting failures, so a missing decorator must not mask the
+        real error.
+
+        Returns:
+            The declared name, falling back to the class name
+        """
+        metadata = getattr(type(self), "_gold_metadata", None)
+
+        return metadata.name if metadata else super().get_obj_name()
+
     def _get_class_metadata_attribute(self) -> str | None:
         """Get the class-level metadata attribute name for Gold sequencer.
 

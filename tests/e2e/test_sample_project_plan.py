@@ -26,7 +26,7 @@ from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPl
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
 from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
-from medalflow.operations import CreateOrAlterView, CreateTable
+from medalflow.operations import CreateTable
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -114,59 +114,24 @@ def test_discovered_sequencer_classes_are_instantiable_types(discovery):
 def _operations_from_sample_project(settings):
     """Build the five operations the sample project describes.
 
-    The bronze operations come out of the bronze models themselves, through
-    discovery and `get_queries()` — the hand-built `CreateTable` that used to
-    stand in for them is gone, and with it the last place this suite described
-    bronze rather than running it.
-
-    The silver operations are still built from each model's decorated methods
-    directly: that is the same SQL and metadata discovery hands to
-    `_get_queries`. The gold model arrives through discovery, which is how a
-    real project reaches it.
+    Every layer arrives the same way a real project reaches it: discovery walks
+    the package, and each discovered model's `get_queries()` builds its
+    operations. The hand-built `CreateTable`/`CreateOrAlterView` that used to
+    stand in for silver and gold are gone — they read `metadata.schema_name`
+    off the decorator, which is precisely the resolution step `_get_queries`
+    now owns, so this suite would have described the models rather than running
+    them.
     """
-    from sample_project.silver.customers import DimCustomer
-    from sample_project.silver.orders import FactOrders
-
-    gold = GoldMetadataDiscovery("sample_project.gold", settings=_StubSettings())
-    Revenue = next(
-        model.sequencer_class
-        for model in gold.discover_all(force_refresh=True)
-        if model.name == "Revenue"
-    )
-
     bronze = BronzeMetadataDiscovery("sample_project.bronze", settings=_StubSettings())
-    operations = [
+    silver = SilverMetadataDiscovery("sample_project.silver", settings=_StubSettings())
+    gold = GoldMetadataDiscovery("sample_project.gold", settings=_StubSettings())
+
+    return [
         operation
-        for model in sorted(bronze.discover_all(force_refresh=True), key=lambda m: m.name)
+        for discovery in (bronze, silver, gold)
+        for model in sorted(discovery.discover_all(force_refresh=True), key=lambda m: m.name)
         for operation in model.sequencer_class(settings).get_queries()
     ]
-
-    for model, method_name in (
-        (DimCustomer, "build_dim_customer"),
-        (FactOrders, "build_fact_orders"),
-        (Revenue, "build_revenue_view"),
-    ):
-        method = getattr(model, method_name)
-        metadata = method._query_metadata
-        if metadata.type == QueryType.CREATE_OR_ALTER_VIEW:
-            operations.append(
-                CreateOrAlterView(
-                    schema_name=metadata.schema_name,
-                    object_name=metadata.table_name,
-                    select_query=method(model),
-                )
-            )
-        else:
-            operations.append(
-                CreateTable(
-                    operation_type=QueryType.CREATE_TABLE,
-                    schema_name=metadata.schema_name,
-                    object_name=metadata.table_name,
-                    select_query=method(model),
-                    recreate=True,
-                )
-            )
-    return operations
 
 
 def test_model_methods_produce_the_expected_sql():
@@ -223,6 +188,28 @@ def test_plan_has_one_stage_per_dependency_level(plan):
     ]
     # Both bronze tables are independent, so they share the first stage.
     assert staged == [["Customers", "Orders"], ["DimCustomer"], ["FactOrders"], ["vw_Revenue"]]
+
+
+def test_every_operation_lands_in_its_models_declared_schema(plan):
+    """No `@query_metadata` method in the fixture names a schema.
+
+    Each model declares one, and its methods inherit it — which is the whole
+    point of `schema` being on the layer decorators. If the inheritance broke,
+    these operations could not be built at all, so this pins *where* they land.
+    """
+    schemas = {
+        operation.object_name: operation.schema_name
+        for stage in plan.stages
+        for operation in stage.operations
+    }
+
+    assert schemas == {
+        "Customers": "bronze",
+        "Orders": "bronze",
+        "DimCustomer": "silver",
+        "FactOrders": "silver",
+        "vw_Revenue": "gold",
+    }
 
 
 def test_plan_contains_the_silver_to_silver_edge(plan):

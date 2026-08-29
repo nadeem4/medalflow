@@ -471,10 +471,62 @@ class _BaseSequencer(ABC):  # noqa: B024
 
         return selected
 
+    def _declared_schema(self) -> str:
+        """The schema this model declares it writes into.
+
+        Every layer decorator takes a `schema` (ADR 002 D2). Read off the
+        class-level metadata, so bronze, silver and gold all answer the same
+        way, and "" when the class carries no declaration at all.
+
+        Returns:
+            The declared schema, or "" when there is none
+        """
+        return self._get_class_metadata().get("schema") or ""
+
+    def _inherit_schema(self, metadata: QueryMetadata) -> QueryMetadata:
+        """Fill an omitted `schema_name` from the class's declared `schema`.
+
+        `query_metadata(schema_name="")` means the method did not say, so it
+        writes wherever its model writes. A method that *did* say keeps what it
+        said: explicit beats inherited, or the class-level declaration would be
+        a silent override.
+
+        Applied here rather than in `_discover_methods` on purpose. Silver's
+        `_transform_query_result` promotes a staged detail table by matching
+        `metadata.schema_name` against `conventions.detail_tables.source_schema`
+        -- and it runs during discovery, before this. Defaulting earlier would
+        make that comparison see an inherited schema no author wrote, so a
+        silver model whose declared `schema` happened to equal the configured
+        source schema would have *every* suffix-matching method silently
+        promoted. The convention keys on what the method declared; inheritance
+        fills in afterwards, and the rewrite's own target schema is non-empty
+        so it is left alone.
+
+        Args:
+            metadata: Query metadata from the decorator, possibly rewritten by
+                `_transform_query_result`
+
+        Returns:
+            The metadata unchanged when it names a schema or the class declares
+            none, otherwise a copy carrying the declared schema
+        """
+        if metadata.schema_name:
+            return metadata
+
+        declared = self._declared_schema()
+        if not declared:
+            return metadata
+
+        inherited = metadata.model_copy()
+        inherited.schema_name = declared
+
+        return inherited
+
     def _get_queries(self, discovered_methods: list[DiscoveredMethod]) -> list[BaseOperation]:
         """Internal hook to extract operations from discovered methods.
 
-        Default implementation applies `self.selection`, then creates
+        Default implementation applies `self.selection`, fills each method's
+        omitted `schema_name` from the class's declared `schema`, then creates
         BaseOperation instances from each surviving method. Subclasses can
         override to apply transformations of their own.
 
@@ -486,7 +538,9 @@ class _BaseSequencer(ABC):  # noqa: B024
         """
         operations = []
 
-        for method_name, _method, metadata, sql in self._select(discovered_methods):
+        for method_name, _method, declared_metadata, sql in self._select(discovered_methods):
+            metadata = self._inherit_schema(declared_metadata)
+
             if not sql:
                 self.logger.info(
                     "sequencer.operation_missing_sql",

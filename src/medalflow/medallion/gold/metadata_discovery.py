@@ -19,9 +19,10 @@ class GoldModelMetadata:
     """One discovered gold model.
 
     Attributes:
-        name: The model's identity. `gold_metadata` carries no `name` yet
-            (ADR 002 D2 lands it in a later PR), so the class name stands in --
-            it is what the plan reports and what discovery keys on.
+        name: The model's identity, as `@gold_metadata(name=...)` declares it.
+            It is what the plan reports and what discovery keys on. The class
+            name used to stand in for it, which made renaming a class rename
+            the model.
         sequencer_class: The decorated class, to be constructed with
             `(settings, selection)`.
         gold_metadata: The metadata the decorator attached.
@@ -87,7 +88,7 @@ class GoldMetadataDiscovery(_BaseDiscovery):
                 return None
 
             return GoldModelMetadata(
-                name=cls.__name__,
+                name=meta.name,
                 sequencer_class=cls,
                 gold_metadata=meta,
             )

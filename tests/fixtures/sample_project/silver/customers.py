@@ -7,16 +7,13 @@ from medalflow.medallion.silver import SilverTransformationSequencer, silver_met
 
 @silver_metadata(
     name="usp_load_dim_customer",
+    schema="silver",
     model="sales",
     description="Cleansed customer dimension",
 )
 class DimCustomer(SilverTransformationSequencer):
     """bronze.Customers -> silver.DimCustomer."""
 
-    @query_metadata(
-        type=QueryType.CREATE_TABLE,
-        table_name="DimCustomer",
-        schema_name="silver",
-    )
+    @query_metadata(type=QueryType.CREATE_TABLE, table_name="DimCustomer")
     def build_dim_customer(self) -> str:
         return "SELECT CustomerId, Name FROM bronze.Customers"
