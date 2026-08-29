@@ -147,11 +147,18 @@ machine-readable first — this is the loop a coding agent iterates on:
 {
   "file": "/acme/silver/models.py",
   "model": "NotSql",
-  "error_type": "ValueError",
+  "error_type": "UncompilableModel",
   "message": "Failed to build queries for model 'NotSql' (NotSql): Method 'build_not_sql' in NotSql must return either:\n  1. A string containing a SQL query\n  2. None (for filter-based dimensions with auto-generation)\nInstead got: int",
   "suggestion": "Fix NotSql in the file above. Every @query_metadata method must name the table it writes, be callable with no arguments at compile time, and return a SQL string."
 }
 ```
+
+`error_type` is a closed vocabulary, not a Python exception name — the point is that a
+caller can switch on it and a doc can list it. There are six:
+`UnconfiguredPackage`, `UnimportablePackage`, `UndiscoverableLayer`, `UnreachableSource`,
+`UncompilableModel`, `UnbuildablePlan`. The originating exception is diagnostic rather
+than something to branch on, so it goes to the DEBUG log with its traceback and stays out
+of the field consumers read.
 
 The one thing `compile()` *does* raise on is an unparseable selector, because that is the
 caller's mistake rather than the project's: returning an empty result would make a typo

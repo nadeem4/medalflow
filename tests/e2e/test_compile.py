@@ -13,6 +13,7 @@ one run, and the models that do work still reach the plan.
 
 import json
 import logging
+import re
 from pathlib import Path
 
 import pytest
@@ -319,6 +320,61 @@ def test_a_plan_that_could_not_be_built_is_empty_rather_than_absent(project):
     assert result.plan.total_queries == 0
     assert result.plan.stages == []
     assert json.loads(json.dumps(result.to_dict()))["ok"] is False
+
+
+# --- error_type is a closed semantic vocabulary ----------------------------
+#
+# The one field an agent branches on. It used to be `type(error).__name__`,
+# which is an implementation detail of MedalFlow's own call stack -- and worse,
+# a near-constant one: `get_queries` wraps everything it catches in
+# ValueError, so a model that raises RuntimeError and a model returning an int
+# both reported "ValueError".
+
+ERROR_TYPES = {
+    "UnconfiguredPackage",
+    "UnimportablePackage",
+    "UndiscoverableLayer",
+    "UnreachableSource",
+    "UncompilableModel",
+    "UnbuildablePlan",
+}
+
+
+def test_a_broken_model_reports_what_went_wrong_not_which_exception_fired(broken_project):
+    """Three models broken three different ways are all one thing to a caller:
+    the model would not compile. None of them is "ValueError"."""
+    assert {error.error_type for error in compile("*").errors} == {"UncompilableModel"}
+
+
+def test_a_plan_that_will_not_build_reports_a_semantic_error_type(project):
+    project(MEDALFLOW_MODELS_PACKAGE="cyclic_project")
+
+    (error,) = compile("*").errors
+
+    assert error.error_type == "UnbuildablePlan"
+
+
+def test_a_layer_that_will_not_walk_reports_a_semantic_error_type(project):
+    project(MEDALFLOW_MODELS_PACKAGE="duplicate_project")
+
+    (error,) = compile("*").errors
+
+    assert error.error_type == "UndiscoverableLayer"
+
+
+@pytest.mark.parametrize(
+    "package", ["broken_project", "cyclic_project", "duplicate_project", "sampl_project"]
+)
+def test_no_error_type_escapes_the_vocabulary(project, package):
+    project(MEDALFLOW_MODELS_PACKAGE=package)
+
+    assert {error.error_type for error in compile("*").errors} <= ERROR_TYPES
+
+
+def test_the_vocabulary_is_enumerated_where_a_consumer_can_read_it():
+    """A closed set nobody can list is not machine-readable in any useful
+    sense, so `CompileError`'s own docstring names every member."""
+    assert ERROR_TYPES <= set(re.findall(r"``([A-Za-z]+)``", CompileError.__doc__))
 
 
 # --- structured first, human text rendered from it -------------------------

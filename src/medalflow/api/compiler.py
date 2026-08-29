@@ -87,9 +87,30 @@ class CompileError(CTEBaseModel):
             layer package, for instance.
         model: The declared `name` of the model at fault, or None when the
             problem is the layer rather than any one model.
-        error_type: Short machine-readable category. The underlying
-            exception's class name where there is one.
-        message: What went wrong.
+        error_type: Which of the six things went wrong, from the closed
+            vocabulary below. It is the field a caller switches on, so it
+            names what went wrong *for the author* -- never which Python
+            exception happened to fire, which is an implementation detail of
+            MedalFlow's own call stack and, for model failures, was the same
+            ``ValueError`` every time:
+
+            * ``UnconfiguredPackage`` -- the layer names no Python package, so
+              there is nothing to discover models in.
+            * ``UnimportablePackage`` -- the package it names will not import.
+            * ``UndiscoverableLayer`` -- the package imports, but walking it
+              failed: a submodule that will not import, two models sharing a
+              name.
+            * ``UnreachableSource`` -- bronze is in introspection mode and the
+              live source schema could not be queried.
+            * ``UncompilableModel`` -- one model's `@query_metadata` methods
+              would not produce operations.
+            * ``UnbuildablePlan`` -- the models compiled, but the graph their
+              SQL implies has no execution order.
+
+        message: What went wrong, in words. The originating exception's own
+            message is folded in here; its *class* is diagnostic rather than
+            something to branch on, so it is logged at DEBUG with the
+            traceback and kept out of ``error_type``.
         suggestion: What to do about it.
     """
 
@@ -384,7 +405,7 @@ def _discover(layer: str, settings) -> tuple[list[Any], list[CompileError]]:
         return [], [
             CompileError(
                 model=None,
-                error_type=type(e).__name__,
+                error_type="UndiscoverableLayer",
                 message=f"Could not discover the {layer} models in '{package}': {e}",
                 suggestion=(
                     f"Check that every module under '{package}' imports, and that no "
@@ -419,7 +440,7 @@ def _introspect_bronze(settings) -> tuple[list[Any], list[CompileError]]:
         return [], [
             CompileError(
                 model=None,
-                error_type=type(e).__name__,
+                error_type="UnreachableSource",
                 message=f"Could not introspect the bronze source schema: {e}",
                 suggestion=(
                     "Bronze is in introspection mode, so compiling it queries a live "
@@ -466,7 +487,7 @@ def _model_error(record: Any, model: CompiledModel, error: Exception) -> Compile
     return CompileError(
         file=_source_file(record.sequencer_class),
         model=model.name,
-        error_type=type(error).__name__,
+        error_type="UncompilableModel",
         message=str(error),
         suggestion=(
             f"Fix {model.name} in the file above. Every @query_metadata method must "
@@ -517,7 +538,7 @@ def _plan(operations: list[Any], settings) -> tuple[ExecutionPlan, list[CompileE
         return _empty_plan(), [
             CompileError(
                 model=None,
-                error_type=type(e).__name__,
+                error_type="UnbuildablePlan",
                 message=f"Could not build an execution plan: {e}",
                 suggestion=(
                     "The models compiled, but their dependencies do not form a DAG. "
