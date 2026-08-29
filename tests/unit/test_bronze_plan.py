@@ -24,10 +24,10 @@ from medalflow.settings.main import MedalflowSettings
 
 from tests.conftest import OFFLINE_ENV
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+EXAMPLE = Path(__file__).resolve().parents[2] / "examples"
 ENV_EXAMPLE = Path(__file__).resolve().parents[2] / ".env.example"
 
-BRONZE_ENV = OFFLINE_ENV | {"MEDALFLOW_MODELS_PACKAGE": "sample_project"}
+BRONZE_ENV = OFFLINE_ENV | {"MEDALFLOW_MODELS_PACKAGE": "models"}
 
 
 def _settings(**overrides) -> MedalflowSettings:
@@ -66,10 +66,10 @@ def test_env_example_documents_the_introspection_switch():
 
 
 @pytest.fixture
-def sample_project_settings(monkeypatch):
-    """Point MedalFlow at the sample project the way a real deployment would."""
-    monkeypatch.syspath_prepend(str(FIXTURES))
-    for name in [m for m in sys.modules if m.split(".")[0] == "sample_project"]:
+def example_project_settings(monkeypatch):
+    """Point MedalFlow at the example project the way a real deployment would."""
+    monkeypatch.syspath_prepend(str(EXAMPLE))
+    for name in [m for m in sys.modules if m.split(".")[0] == "models"]:
         del sys.modules[name]
 
     for key, value in BRONZE_ENV.items():
@@ -96,18 +96,18 @@ def _object_names(plan):
     return sorted(operation.object_name for stage in plan.stages for operation in stage.operations)
 
 
-def test_the_declared_models_become_the_plan(sample_project_settings, no_warehouse):
+def test_the_declared_models_become_the_plan(example_project_settings, no_warehouse):
     result = compile("layer:bronze")
 
     assert _object_names(result.plan) == ["Customers", "Orders"]
 
 
-def test_the_plan_compiles_without_a_warehouse(sample_project_settings, no_warehouse):
+def test_the_plan_compiles_without_a_warehouse(example_project_settings, no_warehouse):
     """The whole point of Decision 6 part 2: `no_warehouse` would have fired."""
     assert compile("layer:bronze").plan.total_queries == 2
 
 
-def test_the_bronze_plan_is_serialisable(sample_project_settings, no_warehouse):
+def test_the_bronze_plan_is_serialisable(example_project_settings, no_warehouse):
     """A plan an author or an agent can read is a plan that survives JSON."""
     payload = json.loads(json.dumps(compile("layer:bronze").plan.to_dict()))
 
@@ -117,7 +117,7 @@ def test_the_bronze_plan_is_serialisable(sample_project_settings, no_warehouse):
     ) == ["Customers", "Orders"]
 
 
-def test_one_bronze_table_can_be_selected_by_name(sample_project_settings, no_warehouse):
+def test_one_bronze_table_can_be_selected_by_name(example_project_settings, no_warehouse):
     """Bronze models are named per table, so the selector is the selection.
 
     The old entry point took a `table_names` list, which used to be
@@ -274,7 +274,7 @@ def test_an_unreachable_warehouse_is_a_compile_error_not_a_crash(monkeypatch):
         settings_main._settings = None
 
 
-def test_the_default_mode_never_reaches_the_warehouse(sample_project_settings):
+def test_the_default_mode_never_reaches_the_warehouse(example_project_settings):
     """D6, and the example project depends on it. `_LAKE_CALLS` would have
     grown if discovery had introspected."""
     _LAKE_CALLS.clear()

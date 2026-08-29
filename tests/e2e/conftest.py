@@ -1,8 +1,13 @@
-"""Fixture projects for the end-to-end suite.
+"""The projects the end-to-end suite compiles and runs, entirely offline (D6).
 
-`compile()` and `run()` are both asked the same question -- what does this
-project do -- so they point at the same fixture projects under
-tests/fixtures, entirely offline (D6).
+The healthy one is `examples/` -- the project a user is invited to copy, not a
+private copy of it. That is deliberate: a second copy would drift, and the
+copy that drifted would be the one people read. The example rots only by
+turning this suite red.
+
+The unhealthy ones stay under tests/fixtures. They are deliberately broken --
+a model that raises, two models sharing a name, a dependency cycle -- and are
+examples of nothing.
 """
 
 import sys
@@ -12,10 +17,12 @@ import pytest
 
 from tests.conftest import OFFLINE_ENV
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FIXTURES = REPO_ROOT / "tests" / "fixtures"
+EXAMPLE = REPO_ROOT / "examples"
 
-FIXTURE_PACKAGES = (
-    "sample_project",
+PROJECT_PACKAGES = (
+    "models",
     "broken_project",
     "duplicate_project",
     "cyclic_project",
@@ -33,9 +40,10 @@ def project(monkeypatch):
     from medalflow.settings import main as settings_main
 
     monkeypatch.syspath_prepend(str(FIXTURES))
+    monkeypatch.syspath_prepend(str(EXAMPLE))
 
     def _configure(**overrides):
-        for name in [m for m in sys.modules if m.split(".")[0] in FIXTURE_PACKAGES]:
+        for name in [m for m in sys.modules if m.split(".")[0] in PROJECT_PACKAGES]:
             del sys.modules[name]
 
         # Nothing below sets it, and that is the point: an unset model list
@@ -56,9 +64,9 @@ def project(monkeypatch):
 
 
 @pytest.fixture
-def sample_project(project):
-    """The five-model project: two bronze, two silver, one gold."""
-    return project(MEDALFLOW_MODELS_PACKAGE="sample_project")
+def example_project(project):
+    """`examples/` itself: two bronze models, two silver, one gold."""
+    return project(MEDALFLOW_MODELS_PACKAGE="models")
 
 
 @pytest.fixture

@@ -16,17 +16,17 @@ from medalflow.settings import main as settings_main
 
 from tests.conftest import OFFLINE_ENV
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+EXAMPLE = Path(__file__).resolve().parents[2] / "examples"
 
 # The offline four, plus the one variable that says where the models live.
-GOLD_ENV = OFFLINE_ENV | {"MEDALFLOW_MODELS_PACKAGE": "sample_project"}
+GOLD_ENV = OFFLINE_ENV | {"MEDALFLOW_MODELS_PACKAGE": "models"}
 
 
 @pytest.fixture
-def sample_project_settings(monkeypatch):
-    """Point MedalFlow at the sample project the way a real deployment would."""
-    monkeypatch.syspath_prepend(str(FIXTURES))
-    for name in [m for m in sys.modules if m.split(".")[0] == "sample_project"]:
+def example_project_settings(monkeypatch):
+    """Point MedalFlow at the example project the way a real deployment would."""
+    monkeypatch.syspath_prepend(str(EXAMPLE))
+    for name in [m for m in sys.modules if m.split(".")[0] == "models"]:
         del sys.modules[name]
 
     for key, value in GOLD_ENV.items():
@@ -39,7 +39,7 @@ def sample_project_settings(monkeypatch):
         settings_main._settings = None
 
 
-def test_the_gold_plan_finds_the_decorated_gold_model(sample_project_settings):
+def test_the_gold_plan_finds_the_decorated_gold_model(example_project_settings):
     """The bug: gold's entry point built a *bare* `GoldSequencer`, so this
     raised `Cannot create execution plan from empty operations list`.
 

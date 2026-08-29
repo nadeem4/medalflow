@@ -33,9 +33,42 @@ class DimCustomer(SilverTransformationSequencer):
 MedalFlow reads `bronze.Customers` out of that SQL and wires the edge itself. You never
 declare dependencies by hand, and you never write orchestration code.
 
+## Quickstart
+
+MedalFlow is **not yet on PyPI**, so install it from a clone. Python 3.13+:
+
+```bash
+git clone https://github.com/nadeem4/medalflow.git
+cd medalflow
+
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install .
+
+cd examples                    # MedalFlow reads `.env` from the working directory
+cp .env.example .env
+python run.py
+```
+
+```
+stage 1: Customers, Orders
+stage 2: DimCustomer
+stage 3: FactOrders
+stage 4: vw_Revenue
+```
+
+That is a real project — [`examples/`](examples/) — compiling to a real plan, with no
+warehouse, no credentials and no network. The four stages were not declared anywhere:
+MedalFlow read them out of the models' own `SELECT` statements. The five variables in
+`examples/.env.example` are all it needs, and there is no connection string among them.
+
+[`examples/README.md`](examples/README.md) walks through the five models and how the DAG
+falls out of them. It is the same project MedalFlow's end-to-end suite compiles and runs,
+so it cannot drift from the library.
+
 ## Status: pre-release, under active repair
 
-This project is **not yet published to PyPI** and the API is not stable. It is being brought
+This project is **not published to PyPI** and the API is not stable. It is being brought
 to a `v0.1.0` release through a phased remediation plan; expect breaking changes. The
 package has been renamed from `core` to `medalflow`; update imports accordingly.
 
@@ -43,14 +76,16 @@ Be aware of what is and is not proven today:
 
 | | State |
 |---|---|
-| Model discovery, dependency extraction, DAG building, plan generation | **Works, covered by tests** — including an end-to-end suite over a sample project |
+| Model discovery, dependency extraction, DAG building, plan generation | **Works, covered by tests** — including an end-to-end suite over [`examples/`](examples/) |
+| `compile(selector)`, `run(selector)` and the v0.1 selector grammar | **Works, covered by tests** — `run()` end to end against a stubbed executor |
 | SQL generation for Azure Synapse serverless | **Works, asserted against golden strings** |
-| Executing a plan against a live warehouse | **Not verified.** No test exercises it; treat it as unproven |
-| Microsoft Fabric, Databricks, Snowflake, Spark | **Not supported.** See the roadmap |
+| Executing a plan against a **live warehouse** | **Not verified.** No test opens a connection; treat it as unproven |
+| Microsoft Fabric, Databricks, Snowflake, Spark, DuckDB | **Not built.** See [Not built yet](#not-built-yet) |
 | Configuration | **Four environment variables construct settings**, six for a real deployment, plus `MEDALFLOW_MODELS_PACKAGE` to point discovery at your models. All are prefixed `MEDALFLOW_`; see [`.env.example`](.env.example) |
 
 An earlier version of this README claimed four execution platforms and native OpenTelemetry
-export. Neither was true. This document now describes only what the code does.
+export. Neither was true. This document now describes only what the code does, and every
+command and snippet in it was run before it was written down.
 
 ## What works today
 
@@ -81,7 +116,84 @@ export. Neither was true. This document now describes only what the code does.
 - **Fail-fast planning.** An authoring mistake — a model that raises, a module that will not
   import, metadata that cannot be read — fails the whole plan naming the culprit, rather
   than quietly shrinking it.
-- **Azure Synapse serverless SQL generation.**
+- **Azure Synapse serverless SQL generation.** The only engine there is; see below.
+
+## The API
+
+Four functions, all on `medalflow.api`.
+
+```python
+from medalflow.api import compile, run, execute, test_connection
+```
+
+**`compile(selector="*") -> CompileResult`** walks every layer the selector can reach,
+narrows what it found, and builds one cross-layer plan. It is offline: bronze models are
+declared, so nothing here opens a connection.
+
+```python
+result = compile("*")
+result.ok           # True when nothing went wrong
+result.models       # what the selector kept: name, layer, schema, description, tags
+result.plan         # the staged ExecutionPlan
+result.errors       # everything wrong with the project, collected
+result.to_dict()    # the whole thing, JSON-serialisable
+```
+
+Errors are **collected, not raised**. An author with three broken models learns about all
+three from one run, and the models that do work still reach the plan. Each is five fields,
+machine-readable first — this is the loop a coding agent iterates on:
+
+```json
+{
+  "file": "/acme/silver/models.py",
+  "model": "NotSql",
+  "error_type": "ValueError",
+  "message": "Failed to build queries for model 'NotSql' (NotSql): Method 'build_not_sql' in NotSql must return either:\n  1. A string containing a SQL query\n  2. None (for filter-based dimensions with auto-generation)\nInstead got: int",
+  "suggestion": "Fix NotSql in the file above. Every @query_metadata method must name the table it writes, be callable with no arguments at compile time, and return a SQL string."
+}
+```
+
+The one thing `compile()` *does* raise on is an unparseable selector, because that is the
+caller's mistake rather than the project's: returning an empty result would make a typo
+indistinguishable from a project that declares no matching model.
+
+**`run(selector="*") -> RunResult`** compiles, then executes the plan it produced against
+the configured warehouse. Stages run in topological order; a failure stops the run, and
+everything the run did not reach is reported as skipped rather than silently dropped.
+
+```python
+result = run("*")
+result.ok               # compiled cleanly and everything planned then ran
+result.succeeded        # every operation that completed, in execution order
+result.failed           # the operation the run stopped on, or None
+result.skipped          # what the plan still held when it stopped
+result.compile_result   # the compile it began with, carried whole
+```
+
+A project that does not compile is not executed at all, and the compile errors come back in
+the `RunResult` rather than as an exception: "what happened" gets one answer in one shape
+whether the project was broken or the warehouse was.
+
+**`execute(operation)`** runs one serialized operation, and **`test_connection()`** reports
+per-engine connectivity. They are the seam underneath `run()`, and they are what you reach
+for when your own orchestrator wants to fan the stages out itself.
+
+### Selectors
+
+Both `compile()` and `run()` take a selector. The v0.1 grammar is four forms:
+
+| Selector | Selects |
+|---|---|
+| `*` | every model |
+| `layer:bronze` `layer:silver` `layer:gold` | one medallion layer |
+| `tag:daily` | every model carrying that tag, in any layer |
+| `DimCustomer` | one model, by the `name` its decorator declares |
+
+`layer:` is the one form that can be answered before anything is discovered, so it is the
+one form that prunes the walk rather than only filtering its results.
+
+`+name` and `name+` — a model and everything upstream or downstream of it — are recognised
+and **refused by name**, not silently ignored. They arrive in v0.3.
 
 ## Architecture
 
@@ -97,14 +209,14 @@ Everything outside those seams is cloud-neutral, and that boundary is **enforced
 Azure SDKs, `pyodbc`, `pandas` and the `abfs://` plumbing live behind an optional extra:
 
 ```bash
-pip install medalflow            # planning, DAG building, SQL analysis — no cloud SDK
-pip install 'medalflow[azure]'   # adds Synapse execution, ADLS Gen2 and Key Vault
+pip install .            # planning, DAG building, SQL analysis — no cloud SDK
+pip install '.[azure]'   # adds Synapse execution, ADLS Gen2 and Key Vault
 ```
 
 A `bare-install` CI job installs the package with no extras, imports the public surface and
 fails if any `azure`, `pyodbc`, `adlfs`, `pyarrow` or `pandas` import has leaked back into
 core. Reaching a cloud path without the extra installed raises a MedalFlow error naming the
-install command, not a bare `ModuleNotFoundError`.
+extra that provides the missing module, not a bare `ModuleNotFoundError` three frames down.
 
 Deployment is runtime-agnostic by design: a plain Python process or container configured by
 environment variables. There is no built-in scheduler, no hosted service, and no UI —
@@ -114,7 +226,9 @@ Kubernetes CronJob, cron), exactly like dbt.
 ## Observability
 
 MedalFlow is instrumented with the **OpenTelemetry API only**. It emits spans and metrics
-through `opentelemetry-api` and deliberately does **not** depend on the SDK or any exporter.
+through `opentelemetry-api` and deliberately does **not** depend on the SDK or any exporter
+— `opentelemetry-api` is the single OpenTelemetry entry in `pyproject.toml`, and there is
+no `opentelemetry-sdk` in the lock file either.
 
 That means **the host application wires up the SDK, the exporter and the collector.** If you
 do not configure a `TracerProvider` and `MeterProvider`, the instrumentation is a no-op and
@@ -124,23 +238,39 @@ telemetry stack — but it does mean MedalFlow does not ship telemetry to a back
 Structured logging goes through the standard library `logging` module with context fields
 attached via `extra`.
 
+## Not built yet
+
+Everything in this section is **absent from the code**, not merely undocumented. There is
+exactly one compute platform — `ComputeType` has a single member, `SYNAPSE` — and exactly
+one query builder, `SynapseServerlessQueryBuilder`. Asking for any other platform raises
+`ValueError: Unsupported compute type`. Nothing here is pluggable today; the seam exists,
+but nothing has been plugged into it.
+
+| Not built | Notes |
+|---|---|
+| **DuckDB** | First adapter candidate: a local, zero-cloud backend for development and CI. It is first precisely because it would let the suite prove execution without a warehouse |
+| **Microsoft Fabric** | Code existed, had never run, and was deleted in Phase 2 (`c3302f0`) |
+| **Apache Spark** | Same, deleted in Phase 2 (`2d7848a`): removed rather than left standing as a claim |
+| **Databricks** | Never existed |
+| **Snowflake** | Never existed |
+
+Each returns only when it is built test-first, with its own golden-SQL suite, as an
+optional extra: `medalflow[duckdb]`, then `[fabric]`, `[databricks]`, `[snowflake]`.
+
 ## Roadmap
 
 The path to a first public release, and beyond:
 
 - **v0.1.0** — the library: correct, tested, documented, installable from PyPI
-- **v0.2** — a dbt-style CLI: `init`, `compile`, `run`, `ls`, every command with `--json`
+- **v0.2** — a dbt-style CLI: `init`, `compile`, `run`, `ls`, every command with `--json`.
+  The API above is already shaped for it: `CompileResult.to_dict()` and
+  `RunResult.to_dict()` are the payloads `--json` will print
 - **v0.2.x** — an MCP server, so coding agents can author models and use the compile step as
   their verification loop
-- **v0.3** — node selection and state: `--select +gold.revenue` for upstream closures,
-  `model+` for downstream rebuilds, `--retry-failed`
-- **v0.4+** — adapters as optional extras, each built test-first with its own golden-SQL
-  suite. First candidate is **`medalflow[duckdb]`**, a local zero-cloud backend for
-  development and CI; then `[fabric]`, `[databricks]`, `[snowflake]`
-
-Fabric, Databricks, Snowflake and Spark appear here rather than in the feature list on
-purpose. Fabric and Spark code did exist, had never run, and is being removed; it returns
-only when it is built test-first against a real dialect.
+- **v0.3** — node selection and state: `+gold.revenue` for upstream closures, `model+` for
+  downstream rebuilds, `--retry-failed`. The grammar already refuses these by name, so v0.3
+  adds behaviour without changing a call site
+- **v0.4+** — the adapters in [Not built yet](#not-built-yet), each as an optional extra
 
 ## Development
 
@@ -152,12 +282,16 @@ poetry run pytest
 ```
 
 The suite runs entirely offline — no warehouse, no network, no cloud credentials. CI runs
-lint, the test suite on Python 3.13, and an import smoke test on every pull request.
+five blocking jobs on every pull request: `lint` (ruff and black over `src`, `tests` and
+`examples`), `test`, `import-smoke`, `bare-install`, and `example` — which compiles
+[`examples/`](examples/) from a clean checkout with no extras and diffs the output against
+the four stages its README documents.
 
-`tests/fixtures/sample_project/` is a miniature MedalFlow project — two Bronze models,
-two Silver models (one reading the other) and a Gold model — used by the end-to-end suite in
-`tests/e2e/`. It is the clearest worked example of the authoring model until a proper
-`examples/` project lands.
+`examples/` is the project the end-to-end suite in `tests/e2e/` runs against. There is no
+second copy of it: the example a reader is invited to copy is the one CI compiles, so it
+can only rot by turning the build red. The deliberately broken projects under
+`tests/fixtures/` — a model that raises, two models sharing a name, a dependency cycle —
+are what the error paths are tested against.
 
 ## License
 

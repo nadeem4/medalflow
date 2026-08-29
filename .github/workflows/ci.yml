@@ -28,15 +28,19 @@ jobs:
       - name: Install dependencies
         run: poetry install --with dev
 
-      # Blocking as of Phase 2. `src` and `tests` are clean under the full ruff
-      # config and under black, so any new violation fails the build. The former
-      # narrow `--select E9,F821,F822,F823,F811` gate is gone: the full
-      # `ruff check` below is blocking and strictly stronger.
+      # Blocking as of Phase 2. `src`, `tests` and `examples` are clean under
+      # the full ruff config and under black, so any new violation fails the
+      # build. The former narrow `--select E9,F821,F822,F823,F811` gate is gone:
+      # the full `ruff check` below is blocking and strictly stronger.
+      #
+      # `examples` joined the list in Phase 4: it is a project users copy, so
+      # it is held to the same standard as the code they would be copying it
+      # into.
       - name: ruff
-        run: poetry run ruff check src tests
+        run: poetry run ruff check src tests examples
 
       - name: black --check
-        run: poetry run black --check src tests
+        run: poetry run black --check src tests examples
 
   test:
     name: test
@@ -127,3 +131,52 @@ jobs:
         run: |
           pip install pytest pytest-mock
           pytest
+
+  # The example project is the one a user is invited to copy, and the one the
+  # e2e suite imports -- there is no second copy to drift from. This job proves
+  # the other half of the claim the README makes about it: that it compiles
+  # from a clean checkout with five environment variables and no warehouse.
+  #
+  # No extras, deliberately. Declared bronze models are what make compiling
+  # offline (D6), so if that ever regressed -- if any layer started reaching
+  # for a live INFORMATION_SCHEMA by default -- this job is where it surfaces,
+  # as a missing driver rather than as a silently wrong plan.
+  example:
+    name: example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install with no extras
+        run: pip install .
+
+      # `python run.py` and nothing else: the literal command examples/README.md
+      # gives a reader, from the directory it tells them to be in.
+      - name: The example project compiles
+        working-directory: examples
+        env:
+          MEDALFLOW_SOURCE_SYSTEM: d365
+          MEDALFLOW_DS_ENV: dev
+          MEDALFLOW_NAME: sales
+          MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME: lakedb
+          MEDALFLOW_MODELS_PACKAGE: models
+        run: |
+          python run.py > plan.txt
+          cat plan.txt
+
+      # A clean exit is not enough: an example that compiled to nothing would
+      # pass that. The four stages are the DAG the README says MedalFlow reads
+      # out of the models' SQL, so they are what gets asserted.
+      - name: ...to the plan its README documents
+        working-directory: examples
+        run: |
+          diff -u --strip-trailing-cr - plan.txt <<'EOF'
+          stage 1: Customers, Orders
+          stage 2: DimCustomer
+          stage 3: FactOrders
+          stage 4: vw_Revenue
+          EOF

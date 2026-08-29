@@ -1,11 +1,11 @@
-"""End-to-end plan generation over a sample project (Phase 1, task 10).
+"""End-to-end plan generation over the example project (Phase 1, task 10).
 
 Everything a consuming team writes — decorated classes with methods returning
 SQL — through discovery, sequencers, dependency extraction, DAG building and
 into a validated ExecutionPlan. Entirely offline (Decision D6): no warehouse,
 no network.
 
-The fixture under tests/fixtures/sample_project is shaped like a real project:
+The project under `examples/` is shaped like a real one:
 
     bronze.Customers ──> silver.DimCustomer ─┐
                                              ├─> silver.FactOrders ──> gold.vw_Revenue
@@ -28,13 +28,13 @@ from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilde
 from medalflow.medallion.utils.sql_dependency_analyzer import SQLDependencyAnalyzer
 from medalflow.operations import CreateTable
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+EXAMPLE = Path(__file__).resolve().parents[2] / "examples"
 
 
 @pytest.fixture(autouse=True)
-def sample_project_on_path(monkeypatch):
-    monkeypatch.syspath_prepend(str(FIXTURES))
-    for name in [m for m in sys.modules if m.split(".")[0] == "sample_project"]:
+def example_project_on_path(monkeypatch):
+    monkeypatch.syspath_prepend(str(EXAMPLE))
+    for name in [m for m in sys.modules if m.split(".")[0] == "models"]:
         del sys.modules[name]
 
 
@@ -47,17 +47,17 @@ class _StubSettings:
 
 @pytest.fixture
 def discovery():
-    return SilverMetadataDiscovery("sample_project.silver", settings=_StubSettings())
+    return SilverMetadataDiscovery("models.silver", settings=_StubSettings())
 
 
 @pytest.fixture
 def gold_discovery():
-    return GoldMetadataDiscovery("sample_project.gold", settings=_StubSettings())
+    return GoldMetadataDiscovery("models.gold", settings=_StubSettings())
 
 
 @pytest.fixture
 def bronze_discovery():
-    return BronzeMetadataDiscovery("sample_project.bronze", settings=_StubSettings())
+    return BronzeMetadataDiscovery("models.bronze", settings=_StubSettings())
 
 
 @pytest.fixture
@@ -111,8 +111,8 @@ def test_discovered_sequencer_classes_are_instantiable_types(discovery):
 # --- the models' SQL reaches operations ------------------------------------
 
 
-def _operations_from_sample_project(settings):
-    """Build the five operations the sample project describes.
+def _operations_from_example_project(settings):
+    """Build the five operations the example project describes.
 
     Every layer arrives the same way a real project reaches it: discovery walks
     the package, and each discovered model's `get_queries()` builds its
@@ -122,9 +122,9 @@ def _operations_from_sample_project(settings):
     now owns, so this suite would have described the models rather than running
     them.
     """
-    bronze = BronzeMetadataDiscovery("sample_project.bronze", settings=_StubSettings())
-    silver = SilverMetadataDiscovery("sample_project.silver", settings=_StubSettings())
-    gold = GoldMetadataDiscovery("sample_project.gold", settings=_StubSettings())
+    bronze = BronzeMetadataDiscovery("models.bronze", settings=_StubSettings())
+    silver = SilverMetadataDiscovery("models.silver", settings=_StubSettings())
+    gold = GoldMetadataDiscovery("models.gold", settings=_StubSettings())
 
     return [
         operation
@@ -135,7 +135,7 @@ def _operations_from_sample_project(settings):
 
 
 def test_model_methods_produce_the_expected_sql():
-    from sample_project.silver.orders import FactOrders
+    from models.silver.orders import FactOrders
 
     sql = FactOrders.build_fact_orders(FactOrders)
 
@@ -150,7 +150,7 @@ def test_model_methods_produce_the_expected_sql():
 
 
 def test_dependencies_are_extracted_from_the_model_sql(analyzer, gold_discovery):
-    from sample_project.silver.orders import FactOrders
+    from models.silver.orders import FactOrders
 
     Revenue = gold_discovery.discover_all(force_refresh=True)[0].sequencer_class
 
@@ -174,8 +174,8 @@ def plan(orchestrator, offline_settings):
     of that SQL, guard, table prefix and all.
     """
     return orchestrator.create_execution_plan(
-        operations=_operations_from_sample_project(offline_settings),
-        sequencer_name="sample_project",
+        operations=_operations_from_example_project(offline_settings),
+        sequencer_name="example",
     )
 
 
@@ -276,7 +276,7 @@ def test_the_configured_builder_is_synapse_serverless(query_builder):
 
 
 def test_generated_sql_for_the_silver_model(query_builder):
-    from sample_project.silver.customers import DimCustomer
+    from models.silver.customers import DimCustomer
 
     operation = CreateTable(
         operation_type=QueryType.CREATE_TABLE,

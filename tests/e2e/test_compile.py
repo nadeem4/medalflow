@@ -2,9 +2,9 @@
 
 `compile()` walks every layer, applies a selector, builds one cross-layer plan
 and returns a `CompileResult`: the models it compiled, the plan, and a list of
-structured errors. Everything here runs against real projects under
-tests/fixtures, entirely offline (D6) -- bronze models are declared, so no
-warehouse and no credentials are involved.
+structured errors. The healthy project here is `examples/` itself; the broken
+ones live under tests/fixtures. Everything is offline (D6) -- bronze models are
+declared, so no warehouse and no credentials are involved.
 
 The decision the whole file is about: **compile collects errors, it does not
 raise them.** An author with three broken models learns about all three from
@@ -27,7 +27,7 @@ def _names(result):
 # --- a healthy project -----------------------------------------------------
 
 
-def test_compile_finds_every_model_in_every_layer(sample_project):
+def test_compile_finds_every_model_in_every_layer(example_project):
     result = compile("*")
 
     assert _names(result) == [
@@ -46,7 +46,7 @@ def test_compile_finds_every_model_in_every_layer(sample_project):
     }
 
 
-def test_compile_reports_what_each_model_declares(sample_project):
+def test_compile_reports_what_each_model_declares(example_project):
     revenue = next(model for model in compile("*").models if model.name == "Revenue")
 
     assert revenue.schema == "gold"
@@ -54,7 +54,7 @@ def test_compile_reports_what_each_model_declares(sample_project):
     assert revenue.tags == ["daily"]
 
 
-def test_compile_plans_all_five_operations_across_the_layers(sample_project):
+def test_compile_plans_all_five_operations_across_the_layers(example_project):
     result = compile("*")
 
     assert result.plan.total_queries == 5
@@ -65,14 +65,14 @@ def test_compile_plans_all_five_operations_across_the_layers(sample_project):
     assert staged == [["Customers", "Orders"], ["DimCustomer"], ["FactOrders"], ["vw_Revenue"]]
 
 
-def test_a_healthy_project_compiles_without_errors(sample_project):
+def test_a_healthy_project_compiles_without_errors(example_project):
     result = compile("*")
 
     assert result.errors == []
     assert result.ok is True
 
 
-def test_a_healthy_project_compiles_without_warnings(sample_project, caplog):
+def test_a_healthy_project_compiles_without_warnings(example_project, caplog):
     """Nothing wrong with the project means nothing said about it.
 
     Every model sets `recreate=True`, so the builder wraps each CETAS in the
@@ -99,14 +99,14 @@ def test_a_healthy_project_compiles_without_warnings(sample_project, caplog):
         ("layer:gold", ["Revenue"]),
     ],
 )
-def test_a_layer_selector_compiles_only_that_layer(sample_project, selector, expected):
+def test_a_layer_selector_compiles_only_that_layer(example_project, selector, expected):
     result = compile(selector)
 
     assert _names(result) == expected
     assert result.plan.total_queries == len(expected)
 
 
-def test_a_tag_selector_crosses_layers(sample_project):
+def test_a_tag_selector_crosses_layers(example_project):
     """`daily` is declared by one silver model and by the gold model."""
     assert _names(compile("tag:daily")) == ["DimCustomer", "Revenue"]
 
@@ -116,21 +116,21 @@ def test_a_configured_model_list_still_narrows_the_silver_layer(project):
     nothing. Setting it narrows, and naming a group the project does not
     declare leaves silver out -- without touching bronze or gold."""
     project(
-        MEDALFLOW_MODELS_PACKAGE="sample_project",
+        MEDALFLOW_MODELS_PACKAGE="models",
         MEDALFLOW_CONFIGURED_MODELS="purchase",
     )
 
     assert _names(compile("*")) == ["Customers", "Orders", "Revenue"]
 
 
-def test_a_name_selector_compiles_one_model(sample_project):
+def test_a_name_selector_compiles_one_model(example_project):
     result = compile("FactOrders")
 
     assert _names(result) == ["FactOrders"]
     assert result.plan.total_queries == 1
 
 
-def test_a_selector_matching_nothing_is_an_empty_plan_not_an_error(sample_project):
+def test_a_selector_matching_nothing_is_an_empty_plan_not_an_error(example_project):
     """Narrowing to something a project does not declare is a real answer."""
     result = compile("no_such_model")
 
@@ -153,7 +153,7 @@ def test_a_layer_selector_no_longer_reports_an_excluded_layers_misconfiguration(
     """A behaviour change, pinned rather than discovered later: asking for
     silver stops reporting that gold has no package configured. That is what
     narrowing means -- and `compile("*")` still reports both."""
-    project(MEDALFLOW_SILVER_PACKAGE="sample_project.silver")
+    project(MEDALFLOW_SILVER_PACKAGE="models.silver")
 
     assert compile("layer:silver").errors == []
     assert sorted(error.suggestion.split()[1] for error in compile("*").errors) == [
@@ -166,12 +166,12 @@ def test_a_layer_selector_no_longer_reports_an_excluded_layers_misconfiguration(
 
 
 @pytest.mark.parametrize("selector", ["+Revenue", "Revenue+"])
-def test_the_v0_3_graph_operators_are_refused_by_name(sample_project, selector):
+def test_the_v0_3_graph_operators_are_refused_by_name(example_project, selector):
     with pytest.raises(SelectorError, match="not yet supported"):
         compile(selector)
 
 
-def test_an_unparseable_selector_reaches_the_caller_immediately(sample_project):
+def test_an_unparseable_selector_reaches_the_caller_immediately(example_project):
     """A typo must never read as 'nothing matched'."""
     with pytest.raises(SelectorError, match="owner"):
         compile("owner:nadeem")
@@ -183,8 +183,8 @@ def test_an_unparseable_selector_reaches_the_caller_immediately(sample_project):
 def test_an_unconfigured_layer_package_becomes_an_error(project):
     """A project with no gold models still compiles its bronze and silver."""
     project(
-        MEDALFLOW_BRONZE_PACKAGE="sample_project.bronze",
-        MEDALFLOW_SILVER_PACKAGE="sample_project.silver",
+        MEDALFLOW_BRONZE_PACKAGE="models.bronze",
+        MEDALFLOW_SILVER_PACKAGE="models.silver",
     )
 
     result = compile("*")
@@ -358,7 +358,7 @@ def test_a_compile_result_survives_a_json_round_trip(broken_project):
     assert {model["name"] for model in restored["models"]} >= {"Good"}
 
 
-def test_a_healthy_compile_result_survives_a_json_round_trip(sample_project):
+def test_a_healthy_compile_result_survives_a_json_round_trip(example_project):
     restored = json.loads(json.dumps(compile("*").to_dict()))
 
     assert restored["ok"] is True
