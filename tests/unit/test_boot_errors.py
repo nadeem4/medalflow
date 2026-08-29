@@ -24,6 +24,7 @@ import re
 import pytest
 from medalflow.settings import main as settings_main
 from medalflow.settings.main import MedalflowSettings
+from pydantic import ValidationError
 
 
 @pytest.fixture
@@ -44,15 +45,15 @@ def unconfigured(monkeypatch, tmp_path):
         settings_main._settings = None
 
 
-def _boot_failure(_unconfigured) -> str:
+def _boot_failure(_unconfigured) -> ValueError:
     with pytest.raises(ValueError) as excinfo:
         settings_main.get_settings(force_reload=True)
 
-    return str(excinfo.value)
+    return excinfo.value
 
 
 def test_the_three_top_level_variables_are_named(unconfigured):
-    message = _boot_failure(unconfigured)
+    message = str(_boot_failure(unconfigured))
 
     assert "MEDALFLOW_SOURCE_SYSTEM" in message
     assert "MEDALFLOW_DS_ENV" in message
@@ -62,14 +63,14 @@ def test_the_three_top_level_variables_are_named(unconfigured):
 def test_a_missing_group_names_the_variable_inside_it_not_the_group(unconfigured):
     """`compute` alone is the actively unhelpful one: it is a pydantic model,
     and what the user must set is the required field inside it."""
-    message = _boot_failure(unconfigured)
+    message = str(_boot_failure(unconfigured))
 
     assert "MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME" in message
 
 
 def test_the_message_names_environment_variables_and_nothing_else(unconfigured):
     """No bare pydantic field names survive into what the user reads."""
-    message = _boot_failure(unconfigured)
+    message = str(_boot_failure(unconfigured))
     named = re.findall(r"^\s+(\S+?):", message, re.MULTILINE)
 
     assert named
@@ -84,14 +85,14 @@ def test_the_names_are_derived_from_the_settings_own_config(unconfigured):
         f"{config['env_prefix']}compute{config['env_nested_delimiter']}lake_database_name"
     ).upper()
 
-    assert derived in _boot_failure(unconfigured)
+    assert derived in str(_boot_failure(unconfigured))
 
 
 def test_setting_exactly_what_the_message_names_boots(unconfigured, monkeypatch):
     """The list has to be sufficient as well as correct -- a user who does
     what it says ends up with settings. Still four variables: the boot
     contract did not change, only what is said about it."""
-    message = _boot_failure(unconfigured)
+    message = str(_boot_failure(unconfigured))
     named = re.findall(r"^\s+(MEDALFLOW_\S+?):", message, re.MULTILINE)
 
     assert len(named) == 4
@@ -102,3 +103,31 @@ def test_setting_exactly_what_the_message_names_boots(unconfigured, monkeypatch)
 
     assert settings.name == "x"
     assert settings.compute.lake_database_name == "x"
+
+
+# --- the pydantic report does not reach the user, but is not thrown away ---
+
+
+def test_the_pydantic_report_is_not_printed_above_the_message(unconfigured):
+    """`raise ... from e` would put "source_system / ds_env / name / compute --
+    Field required" on screen above the translation, which is the exact text
+    this whole module exists to replace. It is also the first thing a new user
+    ever sees, so it is the one traceback worth suppressing."""
+    error = _boot_failure(unconfigured)
+
+    assert error.__cause__ is None
+    assert error.__suppress_context__ is True
+
+
+def test_the_original_validation_error_is_still_reachable(unconfigured):
+    """Suppressed on screen, kept on the exception. Anything debugging
+    MedalFlow itself reads the full pydantic detail off the attribute."""
+    error = _boot_failure(unconfigured)
+
+    assert isinstance(error.validation_error, ValidationError)
+    assert {tuple(detail["loc"]) for detail in error.validation_error.errors()} == {
+        ("source_system",),
+        ("ds_env",),
+        ("name",),
+        ("compute",),
+    }

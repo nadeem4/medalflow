@@ -379,7 +379,32 @@ class SettingsError(ValueError):
 
     A :class:`ValueError`, like the ``ValidationError`` it replaces, so no
     existing ``except`` clause has to learn a new name.
+
+    Raised with ``from None``. The pydantic report it is rewritten from names
+    fields rather than variables -- ``compute``, not
+    ``MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME`` -- and chaining would print that
+    exact block above the translation, in the one error every new user meets
+    before anything else works. Nothing is lost by suppressing it: for a
+    missing field this message carries everything the report did, and for
+    anything else pydantic's own text is quoted verbatim.
+
+    Attributes:
+        validation_error: The :class:`~pydantic.ValidationError` this was
+            rewritten from, kept off the screen but on the object so anything
+            debugging MedalFlow itself can still read the full pydantic
+            detail -- ``err.validation_error.errors()``.
     """
+
+    def __init__(self, message: str, validation_error: ValidationError | None = None):
+        """Record the message a user reads and the report it came from.
+
+        Args:
+            message: What to tell the user
+            validation_error: The pydantic failure being rewritten, when there
+                is one
+        """
+        super().__init__(message)
+        self.validation_error = validation_error
 
 
 def _env_var(loc: tuple[str, ...]) -> str:
@@ -537,7 +562,7 @@ def _boot_error(error: ValidationError) -> SettingsError:
         "the working directory. See '.env.example'."
     )
 
-    return SettingsError("\n\n".join(parts))
+    return SettingsError("\n\n".join(parts), validation_error=error)
 
 
 # Singleton instance
@@ -583,6 +608,11 @@ def get_settings(force_reload: bool = False) -> MedalflowSettings:
             # Pydantic names fields; a user sets variables. Translating is the
             # difference between 'compute -- Field required' and
             # 'MEDALFLOW_COMPUTE__LAKE_DATABASE_NAME'.
-            raise _boot_error(e) from e
+            #
+            # `from None`, because chaining would print the field-name
+            # report above the translation -- the text this exists to
+            # replace, in front of the first error a new user ever hits.
+            # It stays reachable as `SettingsError.validation_error`.
+            raise _boot_error(e) from None
 
     return _settings
