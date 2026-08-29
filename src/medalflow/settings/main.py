@@ -39,6 +39,9 @@ if TYPE_CHECKING:
 # app_env values that mean "real data, real secrets".
 PRODUCTION_ENVIRONMENTS = frozenset({"prod", "production"})
 
+# Layers whose models are discovered by walking a configured Python package.
+MODEL_LAYERS = ("bronze", "silver", "gold")
+
 
 class MedalflowSettings(NestedSecretsMixin, BaseSettings):
     """Every configuration value MedalFlow reads, in one object."""
@@ -95,8 +98,30 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
 
     layer_type: LayerType = Field(
         default=LayerType.BASE,
-        description="Layer structure: 'base' (default) or 'custom'. Determines the silver "
-        "and gold package names.",
+        description="Layer structure: 'base' (default) or 'custom'. Read by nothing since "
+        "model packages became configuration; retained pending removal.",
+    )
+
+    models_package: str | None = Field(
+        default=None,
+        description="Python package holding this project's models. Each layer is "
+        "its subpackage: models_package='acme' means 'acme.bronze', 'acme.silver', "
+        "'acme.gold'. Optional -- a layer can instead be named directly by its own "
+        "override below. Discovery, not boot, is where an unconfigured layer fails.",
+    )
+    bronze_package: str | None = Field(
+        default=None,
+        description="Python package holding the bronze models. Overrides "
+        "'{models_package}.bronze'.",
+    )
+    silver_package: str | None = Field(
+        default=None,
+        description="Python package holding the silver models. Overrides "
+        "'{models_package}.silver'.",
+    )
+    gold_package: str | None = Field(
+        default=None,
+        description="Python package holding the gold models. Overrides " "'{models_package}.gold'.",
     )
 
     configured_models: str = Field(
@@ -283,50 +308,40 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
         """
         return model_name in self.get_configured_model_list()
 
-    @property
-    def silver_package_name(self) -> str:
-        """Python package path for the silver layer.
+    # --- Where the models live ----------------------------------------------
+    def package_for_layer(self, layer: str) -> str:
+        """Python package to walk for one layer's models.
 
-        Examples:
-            - layer_type=CUSTOM, name="fin" -> "custom_fin.silver"
-            - layer_type=BASE, name="fin" -> "fin.layers.custom.silver"
+        Resolution order: the layer's own override, then ``models_package``
+        with the layer appended.
+
+        Args:
+            layer: One of 'bronze', 'silver', 'gold'
+
+        Returns:
+            Importable package path for that layer
+
+        Raises:
+            ValueError: If the layer is unknown, or if neither the layer
+                override nor ``models_package`` is configured
         """
-        if self.layer_type == LayerType.CUSTOM:
-            return f"custom_{self.ds_name}.silver"
-        else:
-            return f"{self.ds_name}.layers.custom.silver"
+        if layer not in MODEL_LAYERS:
+            raise ValueError(f"Unknown layer {layer!r}. Expected one of {', '.join(MODEL_LAYERS)}.")
 
-    @property
-    def gold_package_name(self) -> str:
-        """Python package path for the gold layer."""
-        if self.layer_type == LayerType.CUSTOM:
-            return f"custom_{self.ds_name}.gold.gold"
-        else:
-            return f"{self.ds_name}.layers.custom.gold.gold_query"
+        override = getattr(self, f"{layer}_package")
+        if override:
+            return override
 
-    @property
-    def dimension_package_name(self) -> str:
-        """Python package path for dimension tables."""
-        if self.layer_type == LayerType.CUSTOM:
-            return f"custom_{self.ds_name}.silver.dimension_table.dimension_tables"
-        else:
-            return f"{self.ds_name}.layers.custom.silver.dimension_table.dimension_tables"
+        if self.models_package:
+            return f"{self.models_package}.{layer}"
 
-    @property
-    def silver_proc_mapping_package_name(self) -> str:
-        """Python package path for silver stored procedure mappings."""
-        if self.layer_type == LayerType.CUSTOM:
-            return f"custom_{self.ds_name}.config.python_proc"
-        else:
-            return f"{self.ds_name}.config.python_proc"
-
-    @property
-    def silver_proc_crud_mapping_package_name(self) -> str:
-        """Python package path for silver CRUD mappings."""
-        if self.layer_type == LayerType.CUSTOM:
-            return f"custom_{self.ds_name}.config.crud_mapping"
-        else:
-            return f"{self.ds_name}.config.crud_mapping"
+        raise ValueError(
+            f"No Python package is configured for the {layer} layer, so there is "
+            f"nothing to discover models in. Set MEDALFLOW_MODELS_PACKAGE to the "
+            f"package holding your models (its '{layer}' subpackage is walked), or "
+            f"set MEDALFLOW_{layer.upper()}_PACKAGE to name the {layer} package "
+            f"directly."
+        )
 
 
 # Singleton instance

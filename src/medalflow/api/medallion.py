@@ -69,7 +69,7 @@ def get_silver_execution_plan_for_models(
     with execution_request_scope(context, operation="medalflow.medallion.plan.silver.models"):
         settings = get_settings()
         plan_orchestrator = ExecutionPlanOrchestrator(settings)
-        metadata_discovery = SilverMetadataDiscovery(settings.silver_package_name)
+        metadata_discovery = SilverMetadataDiscovery(settings.package_for_layer("silver"))
         transformations = metadata_discovery.get_transformations_by_models(models=models)
         plan = plan_orchestrator.create_plan_for_silver_layer(
             silver_sequencers=_instantiate_sequencers(transformations, settings)
@@ -87,7 +87,7 @@ def get_execution_plan_for_sps(
     with execution_request_scope(context, operation="medalflow.medallion.plan.silver.sps"):
         settings = get_settings()
         plan_orchestrator = ExecutionPlanOrchestrator(settings)
-        metadata_discovery = SilverMetadataDiscovery(settings.silver_package_name)
+        metadata_discovery = SilverMetadataDiscovery(settings.package_for_layer("silver"))
         transformations = metadata_discovery.get_transformations_by_names(names=sp_names)
         plan = plan_orchestrator.create_plan_for_silver_layer(
             silver_sequencers=_instantiate_sequencers(transformations, settings)

@@ -71,7 +71,7 @@ class SilverMetadataDiscovery:
             silver_package: Optional package name override
         """
         self.settings = get_settings()
-        self.silver_package = silver_package or self.settings.silver_package_name
+        self.silver_package = silver_package or self.settings.package_for_layer("silver")
         self.logger = get_logger(self.__class__.__name__)
 
         # Get the global cache manager if available

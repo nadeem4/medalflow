@@ -50,7 +50,8 @@ def api_module(monkeypatch):
     created.clear()
 
     class _Settings:
-        silver_package_name = "acme.silver"
+        def package_for_layer(self, layer):
+            return f"acme.{layer}"
 
     class _Discovery:
         def __init__(self, package_name):
