@@ -12,6 +12,7 @@ one run, and the models that do work still reach the plan.
 """
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -69,6 +70,22 @@ def test_a_healthy_project_compiles_without_errors(sample_project):
 
     assert result.errors == []
     assert result.ok is True
+
+
+def test_a_healthy_project_compiles_without_warnings(sample_project, caplog):
+    """Nothing wrong with the project means nothing said about it.
+
+    Every model sets `recreate=True`, so the builder wraps each CETAS in the
+    catalog-probe guard T-SQL needs in place of `DROP ... IF EXISTS`, and the
+    analyzer used to report all four guards as SQL it could not read. A
+    warning that fires on a healthy project teaches an author to ignore the
+    one that matters.
+    """
+    with caplog.at_level(logging.DEBUG):
+        result = compile("*")
+
+    assert result.ok is True
+    assert [record.msg for record in caplog.records if record.levelno >= logging.WARNING] == []
 
 
 # --- the selector narrows what is compiled ---------------------------------

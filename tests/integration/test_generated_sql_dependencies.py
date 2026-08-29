@@ -176,3 +176,59 @@ def test_edges_form_across_layers_over_generated_sql(offline_settings):
         ["DimCustomer"],
         ["vw_Revenue"],
     ]
+
+
+# --- MedalFlow's own guarded DDL is not a user's parse failure -------------
+#
+# T-SQL has no `DROP EXTERNAL TABLE IF EXISTS` and no `CREATE SCHEMA IF NOT
+# EXISTS`, so the builder emits a catalog-probe guard for both. sqlglot 23
+# cannot parse either, and the analyzer used to report that as an unreadable
+# statement -- four WARNINGs out of a compile with nothing wrong with it.
+#
+# The prelude is skipped quietly because it provably declares no edge: it
+# probes `sys.` (already discarded, `_CATALOG_SCHEMA`) and its payload is a
+# DROP or a CREATE SCHEMA (neither is a writer, `_WRITE_EXPRESSIONS`). A
+# *user's* unreadable statement is a different thing entirely and stays loud.
+
+
+def test_the_generated_recreate_guard_warns_about_nothing(analyzer, query_builder, caplog):
+    """A clean compile must not accuse a healthy project of unreadable SQL."""
+    sql = query_builder.build_query(_bronze_customers())
+
+    assert sql.startswith("IF EXISTS (")  # the guard really is there
+
+    with caplog.at_level(logging.DEBUG):
+        deps = analyzer.extract_dependencies(sql)
+
+    assert deps.reads_from == {"dbo.customers"}
+    assert deps.writes_to == "bronze.customers"
+    assert [record.msg for record in caplog.records if record.levelno >= logging.WARNING] == []
+
+
+def test_a_guarded_drop_is_a_real_answer_rather_than_an_unreadable_one(
+    analyzer, query_builder, caplog
+):
+    """The guard is the whole statement here, so it used to leave nothing
+    readable at all -- which raised, and surfaced as an ERROR."""
+    sql = query_builder.build_query(DropTable(schema_name="silver", object_name="DimCustomer"))
+
+    with caplog.at_level(logging.DEBUG):
+        deps = analyzer.extract_dependencies(sql)
+
+    assert deps.reads_from == set()
+    assert deps.writes_to is None
+    assert [record.msg for record in caplog.records if record.levelno >= logging.WARNING] == []
+
+
+def test_a_user_statement_the_parser_cannot_read_still_warns(analyzer, caplog):
+    """The load-bearing half: `reads_from` is only ever derived by parsing, so
+    a user's SELECT that will not parse means edges missing from the DAG."""
+    sql = "SELECT * FROM silver.DimCustomer;\nSELECT FROM WHERE FROM"
+
+    with caplog.at_level(logging.DEBUG):
+        deps = analyzer.extract_dependencies(sql)
+
+    assert deps.reads_from == {"silver.dimcustomer"}
+    assert [record.msg for record in caplog.records if record.levelno >= logging.WARNING] == [
+        "dependency.analyzer.statement_unreadable"
+    ]
