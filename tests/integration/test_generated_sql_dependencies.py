@@ -232,3 +232,36 @@ def test_a_user_statement_the_parser_cannot_read_still_warns(analyzer, caplog):
     assert [record.msg for record in caplog.records if record.levelno >= logging.WARNING] == [
         "dependency.analyzer.statement_unreadable"
     ]
+
+
+# The condition probes a user's own table rather than the system catalog, so
+# skipping it would drop a read.
+_USER_GUARD = """IF EXISTS (SELECT * FROM audit.Log WHERE Loaded = 1)
+    DROP EXTERNAL TABLE [bronze].[fin_Customers]"""
+
+# A catalog probe, but wrapped around something that does move rows.
+_GUARDED_INSERT = """IF EXISTS (SELECT * FROM sys.schemas WHERE name = 'silver')
+BEGIN
+    INSERT INTO silver.Fact SELECT * FROM bronze.Customers
+END"""
+
+
+@pytest.mark.parametrize("guard", [_USER_GUARD, _GUARDED_INSERT])
+def test_a_guard_shaped_statement_that_is_not_the_generated_one_still_warns(
+    analyzer, caplog, guard
+):
+    """Both are unreadable on sqlglot 23 for the same reason the generated
+    guard is, and neither may be skipped: only a `sys.` probe wrapped around a
+    DROP or a CREATE SCHEMA is provably free of edges.
+
+    Paired with a statement that does parse, so the analyzer returns rather
+    than raising -- which is the case where a skipped statement would be lost
+    in silence.
+    """
+    with caplog.at_level(logging.DEBUG):
+        deps = analyzer.extract_dependencies("SELECT * FROM silver.DimCustomer;\n" + guard)
+
+    assert deps.reads_from == {"silver.dimcustomer"}
+    assert [record.msg for record in caplog.records if record.levelno >= logging.WARNING] == [
+        "dependency.analyzer.statement_unreadable"
+    ]
