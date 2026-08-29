@@ -56,7 +56,19 @@ def execute(
         return platform.execute(operation, telemetry=telemetry)
 
 
-def test_connection(compute_env: ComputeEnvironment = ComputeEnvironment.ETL) -> bool:
-    """Test connectivity to the configured compute platform."""
+def test_connection(
+    compute_env: ComputeEnvironment = ComputeEnvironment.ETL,
+) -> dict[str, bool]:
+    """Test connectivity to the configured compute platform.
+
+    Args:
+        compute_env: Which compute environment to reach
+
+    Returns:
+        One entry per engine the platform supports, e.g. ``{"sql": True}``.
+        It was annotated ``bool``, which the value never was -- and a dict is
+        truthy either way, so a caller trusting the annotation read a failed
+        connection test as a passing one.
+    """
     platform = create_platform(compute_env)
     return platform.test_connection()

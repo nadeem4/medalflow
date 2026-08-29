@@ -456,4 +456,75 @@ as a whole) and `cyclic_project` (two silver models reading each other, so the o
 build but the graph has no execution order). Neither was folded into `broken_project`,
 whose value is its exact error count.
 
-Still outstanding: Decision 7's `run(selector)`.
+## Amendment — Decision 7 implemented
+
+`run(selector)` is the single execution path, and the per-layer entry points are gone.
+
+- `run()` compiles first and **refuses to execute when compile reports errors**, per D8.
+  It returns a `RunResult` carrying those errors rather than raising: one shape answers
+  "what happened" whether the project was broken or the warehouse was. Nothing executes —
+  not even the models that compiled — because a project mid-edit is not a project to
+  build a warehouse from.
+- It consumes `ExecutionPlan.get_all_operations(serialize=True)`, the seam recorded above
+  as having no caller, and hands one dict at a time to `medalflow.api.execute`. Neither
+  half is replaced, so "orchestration stays with your existing tools" survives: `run()` is
+  simply the orchestration MedalFlow ships. Operations reach the executor with their
+  `_cte_stage` / `_cte_position` / `_cte_request_context` stamps intact.
+- **Stop on the first failure**, and report succeeded, failed and skipped. A later stage
+  exists precisely because it depends on an earlier one, so continuing would run
+  operations whose inputs were never built. Any two of the three leave a caller guessing
+  about the third.
+- Success is read off `OperationResult.success`. A successful CREATE TABLE reports
+  `rows_affected=None`, so anything inferring success from a row count calls every table
+  it built a failure — this has been wrong here before.
+- Stages run in order; operations within a stage run sequentially. Concurrency is not
+  added: the stage boundary is the only ordering guarantee that matters, and adding
+  parallelism inside one would be new behaviour nobody asked for.
+- **Deleted**, with `compile()` replacing all four: `get_bronze_execution_plan`,
+  `get_gold_execution_plan`, `get_silver_execution_plan_for_models`,
+  `get_execution_plan_for_sps` — and with them the whole `medalflow.api.medallion`
+  module. `compile("layer:bronze").plan` is what they returned, and bronze models are
+  named per table, so `compile("Customers")` covers the table-selection case too.
+- **Deleted as their sole dependents**: `ExecutionPlanOrchestrator.create_plan_for_bronze_layer`
+  / `_gold_layer` / `_silver_layer`, each a one-line forward to
+  `create_plan_from_sequencers`; and `SilverMetadataDiscovery.get_transformations_by_models`
+  / `get_transformations_by_names`, a silver-only selection mechanism the selector
+  replaces. `create_plan_from_sequencers`, `create_execution_plan` and
+  `discover_all_transformations` have other callers and stay.
+
+## Amendment — Decision 6, part 2: introspection is a discovery, not a sequencer
+
+Deleting the per-layer entry points removed the only code that read
+`bronze_introspection`, leaving a documented mode with no way to reach it. The answer is
+not to re-add an entry point but to move introspection to where the question belongs.
+
+**Introspection answers "which bronze models exist", which is discovery's question.**
+`IntrospectedBronzeDiscovery` queries `INFORMATION_SCHEMA` once and derives a
+`BronzeMetadata` declaration per table, returning the same `BronzeModelMetadata` records
+the package walk returns. `compile()` picks the mode off `bronze_introspection` and is
+otherwise identical, so **each introspected table is its own `CompiledModel`** and
+`compile("Customers")` and `layer:bronze` behave the same in both modes. `compile()` and
+`run()` stay the single path.
+
+- **`IntrospectedBronzeSequencer` is deleted.** A sequencer that discovered its own inputs
+  was the shape that left bronze with no discovery at all; with the query moved, its whole
+  job — the `INFORMATION_SCHEMA` call, the empty-selection rule, the target-schema
+  override, source-name-as-target-name — is either discovery's or already `BronzeSequencer`'s.
+  Every behaviour it pinned is re-aimed onto the discovery in `test_bronze_declared.py`.
+  One sequencer builds every bronze table now, in both modes.
+- **Turning the flag on costs offline compile, for the bronze layer only.** That is the
+  trade-off this decision named as the *reason* introspection is opt-in. Silver and gold
+  never query. The default is unchanged and still offline, which D6 and the example
+  project depend on.
+- **An unreachable warehouse is a `CompileError`, not a traceback.** A mistyped connection
+  string gets the same structured surface as a mistyped package name, and the suggestion
+  names `MEDALFLOW_BRONZE_INTROSPECTION` as the way back to offline compile.
+- **Narrowing moved to the selector.** The warehouse is asked what exists, not what was
+  wanted: one query for the schema, then the selector filters models. Pushing the
+  selection down to `get_tables` would have meant one query per selected table.
+
+One wrinkle, recorded rather than fixed: `compile()` discovers every layer and applies the
+selector afterwards, so `compile("layer:silver")` still introspects bronze when the flag
+is on. The mode is a property of the layer, not of the selector. Skipping discovery for
+layers a selector excludes would also change which errors a narrow compile reports, so it
+is its own change.

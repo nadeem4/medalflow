@@ -24,9 +24,6 @@ from .operation_dag_builder import OperationDAGBuilder
 
 if TYPE_CHECKING:
     from medalflow.medallion.base.sequencer import _BaseSequencer
-    from medalflow.medallion.bronze.sequencer import BronzeSequencer
-    from medalflow.medallion.gold.sequencer import GoldSequencer
-    from medalflow.medallion.silver.sequencer import SilverTransformationSequencer
     from medalflow.settings import MedalflowSettings
 
 logger = get_logger(__name__)
@@ -176,56 +173,3 @@ class ExecutionPlanOrchestrator:
                 "sequencers": [s.get_obj_name() for s in sequencers],
             },
         )
-
-    def create_plan_for_bronze_layer(
-        self, bronze_sequencers: list["BronzeSequencer"]
-    ) -> ExecutionPlan:
-        """Create an execution plan for the bronze layer's models.
-
-        Takes a list, like silver and gold: bronze is discovered by package
-        walk now, so a project declares as many bronze models as it likes and
-        they share one plan. Introspection supplies a single sequencer to the
-        same list.
-
-        Args:
-            bronze_sequencers: The bronze layer sequencer instances
-
-        Returns:
-            ExecutionPlan for the bronze layer operations
-        """
-
-        return self.create_plan_from_sequencers(bronze_sequencers)
-
-    def create_plan_for_gold_layer(self, gold_sequencers: list["GoldSequencer"]) -> ExecutionPlan:
-        """Create an execution plan for the gold layer's discovered models.
-
-        Takes a list, like silver: gold is discovered by package walk now, so
-        a project declares as many gold models as it likes and they share one
-        plan.
-
-        Args:
-            gold_sequencers: The gold layer sequencer instances
-
-        Returns:
-            ExecutionPlan for the gold layer operations
-        """
-
-        return self.create_plan_from_sequencers(gold_sequencers)
-
-    def create_plan_for_silver_layer(
-        self, silver_sequencers: list["SilverTransformationSequencer"]
-    ) -> ExecutionPlan:
-        """Create an execution plan specifically for a silver layer sequencer.
-
-        This method generates an execution plan tailored for silver layer
-        operations, ensuring that all necessary metadata and lineage
-        information is included.
-
-        Args:
-            sequencer: The silver layer sequencer instance
-        Returns:
-
-            ExecutionPlan for the silver layer operations
-        """
-
-        return self.create_plan_from_sequencers(silver_sequencers)

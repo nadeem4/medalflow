@@ -6,14 +6,17 @@ making the example project unrunnable without cloud credentials.
 
 Introspection's only contribution was ever a `list[TableInfo]`; everything after
 it -- the CTAS, the soft-delete filter, the statistics -- is generated. So that
-list is the one seam, `_source_tables()`. `BronzeSequencer` reads it off its own
-`@bronze_metadata`, and `IntrospectedBronzeSequencer` overrides it to query the
-warehouse, which is the documented alternative rather than the only mode.
+list is the one seam, and it moved to where the question belongs:
+`IntrospectedBronzeDiscovery` asks the warehouse which models exist and derives
+a `@bronze_metadata` declaration for each table it finds. Both modes therefore
+produce the same records, and everything downstream -- selectors, `compile()`,
+`run()` -- cannot tell them apart.
 """
 
 import pytest
 from medalflow.constants.sql import QueryType
-from medalflow.medallion.bronze import IntrospectedBronzeSequencer, bronze_metadata
+from medalflow.medallion.bronze import bronze_metadata
+from medalflow.medallion.bronze.metadata_discovery import IntrospectedBronzeDiscovery
 from medalflow.medallion.bronze.sequencer import BronzeSequencer
 from medalflow.medallion.types import TableInfo
 from medalflow.settings.main import MedalflowSettings
@@ -200,13 +203,11 @@ class _LakeDatabase:
 
     def get_tables(self, table_names=None):
         self.calls.append(table_names)
-        if not table_names:
-            return self.tables
-        return [table for table in self.tables if table.table_name in table_names]
+        return self.tables
 
 
-def _introspected(settings, selection=None, tables=None, **kwargs):
-    sequencer = IntrospectedBronzeSequencer(settings, selection, **kwargs)
+def _introspected(settings, tables=None, **kwargs):
+    """An introspecting discovery whose warehouse is faked."""
     lake_db = _LakeDatabase(
         tables
         if tables is not None
@@ -215,42 +216,87 @@ def _introspected(settings, selection=None, tables=None, **kwargs):
             TableInfo(table_name="Orders", schema_name="dbo", full_table_name="dbo.Orders"),
         ]
     )
-    # `lake_db` is a cached_property, so seeding the instance dict is the seam.
-    sequencer.__dict__["lake_db"] = lake_db
-    return sequencer, lake_db
+    return IntrospectedBronzeDiscovery(settings=settings, **kwargs), lake_db
 
 
-def test_introspection_is_a_bronze_sequencer():
-    assert issubclass(IntrospectedBronzeSequencer, BronzeSequencer)
+@pytest.fixture(autouse=True)
+def _fake_lake(monkeypatch):
+    """Route the discovery's `LakeDatabase` at whatever `_introspected` seeded."""
+    monkeypatch.setattr(
+        "medalflow.medallion.bronze.metadata_discovery.LakeDatabase",
+        lambda settings, schema="dbo": _CURRENT["lake_db"],
+    )
+
+
+_CURRENT: dict = {}
+
+
+def test_an_introspected_table_becomes_a_declared_model():
+    """The design decision: introspection answers 'which models exist', and
+    each answer is an ordinary bronze model. A selector can then match it."""
+    discovery, _CURRENT["lake_db"] = _introspected(_settings())
+
+    discovered = discovery.discover_all()
+
+    assert [model.name for model in discovered] == ["Customers", "Orders"]
+    assert all(issubclass(model.sequencer_class, BronzeSequencer) for model in discovered)
 
 
 def test_introspection_builds_one_table_per_discovered_source():
-    sequencer, _ = _introspected(_settings())
+    discovery, _CURRENT["lake_db"] = _introspected(_settings())
 
-    operations = sequencer.get_queries()
+    operations = [
+        operation
+        for model in discovery.discover_all()
+        for operation in model.sequencer_class(_settings()).get_queries()
+    ]
 
     assert [operation.object_name for operation in operations] == ["Customers", "Orders"]
     assert {operation.schema_name for operation in operations} == {"bronze"}
 
 
-def test_introspection_passes_the_selection_to_the_warehouse():
-    sequencer, lake_db = _introspected(_settings(), ["Orders"])
+def test_the_source_schema_is_queried_once_and_whole():
+    """Narrowing moved to the selector, which is the point: the warehouse is
+    asked what exists, not what was wanted. Pushing a selection down to
+    `get_tables` would also have meant one query per selected table."""
+    discovery, lake_db = _introspected(_settings())
+    _CURRENT["lake_db"] = lake_db
 
-    operations = sequencer.get_queries()
+    discovery.discover_all()
 
-    assert lake_db.calls == [["Orders"]]
-    assert [operation.object_name for operation in operations] == ["Orders"]
+    assert lake_db.calls == [None]
 
 
-def test_an_empty_selection_introspects_nothing():
-    """`lake_db.get_tables([])` returns *every* table -- `[]` must mean none."""
-    sequencer, lake_db = _introspected(_settings(), [])
+def test_an_introspected_model_needs_no_further_warehouse_access():
+    """The derived declaration carries its own source table, so building the
+    operations is offline even in this mode."""
+    discovery, _CURRENT["lake_db"] = _introspected(_settings())
 
-    assert sequencer.get_queries() == []
-    assert lake_db.calls == []
+    model = discovery.discover_all()[0]
+
+    assert model.bronze_metadata.source_table == "Customers"
+    assert model.bronze_metadata.source_schema == "dbo"
 
 
 def test_introspection_writes_to_its_configured_target_schema():
-    sequencer, _ = _introspected(_settings(), target_schema="raw")
+    discovery, _CURRENT["lake_db"] = _introspected(_settings(), target_schema="raw")
 
-    assert {operation.schema_name for operation in sequencer.get_queries()} == {"raw"}
+    operations = [
+        operation
+        for model in discovery.discover_all()
+        for operation in model.sequencer_class(_settings()).get_queries()
+    ]
+
+    assert {operation.schema_name for operation in operations} == {"raw"}
+
+
+def test_the_introspecting_sequencer_is_gone():
+    """Its whole job -- the INFORMATION_SCHEMA query, the empty selection, the
+    target-schema override, source-name-as-target-name -- is discovery's now.
+    Leaving the class in place would be a second way to reach the same mode,
+    and no way at all to reach it through the public API."""
+    import medalflow.medallion
+    import medalflow.medallion.bronze
+
+    assert not hasattr(medalflow.medallion, "IntrospectedBronzeSequencer")
+    assert not hasattr(medalflow.medallion.bronze, "IntrospectedBronzeSequencer")

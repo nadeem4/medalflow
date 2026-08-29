@@ -1,17 +1,23 @@
-"""How the bronze entry point picks its mode (ADR 002, Decision 6).
+"""How bronze reaches its models (ADR 002, Decisions 6 and 7).
 
 A declared bronze model is the default and introspection is the documented
-alternative, so `get_bronze_execution_plan` has to choose between them. It
-chooses on configuration -- `bronze_introspection` -- and never on whether
-models happen to be found: inferring the mode would mean a typo in
-`MEDALFLOW_BRONZE_PACKAGE` silently falls back to hitting a warehouse, which is
-the offline-compile guarantee (D6) failing quietly instead of loudly.
+alternative. The mode is meant to be chosen on configuration --
+`bronze_introspection` -- and never on whether models happen to be found:
+inferring it would mean a typo in `MEDALFLOW_BRONZE_PACKAGE` silently falls
+back to hitting a warehouse, which is the offline-compile guarantee (D6)
+failing quietly instead of loudly.
+
+There is no per-layer runner any more (D7), so the plan below is
+`compile("layer:bronze").plan`. `compile()` reads the declared models; the
+introspecting sequencer is exercised directly in `test_bronze_declared.py`.
 """
 
+import json
 import sys
 from pathlib import Path
 
 import pytest
+from medalflow.api import compile
 from medalflow.medallion.types import TableInfo
 from medalflow.settings import main as settings_main
 from medalflow.settings.main import MedalflowSettings
@@ -56,7 +62,7 @@ def test_env_example_documents_the_introspection_switch():
     assert "MEDALFLOW_BRONZE_INTROSPECTION" in documented
 
 
-# --- the entry point -------------------------------------------------------
+# --- the bronze plan -------------------------------------------------------
 
 
 @pytest.fixture
@@ -91,84 +97,92 @@ def _object_names(plan):
 
 
 def test_the_declared_models_become_the_plan(sample_project_settings, no_warehouse):
-    from medalflow.api.medallion import get_bronze_execution_plan
+    result = compile("layer:bronze")
 
-    plan = get_bronze_execution_plan(None)
-
-    assert _object_names(plan) == ["Customers", "Orders"]
+    assert _object_names(result.plan) == ["Customers", "Orders"]
 
 
 def test_the_plan_compiles_without_a_warehouse(sample_project_settings, no_warehouse):
     """The whole point of Decision 6 part 2: `no_warehouse` would have fired."""
-    from medalflow.api.medallion import get_bronze_execution_plan
-
-    assert get_bronze_execution_plan(None).total_queries == 2
+    assert compile("layer:bronze").plan.total_queries == 2
 
 
-def test_the_plan_this_entry_point_returns_is_serialisable(sample_project_settings, no_warehouse):
-    """`create_plan_from_sequencers` gives the plan a plain dict as metadata,
-    and `ExecutionPlan.to_dict` called `.to_dict()` on it -- so every plan the
-    per-layer entry points return raised AttributeError when serialised, next
-    to a `CompileResult` that serialises fine."""
-    import json
+def test_the_bronze_plan_is_serialisable(sample_project_settings, no_warehouse):
+    """A plan an author or an agent can read is a plan that survives JSON."""
+    payload = json.loads(json.dumps(compile("layer:bronze").plan.to_dict()))
 
-    from medalflow.api.medallion import get_bronze_execution_plan
-
-    payload = json.loads(json.dumps(get_bronze_execution_plan(None).to_dict()))
-
-    assert payload["metadata"]["sequencers"] == ["Customers", "Orders"]
     assert payload["total_queries"] == 2
+    assert sorted(
+        operation["object_name"] for stage in payload["stages"] for operation in stage["operations"]
+    ) == ["Customers", "Orders"]
 
 
-def test_the_selection_arrives_as_a_list(sample_project_settings, no_warehouse):
-    """It used to be `",".join(...)` in and `.split(",")` out -- a round trip
-    through a string that could only lose table names containing a comma."""
-    from medalflow.api.medallion import get_bronze_execution_plan
+def test_one_bronze_table_can_be_selected_by_name(sample_project_settings, no_warehouse):
+    """Bronze models are named per table, so the selector is the selection.
 
-    plan = get_bronze_execution_plan(["Orders"])
+    The old entry point took a `table_names` list, which used to be
+    `",".join(...)` in and `.split(",")` out -- a round trip through a string
+    that could only lose table names containing a comma.
+    """
+    result = compile("Orders")
 
-    assert _object_names(plan) == ["Orders"]
+    assert _object_names(result.plan) == ["Orders"]
 
 
-def test_an_unconfigured_bronze_package_does_not_fall_back_to_a_warehouse(monkeypatch):
+def test_an_unconfigured_bronze_package_does_not_fall_back_to_a_warehouse(
+    monkeypatch, no_warehouse
+):
     """A project with no bronze package configured must say so, not introspect."""
-    from medalflow.api.medallion import get_bronze_execution_plan
-
     for key, value in OFFLINE_ENV.items():
         monkeypatch.setenv(key, value)
     monkeypatch.delenv("MEDALFLOW_MODELS_PACKAGE", raising=False)
     settings_main.get_settings(force_reload=True)
 
     try:
-        with pytest.raises(ValueError, match="MEDALFLOW_BRONZE_PACKAGE"):
-            get_bronze_execution_plan(None)
+        result = compile("layer:bronze")
+
+        assert result.ok is False
+        assert any(
+            "MEDALFLOW_BRONZE_PACKAGE" in (error.suggestion or "") for error in result.errors
+        )
+        assert result.plan.total_queries == 0
     finally:
         settings_main._settings = None
 
 
-# --- introspection, when it is asked for -----------------------------------
+# --- introspection, the opt-in alternative ---------------------------------
 
 
 class _LakeDatabase:
-    def __init__(self, settings, schema):
+    """Stands in for the warehouse; records how it was asked."""
+
+    def __init__(self, settings, schema="dbo"):
         self.schema = schema
+        _LAKE_CALLS.append(schema)
 
     def get_tables(self, table_names=None):
-        tables = [
+        return [
             TableInfo(table_name="Customers", schema_name="dbo", full_table_name="dbo.Customers"),
             TableInfo(table_name="Invoices", schema_name="dbo", full_table_name="dbo.Invoices"),
         ]
-        if not table_names:
-            return tables
-        return [table for table in tables if table.table_name in table_names]
+
+
+_LAKE_CALLS: list[str] = []
 
 
 @pytest.fixture
-def introspecting_settings(monkeypatch):
-    monkeypatch.setattr("medalflow.medallion.bronze.sequencer.LakeDatabase", _LakeDatabase)
+def introspecting(monkeypatch):
+    """Turn the mode on, with the table list faked rather than queried.
+
+    No bronze package is configured, deliberately: the mode comes from the
+    setting, not from what a package walk could find.
+    """
+    _LAKE_CALLS.clear()
+    monkeypatch.setattr("medalflow.medallion.bronze.metadata_discovery.LakeDatabase", _LakeDatabase)
 
     for key, value in OFFLINE_ENV.items():
         monkeypatch.setenv(key, value)
+    monkeypatch.delenv("MEDALFLOW_MODELS_PACKAGE", raising=False)
     monkeypatch.setenv("MEDALFLOW_BRONZE_INTROSPECTION", "true")
 
     settings = settings_main.get_settings(force_reload=True)
@@ -178,19 +192,87 @@ def introspecting_settings(monkeypatch):
         settings_main._settings = None
 
 
-def test_introspection_takes_over_when_it_is_configured(introspecting_settings):
-    """No bronze package is configured at all here, and that is fine: the mode
-    came from the setting, not from what discovery could find."""
-    from medalflow.api.medallion import get_bronze_execution_plan
+def test_introspection_takes_over_when_it_is_configured(introspecting):
+    """No bronze package is configured at all here, and that is fine."""
+    result = compile("layer:bronze")
 
-    plan = get_bronze_execution_plan(None)
-
-    assert _object_names(plan) == ["Customers", "Invoices"]
+    assert _object_names(result.plan) == ["Customers", "Invoices"]
 
 
-def test_introspection_still_honours_the_selection(introspecting_settings):
-    from medalflow.api.medallion import get_bronze_execution_plan
+def test_each_introspected_table_is_its_own_model(introspecting):
+    """The point of doing this in discovery rather than in one sequencer:
+    a selector has models to match, so both modes behave identically."""
+    models = compile("layer:bronze").models
 
-    plan = get_bronze_execution_plan(["Invoices"])
+    assert [model.name for model in models] == ["Customers", "Invoices"]
+    assert {model.layer for model in models} == {"bronze"}
+    assert {model.schema for model in models} == {"bronze"}
 
-    assert _object_names(plan) == ["Invoices"]
+
+def test_a_selector_narrows_introspected_tables_the_same_way(introspecting):
+    result = compile("Invoices")
+
+    assert [model.name for model in result.models] == ["Invoices"]
+    assert _object_names(result.plan) == ["Invoices"]
+
+
+def test_only_the_bronze_layer_reaches_the_warehouse(introspecting):
+    """Turning the flag on costs offline compile for the bronze layer only:
+    silver and gold still answer from their packages.
+
+    Note what this does *not* say. `compile()` discovers every layer and
+    applies the selector afterwards, so even `compile("layer:silver")`
+    introspects bronze. The mode is a property of the layer, not of the
+    selector.
+    """
+    compile("*")
+
+    assert _LAKE_CALLS == ["dbo"]
+
+    _LAKE_CALLS.clear()
+    compile("layer:silver")
+
+    assert _LAKE_CALLS == ["dbo"]
+
+
+def test_an_unreachable_warehouse_is_a_compile_error_not_a_crash(monkeypatch):
+    """A mistyped connection string gets the same structured error surface as
+    a mistyped package name."""
+
+    class _Unreachable:
+        def __init__(self, settings, schema="dbo"):
+            raise OSError("could not connect to the warehouse")
+
+    monkeypatch.setattr("medalflow.medallion.bronze.metadata_discovery.LakeDatabase", _Unreachable)
+    for key, value in OFFLINE_ENV.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("MEDALFLOW_BRONZE_INTROSPECTION", "true")
+    settings_main.get_settings(force_reload=True)
+
+    try:
+        result = compile("layer:bronze")
+
+        (error,) = (e for e in result.errors if e.error_type == "OSError")
+        assert error.model is None
+        assert "could not connect" in error.message
+        assert "MEDALFLOW_BRONZE_INTROSPECTION" in error.suggestion
+        assert result.ok is False
+        assert result.plan.total_queries == 0
+    finally:
+        settings_main._settings = None
+
+
+def test_the_default_mode_never_reaches_the_warehouse(sample_project_settings):
+    """D6, and the example project depends on it. `_LAKE_CALLS` would have
+    grown if discovery had introspected."""
+    _LAKE_CALLS.clear()
+
+    class _Explode(_LakeDatabase):
+        def __init__(self, settings, schema="dbo"):
+            raise AssertionError("LakeDatabase was constructed")
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("medalflow.medallion.bronze.metadata_discovery.LakeDatabase", _Explode)
+        patch.setattr("medalflow.medallion.bronze.sequencer.LakeDatabase", _Explode)
+
+        assert _object_names(compile("layer:bronze").plan) == ["Customers", "Orders"]

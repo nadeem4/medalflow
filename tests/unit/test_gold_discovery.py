@@ -39,11 +39,16 @@ def sample_project_settings(monkeypatch):
         settings_main._settings = None
 
 
-def test_gold_plan_finds_the_decorated_gold_model(sample_project_settings):
-    """The bug: this raised `Cannot create execution plan from empty operations list`."""
-    from medalflow.api.medallion import get_gold_execution_plan
+def test_the_gold_plan_finds_the_decorated_gold_model(sample_project_settings):
+    """The bug: gold's entry point built a *bare* `GoldSequencer`, so this
+    raised `Cannot create execution plan from empty operations list`.
 
-    plan = get_gold_execution_plan(None)
+    There is no per-layer entry point any more (D7); `compile("layer:gold")`
+    is what asks the question now, and it still has to find the model.
+    """
+    from medalflow.api import compile
+
+    plan = compile("layer:gold").plan
 
     assert [operation.object_name for stage in plan.stages for operation in stage.operations] == [
         "vw_Revenue"
