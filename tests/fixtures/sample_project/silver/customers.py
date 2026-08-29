@@ -10,6 +10,7 @@ from medalflow.medallion.silver import SilverTransformationSequencer, silver_met
     schema="silver",
     model="sales",
     description="Cleansed customer dimension",
+    tags=["daily", "domain:sales"],
 )
 class DimCustomer(SilverTransformationSequencer):
     """bronze.Customers -> silver.DimCustomer."""
