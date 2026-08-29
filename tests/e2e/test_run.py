@@ -71,7 +71,7 @@ def executor(monkeypatch):
 # --- every stage, in order -------------------------------------------------
 
 
-def test_run_executes_every_operation_in_topological_order(sample_project, executor):
+def test_run_executes_every_operation_in_topological_order(example_project, executor):
     """The stage order is the whole correctness claim: silver reads the bronze
     tables, gold reads the silver ones."""
     recorder = executor()
@@ -87,7 +87,7 @@ def test_run_executes_every_operation_in_topological_order(sample_project, execu
     ]
 
 
-def test_a_successful_run_is_ok(sample_project, executor):
+def test_a_successful_run_is_ok(example_project, executor):
     executor()
 
     result = run("*")
@@ -104,7 +104,7 @@ def test_a_successful_run_is_ok(sample_project, executor):
     assert result.skipped == []
 
 
-def test_run_returns_a_run_result(sample_project, executor):
+def test_run_returns_a_run_result(example_project, executor):
     executor()
 
     assert isinstance(run("*"), RunResult)
@@ -113,7 +113,7 @@ def test_run_returns_a_run_result(sample_project, executor):
 # --- the selector narrows what runs ----------------------------------------
 
 
-def test_a_selector_narrows_what_is_executed(sample_project, executor):
+def test_a_selector_narrows_what_is_executed(example_project, executor):
     recorder = executor()
 
     result = run("layer:bronze")
@@ -123,7 +123,7 @@ def test_a_selector_narrows_what_is_executed(sample_project, executor):
     assert result.ok is True
 
 
-def test_a_selector_matching_nothing_runs_nothing_and_is_still_ok(sample_project, executor):
+def test_a_selector_matching_nothing_runs_nothing_and_is_still_ok(example_project, executor):
     """Narrowing to something a project does not declare is a real answer, and
     the same one `compile()` gives: an empty plan, not a failure."""
     recorder = executor()
@@ -179,7 +179,7 @@ def test_a_refused_run_names_what_it_did_not_run(broken_project, executor):
 # --- a failure mid-plan ----------------------------------------------------
 
 
-def test_a_failure_stops_the_run(sample_project, executor):
+def test_a_failure_stops_the_run(example_project, executor):
     """Silver reads the bronze tables and gold reads the silver ones, so
     continuing past a failure would run operations whose inputs do not exist."""
     recorder = executor(failing="DimCustomer")
@@ -189,7 +189,7 @@ def test_a_failure_stops_the_run(sample_project, executor):
     assert recorder.object_names == ["Customers", "Orders", "DimCustomer"]
 
 
-def test_a_failure_is_reported_with_what_succeeded_and_what_was_skipped(sample_project, executor):
+def test_a_failure_is_reported_with_what_succeeded_and_what_was_skipped(example_project, executor):
     executor(failing="DimCustomer")
 
     result = run("*")
@@ -206,7 +206,7 @@ def test_a_failure_is_reported_with_what_succeeded_and_what_was_skipped(sample_p
     assert result.ok is False
 
 
-def test_the_failure_says_why(sample_project, executor):
+def test_the_failure_says_why(example_project, executor):
     executor(failing="DimCustomer")
 
     failed = run("*").failed
@@ -216,7 +216,7 @@ def test_the_failure_says_why(sample_project, executor):
     assert failed.error_message == "table does not exist"
 
 
-def test_success_is_read_off_the_operation_result(sample_project, executor):
+def test_success_is_read_off_the_operation_result(example_project, executor):
     """A successful CREATE TABLE reports `rows_affected=None`, so a run that
     inferred success from a row count would call every table it built a
     failure. `OperationResult.success` is where the platform already says it."""
@@ -231,7 +231,7 @@ def test_success_is_read_off_the_operation_result(sample_project, executor):
 # --- the seam's contract ---------------------------------------------------
 
 
-def test_operations_reach_the_executor_with_their_stage_stamps(sample_project, executor):
+def test_operations_reach_the_executor_with_their_stage_stamps(example_project, executor):
     """`get_all_operations(serialize=True)` is the plan -> executor seam, and
     the stamps are what it exists to add. `run()` consumes that seam rather
     than replacing it, so they have to survive the trip."""
@@ -248,7 +248,7 @@ def test_operations_reach_the_executor_with_their_stage_stamps(sample_project, e
     ]
 
 
-def test_the_reported_stages_are_the_stamped_ones(sample_project, executor):
+def test_the_reported_stages_are_the_stamped_ones(example_project, executor):
     executor()
 
     result = run("*")
@@ -265,7 +265,7 @@ def test_the_reported_stages_are_the_stamped_ones(sample_project, executor):
 # --- machine-readable ------------------------------------------------------
 
 
-def test_a_run_result_survives_a_json_round_trip(sample_project, executor):
+def test_a_run_result_survives_a_json_round_trip(example_project, executor):
     executor(failing="DimCustomer")
 
     restored = json.loads(json.dumps(run("*").to_dict()))
@@ -310,7 +310,7 @@ def test_run_is_exported_from_the_api_and_the_package():
 # --- through the real executor ---------------------------------------------
 
 
-def test_run_executes_through_the_shipped_execute_seam(sample_project, monkeypatch):
+def test_run_executes_through_the_shipped_execute_seam(example_project, monkeypatch):
     """Every other test here fakes `runner.execute`, which proves the loop but
     not what the loop calls. This one fakes the *platform* instead, so the
     operation dict travels the whole real path -- `api.execute`, its
@@ -377,7 +377,7 @@ def test_the_orchestrator_has_no_per_layer_plan_method():
     assert hasattr(ExecutionPlanOrchestrator, "create_execution_plan")
 
 
-def test_the_request_context_reaches_the_executor_too(sample_project, executor):
+def test_the_request_context_reaches_the_executor_too(example_project, executor):
     """The third stamp `get_all_operations` adds. It is empty unless a context
     was attached to the plan, so `run()` attaches one -- otherwise every
     operation it executes is untraceable back to the run that issued it."""

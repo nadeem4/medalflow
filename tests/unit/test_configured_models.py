@@ -17,7 +17,7 @@ import pytest
 from medalflow.medallion.silver.metadata_discovery import SilverMetadataDiscovery
 from medalflow.settings.main import MedalflowSettings
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+EXAMPLE = Path(__file__).resolve().parents[2] / "examples"
 
 BOOT_ENV = {
     "source_system": "sap",
@@ -58,14 +58,14 @@ def test_the_list_itself_stays_empty_when_unset():
 
 
 @pytest.fixture(autouse=True)
-def sample_project_on_path(monkeypatch):
-    monkeypatch.syspath_prepend(str(FIXTURES))
-    for name in [m for m in sys.modules if m.split(".")[0] == "sample_project"]:
+def example_project_on_path(monkeypatch):
+    monkeypatch.syspath_prepend(str(EXAMPLE))
+    for name in [m for m in sys.modules if m.split(".")[0] == "models"]:
         del sys.modules[name]
 
 
 def _discover(settings):
-    discovery = SilverMetadataDiscovery("sample_project.silver", settings=settings)
+    discovery = SilverMetadataDiscovery("models.silver", settings=settings)
     # A throwaway walk must not read, or leave behind, the layer-namespaced
     # entries the real cache manager keeps.
     discovery._cache_manager = None
