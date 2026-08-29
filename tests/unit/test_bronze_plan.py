@@ -218,19 +218,31 @@ def test_a_selector_narrows_introspected_tables_the_same_way(introspecting):
 
 def test_only_the_bronze_layer_reaches_the_warehouse(introspecting):
     """Turning the flag on costs offline compile for the bronze layer only:
-    silver and gold still answer from their packages.
-
-    Note what this does *not* say. `compile()` discovers every layer and
-    applies the selector afterwards, so even `compile("layer:silver")`
-    introspects bronze. The mode is a property of the layer, not of the
-    selector.
-    """
+    silver and gold still answer from their packages."""
     compile("*")
 
     assert _LAKE_CALLS == ["dbo"]
 
-    _LAKE_CALLS.clear()
+
+def test_a_layer_selector_that_excludes_bronze_reaches_no_warehouse(introspecting):
+    """The flag is a property of the bronze layer, and a `layer:` selector is
+    answerable before anything is discovered -- so a silver-only compile skips
+    walking bronze entirely and needs no credential for it.
+
+    This used to be the other way round: every layer was discovered and the
+    selector applied afterwards, so a silver-only compile in CI still had to
+    reach a warehouse the caller had excluded."""
     compile("layer:silver")
+
+    assert _LAKE_CALLS == []
+
+
+@pytest.mark.parametrize("selector", ["*", "Customers", "tag:daily"])
+def test_only_a_layer_selector_prunes_the_walk(introspecting, selector):
+    """A bare name does not say which layer its model is in, and a tag can be
+    carried by a model in any of them. Neither can be answered before
+    discovery, so both still walk bronze."""
+    compile(selector)
 
     assert _LAKE_CALLS == ["dbo"]
 

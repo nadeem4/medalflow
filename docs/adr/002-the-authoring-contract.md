@@ -265,8 +265,10 @@ Gold and the package configuration landed together; bronze is a separate PR.
 - `gold_metadata` gained `disabled=`, and gold discovery respects it.
 - `settings.is_model_configured` stays **silver-only** by design: it is backed by
   `configured_models`, silver's grouping concept, and gold models declare no `model=`.
-- `layer_type` / `LayerType` now has no consumer at all. It is left in place; deleting it
-  is its own change.
+- `layer_type` / `LayerType` had no consumer left at all: it was the switch between the
+  two convention-derived package paths deleted above. **Since removed** — the settings
+  field, the enum, `constants/core.py` which held only it, and its `constants/` export.
+  `.env.example` never named it, so the drift guard there was unaffected.
 
 ## Amendment — Decision 6, part 2 implemented
 
@@ -523,8 +525,15 @@ otherwise identical, so **each introspected table is its own `CompiledModel`** a
   wanted: one query for the schema, then the selector filters models. Pushing the
   selection down to `get_tables` would have meant one query per selected table.
 
-One wrinkle, recorded rather than fixed: `compile()` discovers every layer and applies the
-selector afterwards, so `compile("layer:silver")` still introspects bronze when the flag
-is on. The mode is a property of the layer, not of the selector. Skipping discovery for
-layers a selector excludes would also change which errors a narrow compile reports, so it
-is its own change.
+**Amended.** That wrinkle is fixed: `compile()` used to discover every layer and apply the
+selector afterwards, so `compile("layer:silver")` still introspected bronze when the flag
+was on — a silver-only compile in CI needed a credential for a layer the caller had
+excluded. A `layer:` selector now prunes the walk (`Selector.selects_layer`), and only a
+`layer:` selector can: a bare name does not say which layer its model is in, and a tag can
+be carried by a model in any of them, so both still walk all three.
+
+The consequence the wrinkle named is accepted rather than avoided: **a narrow compile no
+longer reports an excluded layer's problems.** `compile("layer:silver")` in a project with
+no gold package configured returns no error, where it used to return gold's
+`UnconfiguredPackage`. Asking about silver is not asking about gold. It is pinned by a
+test rather than left to be discovered.

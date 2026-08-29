@@ -137,3 +137,26 @@ def test_every_documented_variable_exists_in_the_settings_schema():
                 )
 
     assert unknown == []
+
+
+# --- the switch between those conventions is gone too ----------------------
+
+
+def test_the_layer_type_setting_is_deleted():
+    """`layer_type` chose which of the two conventions above to derive from.
+
+    Both conventions were deleted with the properties, so the switch between
+    them selects nothing. It was a settings field, so it also had to leave the
+    environment: `.env.example` never named it, and
+    `test_every_documented_variable_exists_in_the_settings_schema` above is
+    what keeps that true in the other direction.
+    """
+    assert "layer_type" not in MedalflowSettings.model_fields
+
+
+def test_the_layer_type_enum_is_deleted():
+    """`LayerType` existed only to type that field."""
+    import medalflow.constants as constants
+
+    assert not hasattr(constants, "LayerType")
+    assert "LayerType" not in constants.__all__

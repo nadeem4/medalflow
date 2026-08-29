@@ -12,6 +12,7 @@ one run, and the models that do work still reach the plan.
 """
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -71,6 +72,22 @@ def test_a_healthy_project_compiles_without_errors(sample_project):
     assert result.ok is True
 
 
+def test_a_healthy_project_compiles_without_warnings(sample_project, caplog):
+    """Nothing wrong with the project means nothing said about it.
+
+    Every model sets `recreate=True`, so the builder wraps each CETAS in the
+    catalog-probe guard T-SQL needs in place of `DROP ... IF EXISTS`, and the
+    analyzer used to report all four guards as SQL it could not read. A
+    warning that fires on a healthy project teaches an author to ignore the
+    one that matters.
+    """
+    with caplog.at_level(logging.DEBUG):
+        result = compile("*")
+
+    assert result.ok is True
+    assert [record.msg for record in caplog.records if record.levelno >= logging.WARNING] == []
+
+
 # --- the selector narrows what is compiled ---------------------------------
 
 
@@ -121,6 +138,28 @@ def test_a_selector_matching_nothing_is_an_empty_plan_not_an_error(sample_projec
     assert result.plan.total_queries == 0
     assert result.plan.stages == []
     assert result.ok is True
+
+
+# --- a layer selector prunes discovery, not just the results ---------------
+#
+# `compile()` used to discover every layer and narrow afterwards, so
+# `compile("layer:silver")` reached the warehouse `bronze_introspection` needs.
+# That the warehouse is no longer reached is pinned in
+# tests/unit/test_bronze_plan.py, where the warehouse seam is stubbed. What is
+# pinned here is what pruning does to the *errors*.
+
+
+def test_a_layer_selector_no_longer_reports_an_excluded_layers_misconfiguration(project):
+    """A behaviour change, pinned rather than discovered later: asking for
+    silver stops reporting that gold has no package configured. That is what
+    narrowing means -- and `compile("*")` still reports both."""
+    project(MEDALFLOW_SILVER_PACKAGE="sample_project.silver")
+
+    assert compile("layer:silver").errors == []
+    assert sorted(error.suggestion.split()[1] for error in compile("*").errors) == [
+        "MEDALFLOW_BRONZE_PACKAGE",
+        "MEDALFLOW_GOLD_PACKAGE",
+    ]
 
 
 # --- selectors the caller got wrong ----------------------------------------

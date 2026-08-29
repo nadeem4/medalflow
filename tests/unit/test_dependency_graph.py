@@ -171,13 +171,13 @@ def test_a_drop_is_neither_a_writer_nor_a_reader(analyzer):
 def test_a_guarded_create_schema_does_not_read_the_system_catalog(analyzer):
     """The builder guards `CREATE SCHEMA` with a `sys.schemas` probe.
 
-    This used to be asserted against the guard as raw SQL. sqlglot 23 -- the
-    version the lock resolves and CI installs -- cannot parse that guard at
-    all, and `extract_dependencies` no longer invents an answer for SQL it
-    could not read a single statement of. So the claim is made where the guard
-    is actually produced: through `analyze_operations` over a real
-    `CreateSchema`, which must report no sources, and no target either,
-    because a schema is not a table anything can read.
+    sqlglot 23 -- the version the lock resolves and CI installs -- cannot parse
+    that guard at all, so the analyzer recognises it instead: a `sys.` probe
+    around a `CREATE SCHEMA` declares no edge in either direction, which is a
+    real answer rather than a statement it failed to read. The claim is made
+    through `analyze_operations` over a real `CreateSchema`, where the guard is
+    actually produced: no sources, and no target either, because a schema is
+    not a table anything can read.
     """
     operation = CreateSchema(schema_name="silver", object_name="silver")
 
@@ -188,16 +188,26 @@ def test_a_guarded_create_schema_does_not_read_the_system_catalog(analyzer):
 
 
 def test_sql_no_statement_of_which_can_be_read_is_not_reported_as_having_no_deps(analyzer):
-    """Silence is not an answer: zero readable statements must raise, not return {}."""
+    """Silence is not an answer: zero readable statements must raise, not return {}.
+
+    The example was MedalFlow's own `CREATE SCHEMA` guard. It no longer is:
+    that guard is recognised and skipped, because a `sys.` probe wrapping a
+    `CREATE SCHEMA` provably declares no edge, so "no dependencies" is the
+    honest answer for it. A statement nothing can make sense of still raises,
+    which is the property this test is actually about.
+    """
     with pytest.raises(ParseError):
-        analyzer.extract_dependencies(
-            "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'silver')\n"
-            "BEGIN\n    CREATE SCHEMA silver\nEND"
-        )
+        analyzer.extract_dependencies("SELECT FROM WHERE FROM")
 
 
 def test_one_unreadable_statement_does_not_cost_the_others(analyzer):
-    """The recreate guard is unparseable on sqlglot 23; the CETAS after it is not."""
+    """The recreate guard is unparseable on sqlglot 23; the CETAS after it is not.
+
+    Splitting per statement is what keeps the two apart. The guard is now
+    recognised and skipped rather than reported, but the property under test is
+    the same one either way: whatever happens to the first statement, the
+    second one's edges survive.
+    """
     deps = analyzer.extract_dependencies(
         "IF EXISTS (SELECT * FROM sys.external_tables WHERE object_id = OBJECT_ID('x'))\n"
         "    DROP EXTERNAL TABLE [bronze].[fin_Customers];\n"

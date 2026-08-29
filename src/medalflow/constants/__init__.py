@@ -36,8 +36,6 @@ from medalflow.constants.validation import (
     ValidationLevel,
 )
 
-from .core import LayerType
-
 __all__ = [
     # Compute
     "ComputeType",
@@ -54,5 +52,4 @@ __all__ = [
     "DataLakeAuthMethod",
     # Validation
     "ValidationLevel",
-    "LayerType",
 ]

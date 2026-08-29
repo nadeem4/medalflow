@@ -24,6 +24,7 @@ Example:
     }
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import sqlglot
@@ -50,6 +51,43 @@ _WRITE_EXPRESSIONS = (exp.Create, exp.Insert, exp.Update, exp.Merge)
 # SQL Server's system catalog. Guarded DDL probes it (`sys.external_tables`,
 # `sys.schemas`); it is never a data dependency.
 _CATALOG_SCHEMA = "sys"
+
+# The existence guard MedalFlow's own query builder emits, and the one parse
+# failure that is not worth telling anyone about.
+#
+# T-SQL has neither `DROP EXTERNAL TABLE IF EXISTS` nor `CREATE SCHEMA IF NOT
+# EXISTS`, so `recreate=True`, `DropTable(if_exists=True)` and their schema
+# equivalents are all rendered as a catalog probe wrapping the DDL. sqlglot 23
+# cannot parse any of those three shapes (sqlglot 30 degrades them to an opaque
+# `Command`, which is the same not-parsed with the warning taken away), so a
+# project with nothing wrong with it used to log one
+# `statement_unreadable` per recreated table.
+#
+# Matching this is safe *without knowing who wrote it*, which is why the
+# pattern is deliberately narrow enough to be argued about:
+#
+#   - the condition reads `sys.` and nothing else, and `_CATALOG_SCHEMA`
+#     already discards `sys.` from `reads_from` when the guard does parse;
+#   - the body is a DROP or a CREATE SCHEMA. Neither is in `_WRITE_EXPRESSIONS`
+#     or `_WRITER_QUERY_TYPES`, and neither names a source table.
+#
+# So the statement this matches contributes no edge in either direction, and
+# skipping it loses nothing. Anything else sqlglot cannot read is a user's SQL
+# and stays a WARNING: `reads_from` exists only because something parsed, so a
+# user SELECT that will not parse means edges silently missing from the DAG.
+#
+# `tests/integration/test_generated_sql_dependencies.py` matches this against
+# the builder's real output, so the two cannot drift apart in silence.
+_GENERATED_EXISTENCE_GUARD = re.compile(
+    r"^\s*IF\s+(?:NOT\s+)?EXISTS\s*\(\s*SELECT\s+\*\s+FROM\s+sys\."
+    r"(?:external_tables\s+WHERE\s+object_id\s*=\s*OBJECT_ID\('[^']*'\)"
+    r"|schemas\s+WHERE\s+name\s*=\s*'[^']*')\s*\)\s*"
+    r"(?:BEGIN\s+)?"
+    r"(?:DROP\s+EXTERNAL\s+TABLE|DROP\s+SCHEMA|CREATE\s+SCHEMA)\s+[\w.\[\]]+"
+    r"(?:\s+AUTHORIZATION\s+[\w\[\]]+)?"
+    r"\s*(?:END)?\s*$",
+    re.IGNORECASE,
+)
 
 # Operation types that produce or mutate the table the DAG hangs an edge on.
 # `analyze_operations` reads the target off the operation rather than out of
@@ -175,11 +213,19 @@ class SQLDependencyAnalyzer:
         A statement is used whole or not at all; nothing is salvaged from a
         partial parse, so no half-built tree can invent a dependency.
 
+        One unreadable statement is not reported: MedalFlow's own existence
+        guard, which is unreadable on every sqlglot the lock has ever resolved
+        and provably declares no edge either way. See
+        ``_GENERATED_EXISTENCE_GUARD``. Everything else that fails to parse is
+        a user's SQL and is warned about, because ``reads_from`` is only ever
+        known by parsing.
+
         Raises:
             ParseError: if not one statement could be read. The analyzer then
                 knows nothing whatsoever about this SQL, and an empty result
                 would be indistinguishable from a real answer of "no
-                dependencies".
+                dependencies". A guard that was skipped does not count as
+                unread: skipping it *is* the answer for that statement.
         """
         statements: list[exp.Expression] = []
         unreadable: list[tuple[str, ParseError]] = []
@@ -188,6 +234,24 @@ class SQLDependencyAnalyzer:
             try:
                 statement = sqlglot.parse_one(statement_sql, dialect=self.dialect)
             except ParseError as error:
+                # Checked only after a real parse failure, so a sqlglot that
+                # learns to read the guard is believed over this pattern.
+                if _GENERATED_EXISTENCE_GUARD.match(statement_sql):
+                    logger.debug(
+                        "dependency.analyzer.existence_guard_skipped",
+                        extra=sanitize_extras(
+                            {
+                                "dialect": self.dialect,
+                                "statement": statement_sql,
+                                "impact": (
+                                    "none; the guard probes the system catalog and "
+                                    "drops or creates an object, so it declares no "
+                                    "dependency in either direction"
+                                ),
+                            }
+                        ),
+                    )
+                    continue
                 unreadable.append((statement_sql, error))
                 continue
             if statement is not None:
@@ -442,11 +506,14 @@ class SQLDependencyAnalyzer:
                 # Not raised: a plan is still buildable without an edge the
                 # analyzer could not see -- the operation keeps its declared
                 # target, so it is still a producer, and the DAG builder still
-                # rejects cycles. Raising would turn a parser limitation on
-                # framework-generated guard DDL (sqlglot 23 cannot read the
-                # `CREATE SCHEMA` guard at all) into a hard planning failure
-                # for a perfectly correct project. It is logged at ERROR, with
-                # the operation and its SQL, so it cannot pass unnoticed.
+                # rejects cycles. Raising would turn one statement sqlglot
+                # cannot read into a hard planning failure for a project that
+                # may be entirely correct. It is logged at ERROR, with the
+                # operation and its SQL, so it cannot pass unnoticed.
+                #
+                # MedalFlow's own guard DDL no longer arrives here: it is
+                # recognised in `_parse_statements` and answered rather than
+                # failed. So an ERROR on this line now means a user's SQL.
                 logger.error(
                     "dependency.analyzer.sql_not_analyzable",
                     extra=sanitize_extras(

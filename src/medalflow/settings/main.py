@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Optional
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from medalflow.constants import LayerType
 from medalflow.core.mixins import NestedSecretsMixin
 from medalflow.secret_vault.env import ENV_PREFIX, EnvSecretProvider
 from medalflow.secret_vault.keyvault import KeyVaultSecrets
@@ -94,12 +93,6 @@ class MedalflowSettings(NestedSecretsMixin, BaseSettings):
         ge=1,
         le=100,
         description="Maximum number of worker threads for concurrent operations",
-    )
-
-    layer_type: LayerType = Field(
-        default=LayerType.BASE,
-        description="Layer structure: 'base' (default) or 'custom'. Read by nothing since "
-        "model packages became configuration; retained pending removal.",
     )
 
     models_package: str | None = Field(
