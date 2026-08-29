@@ -322,6 +322,36 @@ def test_a_plan_that_could_not_be_built_is_empty_rather_than_absent(project):
     assert json.loads(json.dumps(result.to_dict()))["ok"] is False
 
 
+# --- collected, not raised -- and not logged as though it escaped ----------
+
+
+def test_a_collected_error_is_not_also_written_to_the_log(broken_project, caplog):
+    """`compile()` returns the errors; it must not also report them as
+    crashes. Three broken models used to write three tracebacks to stderr
+    alongside the three structured errors they were collected into, so at a
+    terminal a returned result looked like a crash that happened to return a
+    value.
+    """
+    with caplog.at_level(logging.DEBUG):
+        result = compile("*")
+
+    assert len(result.errors) == 3
+    assert [record.msg for record in caplog.records if record.levelno >= logging.WARNING] == []
+
+
+def test_the_traceback_is_still_there_at_debug(broken_project, caplog):
+    """Quieted, not thrown away: diagnosing one of these still wants the
+    stack that produced it."""
+    with caplog.at_level(logging.DEBUG):
+        compile("*")
+
+    assert [
+        record.msg
+        for record in caplog.records
+        if record.levelno == logging.DEBUG and record.exc_info
+    ]
+
+
 # --- error_type is a closed semantic vocabulary ----------------------------
 #
 # The one field an agent branches on. It used to be `type(error).__name__`,

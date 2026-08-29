@@ -428,7 +428,15 @@ class _BaseSequencer(ABC):  # noqa: B024
             return queries
         except Exception as e:
             model_name = self.get_obj_name()
-            self.logger.error(
+            # DEBUG, not ERROR. This failure is *raised*, and `compile()`
+            # collects it into a `CompileError` it returns -- writing a
+            # traceback here too made a returned result look at a terminal
+            # like a crash that happened to return a value, which is the
+            # opposite of what "collected, not raised" promises. Nothing is
+            # thrown away: the stack is still one log level down, and an
+            # exception nobody catches is still loud, because it still
+            # propagates.
+            self.logger.debug(
                 "sequencer.get_queries_failed",
                 extra=sanitize_extras(
                     {
@@ -581,7 +589,9 @@ class _BaseSequencer(ABC):  # noqa: B024
                 )
                 operations.append(operation)
             except Exception as e:
-                self.logger.warning(
+                # DEBUG for the reason above: re-raised on the line below, so
+                # whoever handles it decides how loudly it is reported.
+                self.logger.debug(
                     "sequencer.operation_create_failed",
                     extra=sanitize_extras(
                         {

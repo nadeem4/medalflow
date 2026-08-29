@@ -131,9 +131,15 @@ class OperationBuilder:
                 **kwargs,
             )
         except Exception as e:
-            logger.error(
+            # DEBUG, not ERROR: the next line raises, so this is a diagnostic
+            # trace of something a caller is about to be told about properly.
+            # `compile()` turns it into a returned `CompileError`, and an
+            # error being returned must not also be logged as though it
+            # escaped.
+            logger.debug(
                 f"Failed to create {operation_class.__name__} for "
-                f"{schema_name}.{object_name}: {e}"
+                f"{schema_name}.{object_name}: {e}",
+                exc_info=True,
             )
             raise ValueError(f"Cannot create operation {type_label}: {e}") from e
 
