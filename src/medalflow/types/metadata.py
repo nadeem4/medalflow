@@ -113,8 +113,14 @@ with warnings.catch_warnings():
         how Gold layer views and aggregations are created and managed.
 
         Attributes:
+            name: The model's identity: what discovery keys on, what the plan
+                reports, and what a selector matches. It was the class name
+                until Decision 2 landed here, which made renaming a class
+                rename the model.
             schema: Target schema for Gold layer objects. This should be
-                a dedicated schema for analytical views and aggregations.
+                a dedicated schema for analytical views and aggregations. It is
+                also the default `schema_name` for the class's own
+                `@query_metadata` methods.
             layer: Medallion layer identifier. Defaults to "gold" but can be
                 customized for specialized layers like "gold_ml" or "gold_executive".
             description: Human-readable description of the analytical dataset's
@@ -125,6 +131,7 @@ with warnings.catch_warnings():
                 Defaults to False.
         """
 
+        name: str
         schema: str
         layer: str = "gold"
         description: str | None = None

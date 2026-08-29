@@ -78,7 +78,7 @@ MODEL = """
     from medalflow.medallion.gold import GoldSequencer, gold_metadata
 
 
-    @gold_metadata(schema="gold", {extra})
+    @gold_metadata(name="{cls}", schema="gold", {extra})
     class {cls}(GoldSequencer):
         @query_metadata(
             type=QueryType.CREATE_OR_ALTER_VIEW,
@@ -149,8 +149,50 @@ def test_gold_discovery_does_not_filter_on_configured_models(gold_package):
 def test_gold_metadata_defaults_to_enabled():
     from medalflow.medallion.gold import gold_metadata
 
-    @gold_metadata(schema="gold")
+    @gold_metadata(name="Anything", schema="gold")
     class Anything:
         pass
 
     assert Anything._gold_metadata.disabled is False
+
+
+# --- identity is declared, not inferred from the class name ----------------
+
+
+RENAMED = """
+    from medalflow.medallion.gold import GoldSequencer, gold_metadata
+
+
+    @gold_metadata(name="Revenue", schema="gold")
+    class RevenueViewsV2(GoldSequencer):
+        pass
+"""
+
+
+def test_gold_discovery_keys_on_the_declared_name(gold_package):
+    """The class name was the identity, so renaming a class renamed the model."""
+    discovery = gold_package("acme_gold", {"revenue": RENAMED})
+
+    discovered = discovery.discover_all()
+
+    assert [model.name for model in discovered] == ["Revenue"]
+    assert discovered[0].sequencer_class.__name__ == "RevenueViewsV2"
+
+
+def test_a_gold_sequencer_reports_its_declared_name():
+    """`get_obj_name` is the cache key and the log name, as in bronze and silver."""
+    from medalflow.medallion.gold import GoldSequencer, gold_metadata
+    from medalflow.settings.main import MedalflowSettings
+
+    @gold_metadata(name="Revenue", schema="gold")
+    class RevenueViewsV2(GoldSequencer):
+        pass
+
+    settings = MedalflowSettings(
+        source_system="sap",
+        ds_env="dev",
+        name="fin",
+        compute={"lake_database_name": "lakedb"},
+    )
+
+    assert RevenueViewsV2(settings).get_obj_name() == "Revenue"

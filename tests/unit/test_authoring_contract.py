@@ -92,7 +92,7 @@ def test_every_layer_decorator_stores_its_description():
     class Silver:
         pass
 
-    @gold_metadata(schema="gold", description="customer revenue")
+    @gold_metadata(name="Revenue", schema="gold", description="customer revenue")
     class Gold:
         pass
 
@@ -102,7 +102,7 @@ def test_every_layer_decorator_stores_its_description():
 
 
 def test_description_is_optional_and_defaults_to_none():
-    @gold_metadata(schema="gold")
+    @gold_metadata(name="Revenue", schema="gold")
     class Gold:
         pass
 
@@ -222,7 +222,7 @@ def test_silver_metadata_model_carries_name_and_model():
 
 
 def test_gold_metadata_stores_schema():
-    @gold_metadata(schema="gold_sales")
+    @gold_metadata(name="Revenue", schema="gold_sales")
     class Gold:
         pass
 
@@ -231,7 +231,7 @@ def test_gold_metadata_stores_schema():
 
 def test_gold_metadata_rejects_schema_name():
     with pytest.raises(TypeError, match="schema_name"):
-        gold_metadata(schema_name="gold")
+        gold_metadata(name="Revenue", schema_name="gold")
 
 
 def test_gold_metadata_model_drops_schema_name():
@@ -239,3 +239,43 @@ def test_gold_metadata_model_drops_schema_name():
 
     assert "schema_name" not in GoldMetadata.model_fields
     assert "schema" in GoldMetadata.model_fields
+
+
+# ---------------------------------------------------------------------------
+# D2 — `name` is the identity in every layer, gold included
+# ---------------------------------------------------------------------------
+
+
+def test_gold_metadata_requires_name():
+    """Gold discovery keyed on the *class* name, which is not a declaration.
+
+    Every other layer names its model; gold inferred one. A rename of the class
+    silently renamed the model, and two gold classes could not share a name even
+    across packages.
+    """
+    with pytest.raises(TypeError, match="name"):
+        gold_metadata(schema="gold")
+
+
+def test_gold_metadata_stores_name():
+    @gold_metadata(name="Revenue", schema="gold")
+    class Gold:
+        pass
+
+    assert Gold._gold_metadata.name == "Revenue"
+
+
+def test_gold_metadata_model_carries_name():
+    from medalflow.types.metadata import GoldMetadata
+
+    assert "name" in GoldMetadata.model_fields
+
+
+def test_gold_metadata_takes_name_and_schema_positionally():
+    """Same order as bronze: identity first, then the target schema."""
+
+    @gold_metadata("Revenue", "gold")
+    class Gold:
+        pass
+
+    assert (Gold._gold_metadata.name, Gold._gold_metadata.schema) == ("Revenue", "gold")
