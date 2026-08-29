@@ -132,10 +132,9 @@ class ExecutionPlan(CTEBaseModel):
         `to_dict` called `self.metadata.to_dict()` unconditionally, but the
         field is declared `ClassMetadata | dict | None` and the orchestrator
         passes a dict -- so serialising any plan built by
-        `create_plan_from_sequencers`, which is every per-layer API function,
-        raised `AttributeError` on metadata the plan was designed to accept.
-        It only ever worked because the sole caller passed an *empty* dict,
-        which is falsy.
+        `create_plan_from_sequencers` raised `AttributeError` on metadata the
+        plan was designed to accept. It only ever worked because the sole
+        caller passed an *empty* dict, which is falsy.
 
         Returns:
             The metadata as a plain dictionary, or None when there is none

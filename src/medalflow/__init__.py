@@ -7,10 +7,6 @@ from medalflow.api import (
     SelectorError,
     compile,
     execute,
-    get_bronze_execution_plan,
-    get_execution_plan_for_sps,
-    get_gold_execution_plan,
-    get_silver_execution_plan_for_models,
     run,
 )
 from medalflow.common.exceptions import CTEError, ErrorCode
@@ -55,9 +51,5 @@ __all__ = [
     "run",
     "RunResult",
     # api
-    "get_bronze_execution_plan",
-    "get_gold_execution_plan",
-    "get_execution_plan_for_sps",
-    "get_silver_execution_plan_for_models",
     "execute",
 ]

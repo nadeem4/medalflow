@@ -456,4 +456,47 @@ as a whole) and `cyclic_project` (two silver models reading each other, so the o
 build but the graph has no execution order). Neither was folded into `broken_project`,
 whose value is its exact error count.
 
-Still outstanding: Decision 7's `run(selector)`.
+## Amendment — Decision 7 implemented
+
+`run(selector)` is the single execution path, and the per-layer entry points are gone.
+
+- `run()` compiles first and **refuses to execute when compile reports errors**, per D8.
+  It returns a `RunResult` carrying those errors rather than raising: one shape answers
+  "what happened" whether the project was broken or the warehouse was. Nothing executes —
+  not even the models that compiled — because a project mid-edit is not a project to
+  build a warehouse from.
+- It consumes `ExecutionPlan.get_all_operations(serialize=True)`, the seam recorded above
+  as having no caller, and hands one dict at a time to `medalflow.api.execute`. Neither
+  half is replaced, so "orchestration stays with your existing tools" survives: `run()` is
+  simply the orchestration MedalFlow ships. Operations reach the executor with their
+  `_cte_stage` / `_cte_position` / `_cte_request_context` stamps intact.
+- **Stop on the first failure**, and report succeeded, failed and skipped. A later stage
+  exists precisely because it depends on an earlier one, so continuing would run
+  operations whose inputs were never built. Any two of the three leave a caller guessing
+  about the third.
+- Success is read off `OperationResult.success`. A successful CREATE TABLE reports
+  `rows_affected=None`, so anything inferring success from a row count calls every table
+  it built a failure — this has been wrong here before.
+- Stages run in order; operations within a stage run sequentially. Concurrency is not
+  added: the stage boundary is the only ordering guarantee that matters, and adding
+  parallelism inside one would be new behaviour nobody asked for.
+- **Deleted**, with `compile()` replacing all four: `get_bronze_execution_plan`,
+  `get_gold_execution_plan`, `get_silver_execution_plan_for_models`,
+  `get_execution_plan_for_sps` — and with them the whole `medalflow.api.medallion`
+  module. `compile("layer:bronze").plan` is what they returned, and bronze models are
+  named per table, so `compile("Customers")` covers the table-selection case too.
+- **Deleted as their sole dependents**: `ExecutionPlanOrchestrator.create_plan_for_bronze_layer`
+  / `_gold_layer` / `_silver_layer`, each a one-line forward to
+  `create_plan_from_sequencers`; and `SilverMetadataDiscovery.get_transformations_by_models`
+  / `get_transformations_by_names`, a silver-only selection mechanism the selector
+  replaces. `create_plan_from_sequencers`, `create_execution_plan` and
+  `discover_all_transformations` have other callers and stay.
+
+**`bronze_introspection` now has no entry point.** Choosing the mode was
+`api.medallion._bronze_sequencers`, which went with the module; `compile()` reads the
+declared bronze models and nothing reads the setting. `IntrospectedBronzeSequencer` still
+works when constructed directly, and its behaviour is still pinned in
+`test_bronze_declared.py`, but the opt-in of Decision 6 part 2 is unreachable through the
+public API. Wiring it into `compile()` is a Decision 6 question — an introspected layer is
+one sequencer over N tables, not a model a selector can match — and is deliberately left
+open rather than answered in passing here.

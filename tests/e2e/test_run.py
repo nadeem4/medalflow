@@ -339,3 +339,39 @@ def test_run_executes_through_the_shipped_execute_seam(sample_project, monkeypat
     assert [operation["object_name"] for operation in received] == ["Customers", "Orders"]
     assert result.ok is True
     assert [operation.stage for operation in result.succeeded] == [1, 1]
+
+
+def test_there_is_no_per_layer_entry_point():
+    """ADR 002 D7: 'There is never a per-layer runner.'
+
+    `compile("layer:bronze").plan` is what the four per-layer plan functions
+    used to be, and bronze models are named per table now, so
+    `compile("Customers")` covers the table-selection case they also served.
+    """
+    import medalflow
+    import medalflow.api
+
+    for name in (
+        "get_bronze_execution_plan",
+        "get_gold_execution_plan",
+        "get_silver_execution_plan_for_models",
+        "get_execution_plan_for_sps",
+    ):
+        assert not hasattr(medalflow, name)
+        assert not hasattr(medalflow.api, name)
+
+
+def test_the_orchestrator_has_no_per_layer_plan_method():
+    """The four functions were their only callers. `create_plan_from_sequencers`
+    and `create_execution_plan` have others and stay."""
+    from medalflow.medallion import ExecutionPlanOrchestrator
+
+    for name in (
+        "create_plan_for_bronze_layer",
+        "create_plan_for_gold_layer",
+        "create_plan_for_silver_layer",
+    ):
+        assert not hasattr(ExecutionPlanOrchestrator, name)
+
+    assert hasattr(ExecutionPlanOrchestrator, "create_plan_from_sequencers")
+    assert hasattr(ExecutionPlanOrchestrator, "create_execution_plan")

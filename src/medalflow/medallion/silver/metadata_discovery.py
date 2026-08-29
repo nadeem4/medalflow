@@ -74,50 +74,6 @@ class SilverMetadataDiscovery(_BaseDiscovery):
         """
         return self.discover_all(force_refresh=force_refresh)
 
-    def get_transformations_by_models(self, models: str) -> list[TransformationMetadata]:
-        """Get all transformations for a specific model.
-
-        Uses cache for improved performance when available.
-
-        Args:
-            models: Comma-separated model names, or 'all'
-
-        Returns:
-            List of transformations for the specified model
-        """
-        if models.lower() == "all":
-            return self.discover_all_transformations()
-
-        wanted = [model.strip().lower() for model in models.strip().split(",")]
-        all_transformations = self.discover_all_transformations()
-
-        result = [metadata for metadata in all_transformations if metadata.model.lower() in wanted]
-
-        self.logger.debug(f"Found {len(result)} transformations for models: {wanted}")
-
-        return result
-
-    def get_transformations_by_names(self, names: str) -> list[TransformationMetadata]:
-        """Get transformations by name.
-
-        Uses cache for improved performance when available.
-
-        Args:
-            names: Comma-separated transformation names
-
-        Returns:
-            Every transformation whose name matches, empty if none do
-        """
-        wanted = [name.strip().lower() for name in names.strip().split(",")]
-
-        all_transformations = self.discover_all_transformations()
-
-        result = [metadata for metadata in all_transformations if metadata.name.lower() in wanted]
-
-        self.logger.debug(f"Found {len(result)} transformations for names: {wanted}")
-
-        return result
-
     def _extract_metadata_from_class(self, cls: type) -> TransformationMetadata | None:
         """Extract and normalize metadata from a decorated class.
 
