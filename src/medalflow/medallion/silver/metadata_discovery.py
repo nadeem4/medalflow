@@ -46,9 +46,10 @@ class TransformationMetadata:
 class SilverMetadataDiscovery(_BaseDiscovery):
     """Discovers the silver transformations declared in the silver package.
 
-    Silver is the one layer whose discovery filters on the configured model
-    list: `model=` is its grouping concept, and a transformation whose model
-    the deployment has not configured is left out of the plan.
+    Silver is the one layer whose discovery can filter on the configured model
+    list: `model=` is its grouping concept. The filter narrows only -- an unset
+    `configured_models` keeps every transformation, because a filter nobody
+    configured must not delete the layer it filters.
 
     Attributes:
         package: Package name for silver transformations
@@ -125,7 +126,7 @@ class SilverMetadataDiscovery(_BaseDiscovery):
 
         Returns:
             TransformationMetadata, or None if the transformation is disabled
-            or its model is not configured for this deployment
+            or a configured model list is in force and does not name its model
 
         Raises:
             Exception: Surfaced to the caller. A model whose metadata cannot be

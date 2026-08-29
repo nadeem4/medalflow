@@ -20,7 +20,7 @@ class Customers(BronzeSequencer):
 
 
 @silver_metadata(
-    name="usp_load_dim_customer",
+    name="DimCustomer",
     schema="silver",
     model="sales",
 )

@@ -365,3 +365,95 @@ on that path read the label defensively now.
 
 Still outstanding for Decision 2: nothing. Decisions 7 and 8 — `compile()`,
 `CompileResult`, `run(selector)` and the selector grammar — are next.
+
+## Amendment — Decision 8 implemented, and the selector grammar with it
+
+`compile(selector="*")` is `medalflow.compile`. It walks all three layers' configured
+packages, applies the selector, and builds one cross-layer plan through the
+`ExecutionPlanOrchestrator` that already existed — there is no second DAG mechanism. It
+returns a `CompileResult` carrying the models it compiled (`name`, `layer`, `schema`,
+`description`, `tags`), the plan, and `errors: list[CompileError]`, with an `ok`
+property. `CompileResult.to_dict()` is JSON-serialisable end to end.
+
+**Errors are collected, not raised.** This is the whole of the decision. A
+`@query_metadata` method whose own code raises, one that names no table to write, one
+returning something that is not SQL — each becomes one `CompileError` and compile keeps
+going, so an author fixing three models learns about all three from one run. The models
+that do compile still reach the plan; a broken sibling never shrinks it to nothing.
+`tests/fixtures/broken_project` is exactly that shape and
+`test_every_broken_model_is_reported_in_one_run` pins it.
+
+An unconfigured layer package is one of those errors rather than a crash. Discovery
+raises `ValueError` when `package_for_layer` resolves nothing, and compile turns it into
+a `CompileError` whose `suggestion` names both `MEDALFLOW_<LAYER>_PACKAGE` and
+`MEDALFLOW_MODELS_PACKAGE`. A project with no gold models compiles its bronze and silver.
+
+**Where the line is drawn.** A *project* problem is collected. The *caller's* own input
+is not: an unparseable selector raises `SelectorError` before any discovery runs, because
+returning an empty result would make a typo indistinguishable from a project that
+declares no matching model. Bugs inside MedalFlow itself still propagate — they are not
+something an author can act on.
+
+Selector grammar v0.1 is `medalflow.api.selectors.parse_selector`: `*`,
+`layer:bronze|silver|gold`, `tag:<value>`, and a bare word matching a model's declared
+`name`. It matches on `name`, `layer` and `tags`, never on `_dag_id`. `+name` and `name+`
+are recognised and refused by name, so v0.3 adds behaviour without changing the grammar
+or a call site. A selector that parses and matches nothing is an empty plan, not an
+error.
+
+Three details that had to be decided:
+
+- `CompiledModel.layer` is the layer the model was *discovered* in, not
+  `GoldMetadata.layer`. That field is free text an author may set to `gold_ml`, and
+  `layer:gold` has to keep working.
+- `CompileError.to_dict()` and `CompiledModel.to_dict()` are overridden rather than
+  inherited. `CTEBaseModel.to_dict` drops None fields, which would make `model` a key
+  that appears only when a model happens to be named — the opposite of a machine-readable
+  shape.
+- Compile forces discovery to re-walk its packages. It is what an author runs after
+  editing their models, so a cached walk would report the project as it used to be.
+
+`ExecutionPlan.get_all_operations(serialize=True)` is deliberately untouched: `run()`
+builds on that seam, and it still has no caller.
+
+### Three silently wrong answers, fixed rather than noted
+
+All three predate `compile()` and all three made it return an answer that was wrong
+without saying so — which is the one thing the decision exists to prevent.
+
+**An unset `configured_models` deleted the silver layer.** `get_configured_model_list()`
+returns `[]` when the setting is unset, and `is_model_configured` asked whether a name
+was *in* that list — so a project that had never heard of `MEDALFLOW_CONFIGURED_MODELS`
+had every silver model skipped and its silver layer compiled to zero models. The example
+project would have shipped with an empty silver layer for every new user. **Unset now
+means no filter**; a non-empty list narrows exactly as before. That is also what
+`selection=None` means everywhere else here: absent is everything, empty is nothing.
+`is_model_configured` stays silver-only for the reason it is off gold, unchanged.
+
+**A configured package that would not import returned nothing.** `_walk_package` logged
+the ImportError and returned, so a mistyped `MEDALFLOW_MODELS_PACKAGE` — the likelier
+typo, since one variable feeds all three layers — produced an empty plan and no
+complaint. It raises `PackageNotImportable` (a `ValueError`, so no existing caller needs
+a new except clause to stop being silent), and `compile()` reports it as
+`UnimportablePackage`, the sibling of `UnconfiguredPackage`, with the same shape of
+suggestion. The distinction that had to survive is that **"the package does not exist"
+and "the package exists and declares nothing" are different answers, and only the first
+is an error** — a project using two of the three layers is a legitimate shape. It
+survives because only the first raises ImportError, and both halves are pinned.
+
+**`ExecutionPlan.to_dict()` raised on the metadata it is declared to accept.** The field
+is `ClassMetadata | dict | None` and the orchestrator passes a dict, but `to_dict` called
+`self.metadata.to_dict()` unconditionally — so every plan from
+`create_plan_from_sequencers`, which is every per-layer API function, raised
+`AttributeError` when serialised. It survived only because the one path that serialised a
+plan passed an *empty* dict, which is falsy. Serialisability is the point of this
+decision; a serialisable `CompileResult` beside four entry points that raise on
+`.to_dict()` is a trap.
+
+Both of `compile()`'s error branches that no test reached now have fixture projects of
+their own — `duplicate_project` (one gold name declared twice, so the layer's walk fails
+as a whole) and `cyclic_project` (two silver models reading each other, so the operations
+build but the graph has no execution order). Neither was folded into `broken_project`,
+whose value is its exact error count.
+
+Still outstanding: Decision 7's `run(selector)`.

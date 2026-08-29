@@ -118,13 +118,35 @@ class ExecutionPlan(CTEBaseModel):
         """Override to ensure stages and nested objects are properly serialized."""
         return {
             "sequencer_name": self.sequencer_name,
-            "metadata": self.metadata.to_dict() if self.metadata else None,
+            "metadata": self._serialized_metadata(),
             "lineage": self.lineage.to_dict() if self.lineage else None,
             "total_queries": self.total_queries,
             "stages": [stage.to_dict() for stage in self.stages],
             "dependency_graph": self.dependency_graph,
             "context": self.context.model_dump() if self.context else None,
         }
+
+    def _serialized_metadata(self) -> dict | None:
+        """Serialize whichever half of the ``metadata`` union is present.
+
+        `to_dict` called `self.metadata.to_dict()` unconditionally, but the
+        field is declared `ClassMetadata | dict | None` and the orchestrator
+        passes a dict -- so serialising any plan built by
+        `create_plan_from_sequencers`, which is every per-layer API function,
+        raised `AttributeError` on metadata the plan was designed to accept.
+        It only ever worked because the sole caller passed an *empty* dict,
+        which is falsy.
+
+        Returns:
+            The metadata as a plain dictionary, or None when there is none
+        """
+        if not self.metadata:
+            return None
+
+        if isinstance(self.metadata, dict):
+            return self.metadata
+
+        return self.metadata.to_dict()
 
     def get_all_operations(
         self, serialize: bool = False

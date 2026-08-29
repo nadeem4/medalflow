@@ -54,7 +54,7 @@ def _by_object(operations):
 # --- the default reaches the operation, in both layers that build one -------
 
 
-@silver_metadata(name="usp_load_dim_customer", schema="silver", model="sales")
+@silver_metadata(name="DimCustomer", schema="silver", model="sales")
 class _InheritingSilver(SilverTransformationSequencer):
     @query_metadata(type=QueryType.CREATE_TABLE, table_name="DimCustomer")
     def build_dim_customer(self) -> str:
@@ -147,7 +147,7 @@ def test_a_method_with_no_schema_and_no_declaration_still_raises():
 DETAIL = {"table_suffix": "Detail", "source_schema": "temp", "target_schema": "silver"}
 
 
-@silver_metadata(name="usp_load_staged", schema="temp", model="sales")
+@silver_metadata(name="Staging", schema="temp", model="sales")
 class _StagingSilver(SilverTransformationSequencer):
     """A class whose declared schema *is* the detail convention's source schema.
 

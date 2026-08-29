@@ -6,7 +6,7 @@ from medalflow.medallion.silver import SilverTransformationSequencer, silver_met
 
 
 @silver_metadata(
-    name="usp_load_fact_orders",
+    name="FactOrders",
     schema="silver",
     model="sales",
     description="Order facts joined to the customer dimension",

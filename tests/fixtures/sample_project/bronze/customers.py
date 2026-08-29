@@ -8,6 +8,7 @@ from medalflow.medallion.bronze import BronzeSequencer, bronze_metadata
     schema="bronze",
     source_system="d365",
     description="Raw customer feed",
+    tags=["domain:sales"],
 )
 class Customers(BronzeSequencer):
     """dbo.Customers -> bronze.Customers."""

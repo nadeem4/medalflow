@@ -5,7 +5,12 @@ from medalflow.medallion.base.decorators import query_metadata
 from medalflow.medallion.gold import GoldSequencer, gold_metadata
 
 
-@gold_metadata(name="Revenue", schema="gold", description="Revenue reporting view")
+@gold_metadata(
+    name="Revenue",
+    schema="gold",
+    description="Revenue reporting view",
+    tags=["daily"],
+)
 class Revenue(GoldSequencer):
     """silver.FactOrders -> gold.vw_Revenue."""
 

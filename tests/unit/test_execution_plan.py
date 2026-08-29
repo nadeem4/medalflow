@@ -8,6 +8,7 @@ Before that, stage creation read `operation.schema` and the plan builder
 `setattr`-ed undeclared fields onto pydantic models.
 """
 
+import json
 import logging
 
 import pytest
@@ -16,7 +17,7 @@ from medalflow.medallion.orchestration.execution_orchestrator import ExecutionPl
 from medalflow.medallion.types import ExecutionPlan
 from medalflow.medallion.utils.execution_plan_builder import ExecutionPlanBuilder
 from medalflow.operations import Select
-from medalflow.types.metadata import SQLDependencies
+from medalflow.types.metadata import GoldMetadata, SQLDependencies
 
 
 class _StubAnalyzer:
@@ -106,6 +107,51 @@ def test_plan_accepts_orchestrator_metadata_dict(orchestrator_factory, two_depen
     )
 
     assert plan.metadata["sequencers"] == ["DimCustomerModel"]
+
+
+def test_a_plan_carrying_a_metadata_dict_serialises(orchestrator_factory, two_dependent_operations):
+    """`to_dict` called `self.metadata.to_dict()` unconditionally, and a plain
+    dict has no such method -- so serialising any plan from
+    `create_plan_from_sequencers`, which is every per-layer API function,
+    raised AttributeError on the metadata the test above says it accepts."""
+    bronze, silver, dependencies = two_dependent_operations
+
+    plan = orchestrator_factory(dependencies).create_execution_plan(
+        operations=[bronze, silver],
+        metadata={"sequencer_metadata": {}, "sequencers": ["DimCustomerModel"]},
+    )
+
+    assert plan.to_dict()["metadata"]["sequencers"] == ["DimCustomerModel"]
+
+
+def test_a_plan_carrying_a_metadata_dict_survives_json(
+    orchestrator_factory, two_dependent_operations
+):
+    """Serialisable means JSON, not merely dict-shaped."""
+    bronze, silver, dependencies = two_dependent_operations
+
+    plan = orchestrator_factory(dependencies).create_execution_plan(
+        operations=[bronze, silver],
+        metadata={"sequencers": ["DimCustomerModel"]},
+    )
+
+    assert json.loads(json.dumps(plan.to_dict()))["metadata"] == {
+        "sequencers": ["DimCustomerModel"]
+    }
+
+
+def test_a_plan_carrying_a_layer_metadata_model_still_serialises():
+    """The other half of the union keeps going through its own `to_dict`."""
+    plan = ExecutionPlan(
+        sequencer_name="Revenue",
+        metadata=GoldMetadata(name="Revenue", schema="gold"),
+        lineage=None,
+        total_queries=0,
+        stages=[],
+        dependency_graph={},
+    )
+
+    assert plan.to_dict()["metadata"]["name"] == "Revenue"
 
 
 def test_building_a_plan_does_not_mutate_operations(orchestrator_factory, two_dependent_operations):

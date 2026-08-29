@@ -1,5 +1,10 @@
 from medalflow.__version__ import __version__
 from medalflow.api import (
+    CompiledModel,
+    CompileError,
+    CompileResult,
+    SelectorError,
+    compile,
     execute,
     get_bronze_execution_plan,
     get_execution_plan_for_sps,
@@ -38,6 +43,12 @@ __all__ = [
     "ErrorCode",
     # Utilities (public API)
     "get_current_timestamp",
+    # compile (ADR 002, Decisions 7 and 8)
+    "compile",
+    "CompileResult",
+    "CompileError",
+    "CompiledModel",
+    "SelectorError",
     # api
     "get_bronze_execution_plan",
     "get_gold_execution_plan",
