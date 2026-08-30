@@ -1,5 +1,10 @@
 # A MedalFlow project
 
+> [!WARNING]
+> MedalFlow is a **work in progress**: pre-release, unpublished, and not API-stable.
+> This example is kept working by CI, but the contract it demonstrates still changes.
+> See the [project README](../README.md#status-work-in-progress) before building on it.
+
 A complete, working MedalFlow project: five models across the three medallion
 layers, a `.env.example` listing everything it needs, and a five-line entry
 point. Copy this directory, rename it, replace the models with yours.

@@ -2,6 +2,17 @@
 
 **dbt, but in Python classes and methods.**
 
+> [!WARNING]
+> **Work in progress — not ready for production use.**
+>
+> MedalFlow is pre-release and under active development. It is **not published to PyPI**,
+> the API is **not stable**, and breaking changes land regularly — this phase alone renamed
+> the identity parameter on every model and deleted four public entry points.
+>
+> One thing in particular to weigh before adopting it: **executing a plan against a live
+> warehouse is unproven.** Plan generation is well covered, but no test opens a database
+> connection. See [Status](#status-work-in-progress) for what is and is not proven.
+
 Declare your medallion models — Bronze, Silver, Gold — as plain Python classes with
 decorated methods that return SQL. MedalFlow discovers them, works out the dependencies
 between them by parsing that SQL, builds one cross-layer DAG, and compiles it into an
@@ -66,11 +77,12 @@ MedalFlow read them out of the models' own `SELECT` statements. The five variabl
 falls out of them. It is the same project MedalFlow's end-to-end suite compiles and runs,
 so it cannot drift from the library.
 
-## Status: pre-release, under active repair
+## Status: work in progress
 
-This project is **not published to PyPI** and the API is not stable. It is being brought
-to a `v0.1.0` release through a phased remediation plan; expect breaking changes. The
-package has been renamed from `core` to `medalflow`; update imports accordingly.
+**This is a work in progress, not a finished library.** It is **not published to PyPI**
+and the API is not stable. It is being brought to a `v0.1.0` release through a phased
+remediation plan; expect breaking changes between now and then. The package has been
+renamed from `core` to `medalflow`; update imports accordingly.
 
 Be aware of what is and is not proven today:
 
